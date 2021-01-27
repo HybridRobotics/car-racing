@@ -11,14 +11,18 @@ class ControlPolicyBase:
     def set_target_speed(self, vt):
         self.vt = vt
 
+    def set_target_deviation(self, eyt):
+        self.eyt = eyt
+
     def calc_input(self, x0):
         pass
 
 
-class PIDSpeedTracking(ControlPolicyBase):
-    def __init__(self, vt=0.6):
+class PIDTracking(ControlPolicyBase):
+    def __init__(self, vt=0.6, eyt=0.0):
         ControlPolicyBase.__init__(self)
         self.set_target_speed(vt)
+        self.set_target_deviation(eyt)
 
     def calc_input(self, x0):
         """Computes control action
@@ -26,17 +30,19 @@ class PIDSpeedTracking(ControlPolicyBase):
             x0: current state position
         """
         u_next = np.zeros(self.udim)
-        vt = self.vt
-        u_next[0] = -0.6 * x0[5] - 0.9 * x0[3] + np.maximum(-0.9, np.minimum(np.random.randn() * 0.25, 0.9))
-        u_next[1] = 1.5 * (vt - x0[0]) + np.maximum(-0.8, np.minimum(np.random.randn() * 0.80, 0.8))
+        u_next[0] = (
+            -0.6 * (x0[5] - self.eyt) - 0.9 * x0[3]  # + np.maximum(-0.9, np.minimum(np.random.randn() * 0.25, 0.9))
+        )
+        u_next[1] = 1.5 * (self.vt - x0[0])  # + np.maximum(-0.8, np.minimum(np.random.randn() * 0.80, 0.8))
         self.u = u_next
         return self.u
 
 
-class MPCSpeedTracking(ControlPolicyBase):
-    def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6):
+class MPCTracking(ControlPolicyBase):
+    def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
         ControlPolicyBase.__init__(self)
         self.set_target_speed(vt)
+        self.set_target_deviation(eyt)
         self.num_of_horizon = 10
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -44,7 +50,7 @@ class MPCSpeedTracking(ControlPolicyBase):
         self.matrix_R = matrix_R
 
     def calc_input(self, x0):
-        xt = np.array([self.vt, 0, 0, 0, 0, 0]).reshape(self.xdim, 1)
+        xt = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(self.xdim, 1)
         opti = ca.Opti()
         # define variables
         xvar = opti.variable(self.xdim, self.num_of_horizon + 1)
