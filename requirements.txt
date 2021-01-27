@@ -1,0 +1,3 @@
+casadi==3.5.5
+matplotlib==2.2.5
+numpy==1.16.6
