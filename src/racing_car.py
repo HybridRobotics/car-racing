@@ -123,13 +123,13 @@ class DynamicBicycleModel(BaseModel):
             # Increment counter
             i = i + 1
         # Noises
-        # noise_vx = np.maximum(-0.05, np.minimum(np.random.randn() * 0.01, 0.05))
-        # noise_vy = np.maximum(-0.1, np.minimum(np.random.randn() * 0.01, 0.1))
-        # noise_wz = np.maximum(-0.05, np.minimum(np.random.randn() * 0.005, 0.05))
+        noise_vx = np.maximum(-0.05, np.minimum(np.random.randn() * 0.01, 0.05))
+        noise_vy = np.maximum(-0.1, np.minimum(np.random.randn() * 0.01, 0.1))
+        noise_wz = np.maximum(-0.05, np.minimum(np.random.randn() * 0.005, 0.05))
 
-        # cur_x_next[0] = cur_x_next[0] + 0.1 * noise_vx
-        # cur_x_next[1] = cur_x_next[1] + 0.1 * noise_vy
-        # cur_x_next[2] = cur_x_next[2] + 0.1 * noise_wz
+        cur_x_next[0] = cur_x_next[0] + 0.1 * noise_vx
+        cur_x_next[1] = cur_x_next[1] + 0.1 * noise_vy
+        cur_x_next[2] = cur_x_next[2] + 0.1 * noise_wz
 
         self.x = cur_x_next
         self.x_glob = x_next

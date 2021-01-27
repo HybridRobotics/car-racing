@@ -59,10 +59,10 @@ class CarRacingSim:
             points_in[i, :] = self.racing_track.get_global_position(
                 i / float(num_sampling_per_meter), -self.racing_track.width
             )
-        ax.plot(self.racing_track.point_and_tangent[:, 0], self.racing_track.point_and_tangent[:, 1], "o")
-        ax.plot(points_center[:, 0], points_center[:, 1], "--")
+        # ax.plot(self.racing_track.point_and_tangent[:, 0], self.racing_track.point_and_tangent[:, 1], "o") # plot joint point between segments
+        ax.plot(points_center[:, 0], points_center[:, 1], "--r")
         ax.plot(points_in[:, 0], points_in[:, 1], "-b")
-        ax.plot(points_out[:, 0], points_out[:, 1], "-r")
+        ax.plot(points_out[:, 0], points_out[:, 1], "-b")
 
     def plot_simulation(self):
         fig, ax = plt.subplots()

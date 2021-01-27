@@ -78,7 +78,5 @@ class MPCSpeedTracking(ControlPolicyBase):
         sol = opti.solve()
         self.x_pred = sol.value(xvar).T
         self.u_pred = sol.value(uvar).T
-        # print("u_pred", self.u_pred)
         self.u = self.u_pred[0, :]
-        print(self.u)
         return self.u
