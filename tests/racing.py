@@ -1,4 +1,5 @@
 import numpy as np
+import sympy as sp
 import matplotlib.pyplot as plt
 import racing_env, racing_car, racing_sim, policy, utils
 
@@ -12,28 +13,26 @@ def racing(args):
     matrix_Q = np.diag([1.0, 1.0, 1.0, 1.0, 0.0, 100.0])
     matrix_R = np.diag([1.0, 10.0])
     # setup ego car
-    ego = racing_car.DynamicBicycleModel(
-        name="ego", car_param=racing_car.CarParam(color="r"), x=np.zeros((6,)), x_glob=np.zeros((6,)),
-    )
+    ego = racing_car.DynamicBicycleModel(name="ego", param=racing_car.CarParam(color="r"))
+    ego.set_curvilinear_state(np.zeros((6,)))
+    ego.set_global_state(np.zeros((6,)))
     ego.set_ctrl_policy(policy.MPCTracking(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6))
     # setup surrounding cars
-    car1 = racing_car.DynamicBicycleModel(
-        name="car1", car_param=racing_car.CarParam(color="b"), x=np.zeros((6,)), x_glob=np.zeros((6,)),
-    )
-    # car1.set_ctrl_policy(policy.MPCTracking(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.2))
-    car1.set_ctrl_policy(policy.PIDTracking(vt=0.6, eyt=0.2))
-    car2 = racing_car.DynamicBicycleModel(
-        name="car2", car_param=racing_car.CarParam(color="b"), x=np.zeros((6,)), x_glob=np.zeros((6,)),
-    )
-    # car2.set_ctrl_policy(policy.MPCTracking(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=-0.2))
-    car2.set_ctrl_policy(policy.PIDTracking(vt=0.6, eyt=-0.2))
+    t_symbol = sp.symbols("t")
+    car1 = racing_car.NoPolicyModel(name="car1", param=racing_car.CarParam(color="b"))
+    car1.set_curvilinear_func(t_symbol, 0.6 * t_symbol, 0.2 + 0.0 * t_symbol)
+    car2 = racing_car.NoPolicyModel(name="car2", param=racing_car.CarParam(color="b"))
+    car2.set_curvilinear_func(t_symbol, 0.6 * t_symbol, -0.2 + 0.0 * t_symbol)
     # setup simulation
     simulator = racing_sim.CarRacingSim()
     simulator.set_timestep(0.1)
     simulator.set_track(track)
     simulator.add_vehicle(ego)
     simulator.add_vehicle(car1)
+    car1.calibrate()
     simulator.add_vehicle(car2)
+    car2.calibrate()
+    simulator.setup()
     simulator.sim(sim_time=100.0)
 
 

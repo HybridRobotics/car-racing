@@ -57,6 +57,7 @@ class MPCTracking(ControlPolicyBase):
         uvar = opti.variable(self.udim, self.num_of_horizon)
         cost = 0
         opti.subject_to(xvar[:, 0] == x0)
+        # dynamics + state/input constraints
         for i in range(self.num_of_horizon):
             # system dynamics
             opti.subject_to(
@@ -86,3 +87,4 @@ class MPCTracking(ControlPolicyBase):
         self.u_pred = sol.value(uvar).T
         self.u = self.u_pred[0, :]
         return self.u
+

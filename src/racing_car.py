@@ -1,4 +1,5 @@
 import numpy as np
+import sympy as sp
 
 
 class CarParam:
@@ -9,15 +10,25 @@ class CarParam:
 
 
 class BaseModel:
-    def __init__(self):
+    def __init__(self, name=None, param=None):
+        self.name = name
+        self.param = param
+        self.model_type = None
         self.xdim = 6
         self.udim = 2
         self.x = None
         self.x_glob = None
         self.u = None
+        self.t_curr = 0.0
 
     def set_timestep(self, dt):
         self.dt = dt
+
+    def set_curvilinear_state(self, x):
+        self.x = x
+
+    def set_global_state(self, x_glob):
+        self.x_glob = x_glob
 
     def set_track(self, track):
         self.track = track
@@ -28,17 +39,54 @@ class BaseModel:
     def calc_ctrl_input(self):
         self.u = self.ctrl_policy.calc_input(self.x)
 
+    def set_model_type(self, model_type):
+        self.model_type = model_type
+
     def forward_dynamics(self):
         pass
 
 
+class NoPolicyModel(BaseModel):
+    def __init__(self, name=None, param=None, x=None, x_glob=None):
+        BaseModel.__init__(self, name=name, param=param)
+        self.set_model_type("no-policy")
+
+    def set_curvilinear_func(self, t_symbol, s_func, ey_func):
+        self.t_symbol = t_symbol
+        self.s_func = s_func
+        self.ey_func = ey_func
+
+    def calibrate(self):
+        # initialize coordinates with user-defined trajectory
+        self.x, self.x_glob = self.get_estimation(self.t_curr)
+
+    def get_estimation(self, t0):
+        # curvilinear coordinates
+        x_cur_est = np.zeros(self.xdim)
+        x_cur_est[0] = sp.diff(self.s_func, self.t_symbol).subs(self.t_symbol, t0)
+        x_cur_est[1] = sp.diff(self.ey_func, self.t_symbol).subs(self.t_symbol, t0)
+        x_cur_est[2] = 0
+        x_cur_est[3] = 0
+        x_cur_est[4] = self.s_func.subs(self.t_symbol, t0)
+        x_cur_est[5] = self.ey_func.subs(self.t_symbol, t0)
+        # global coordinates
+        X, Y = self.track.get_global_position(x_cur_est[4], x_cur_est[5])
+        psi = self.track.get_orientation(x_cur_est[4], x_cur_est[5])
+        x_glob_est = np.zeros(self.xdim)
+        x_glob_est[0:3] = x_cur_est[0:3]
+        x_glob_est[3] = psi
+        x_glob_est[4] = X
+        x_glob_est[5] = Y
+        return x_cur_est, x_glob_est
+
+    def forward_dynamics(self):
+        self.t_curr += self.dt
+        self.x, self.x_glob = self.get_estimation(self.t_curr)
+
+
 class DynamicBicycleModel(BaseModel):
-    def __init__(self, name=None, car_param=None, x=None, x_glob=None):
-        BaseModel.__init__(self)
-        self.name = name
-        self.car_param = car_param
-        self.x = x
-        self.x_glob = x_glob
+    def __init__(self, name=None, param=None, x=None, x_glob=None):
+        BaseModel.__init__(self, name=name, param=param)
 
     def forward_dynamics(self):
         # This function computes the system evolution. Note that the discretization is deltaT and therefore is needed that
@@ -132,3 +180,4 @@ class DynamicBicycleModel(BaseModel):
 
         self.x = cur_x_next
         self.x_glob = x_next
+        self.t_curr += self.dt

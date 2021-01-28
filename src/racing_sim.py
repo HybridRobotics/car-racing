@@ -22,18 +22,25 @@ class CarRacingSim:
         self.vehicles[vehicle.name] = vehicle
         self.vehicles[vehicle.name].set_track(self.racing_track)
         self.vehicles[vehicle.name].set_timestep(self.dt)
-        self.closedloop_x[vehicle.name] = []
-        self.closedloop_x_glob[vehicle.name] = []
-        self.closedloop_u[vehicle.name] = []
-        self.closedloop_x[vehicle.name].append(self.vehicles[vehicle.name].x)
-        self.closedloop_x_glob[vehicle.name].append(self.vehicles[vehicle.name].x_glob)
+
+    def setup(self):
+        # setup simulation
+        for name in self.vehicles:
+            self.closedloop_x[name] = []
+            self.closedloop_x_glob[name] = []
+            self.closedloop_u[name] = []
+            self.closedloop_x[name].append(self.vehicles[name].x)
+            self.closedloop_x_glob[name].append(self.vehicles[name].x_glob)
 
     def sim(self, sim_time=10.0):
         for i in range(0, int(sim_time / self.dt)):
             for name in self.vehicles:
                 # update system state
-                self.vehicles[name].calc_ctrl_input()
-                self.vehicles[name].forward_dynamics()
+                if self.vehicles[name].model_type == "no-policy":
+                    self.vehicles[name].forward_dynamics()
+                else:
+                    self.vehicles[name].calc_ctrl_input()
+                    self.vehicles[name].forward_dynamics()
                 # collect trajectory
                 self.closedloop_x[name].append(self.vehicles[name].x)
                 self.closedloop_x_glob[name].append(self.vehicles[name].x_glob)
