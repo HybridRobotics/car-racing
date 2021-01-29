@@ -1,4 +1,4 @@
-**Status:** Under development (expect new features and new tutorial)
+**Status:** Under development (expect new features and a complete tutorial)
 
 # Car-Racing
 This repo serves as a toolkit for testing different algorithm for car racing in a user-designed track.
