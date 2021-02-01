@@ -29,7 +29,6 @@ def linear_time_invariant():
     simulator.set_timestep(0.1)
     simulator.set_track(track)
     simulator.add_vehicle(ego)
-    simulator.setup()
     simulator.sim(sim_time=500.0)
     # calculate linearized dynamics
     xdata = np.stack(simulator.closedloop_x["ego"], axis=0)

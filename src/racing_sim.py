@@ -8,12 +8,9 @@ class CarRacingSim:
     def __init__(self):
         self.racing_track = None
         self.vehicles = {}
-        self.closedloop_x = {}
-        self.closedloop_x_glob = {}
-        self.closedloop_u = {}
 
     def set_timestep(self, dt):
-        self.dt = dt
+        self.timestep = dt
 
     def set_track(self, track):
         self.racing_track = track
@@ -21,38 +18,44 @@ class CarRacingSim:
     def add_vehicle(self, vehicle):
         self.vehicles[vehicle.name] = vehicle
         self.vehicles[vehicle.name].set_track(self.racing_track)
-        self.vehicles[vehicle.name].set_timestep(self.dt)
-
-    def setup(self):
-        # setup simulation
-        for name in self.vehicles:
-            self.closedloop_x[name] = []
-            self.closedloop_x_glob[name] = []
-            self.closedloop_u[name] = []
-            self.closedloop_x[name].append(self.vehicles[name].x)
-            self.closedloop_x_glob[name].append(self.vehicles[name].x_glob)
+        self.vehicles[vehicle.name].set_timestep(self.timestep)
 
     def sim(self, sim_time=10.0):
-        for i in range(0, int(sim_time / self.dt)):
+        for i in range(0, int(sim_time / self.timestep)):
             for name in self.vehicles:
                 # update system state
-                if self.vehicles[name].model_type == "no-policy":
-                    self.vehicles[name].forward_dynamics()
-                else:
-                    self.vehicles[name].calc_ctrl_input()
-                    self.vehicles[name].forward_dynamics()
-                # collect trajectory
-                self.closedloop_x[name].append(self.vehicles[name].x)
-                self.closedloop_x_glob[name].append(self.vehicles[name].x_glob)
-                self.closedloop_u[name].append(self.vehicles[name].u)
+                self.vehicles[name].forward_one_step()
         self.plot_simulation()
+        self.plot_states()
 
-    def plot_trajectories(self, ax=None):
+    def plot_state(self, name):
+        time = np.stack(self.vehicles[name].closedloop_time, axis=0)
+        traj = np.stack(self.vehicles[name].closedloop_x, axis=0)
+        fig, axs = plt.subplots(4)
+        axs[0].plot(time, traj[:, 0], "-o", linewidth=1, markersize=1)
+        axs[0].set_xlabel("time [s]", fontsize=14)
+        axs[0].set_ylabel("$v_x$ [m/s]", fontsize=14)
+
+        axs[1].plot(time, traj[:, 1], "-o", linewidth=1, markersize=1)
+        axs[1].set_xlabel("time [s]", fontsize=14)
+        axs[1].set_ylabel("$v_y$ [m/s]", fontsize=14)
+
+        axs[2].plot(time, traj[:, 3], "-o", linewidth=1, markersize=1)
+        axs[2].set_xlabel("time [s]", fontsize=14)
+        axs[2].set_ylabel("$e_{\psi}$ [rad]", fontsize=14)
+
+        axs[3].plot(time, traj[:, 5], "-o", linewidth=1, markersize=1)
+        axs[3].set_xlabel("time [s]", fontsize=14)
+        axs[3].set_ylabel("$e_y$ [m]", fontsize=14)
+
+    def plot_states(self):
         for name in self.vehicles:
-            traj = np.stack(self.closedloop_x_glob[name], axis=0)
-            ax.plot(traj[:, 4], traj[:, 5])
+            self.plot_state(name)
+        plt.show()
 
-    def plot_track(self, ax):
+    def plot_simulation(self):
+        fig, ax = plt.subplots()
+        # plotting racing track
         num_sampling_per_meter = 100
         num_track_points = int(np.floor(num_sampling_per_meter * self.racing_track.track_length))
         points_out = np.zeros((num_track_points, 2))
@@ -70,9 +73,8 @@ class CarRacingSim:
         ax.plot(points_center[:, 0], points_center[:, 1], "--r")
         ax.plot(points_in[:, 0], points_in[:, 1], "-b")
         ax.plot(points_out[:, 0], points_out[:, 1], "-b")
-
-    def plot_simulation(self):
-        fig, ax = plt.subplots()
-        self.plot_track(ax=ax)
-        self.plot_trajectories(ax=ax)
+        # plot trajectories
+        for name in self.vehicles:
+            traj = np.stack(self.vehicles[name].closedloop_xglob, axis=0)
+            ax.plot(traj[:, 4], traj[:, 5])
         plt.show()

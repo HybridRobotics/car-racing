@@ -13,43 +13,60 @@ class BaseModel:
     def __init__(self, name=None, param=None):
         self.name = name
         self.param = param
-        self.model_type = None
+        self.no_dynamics = False
         self.xdim = 6
         self.udim = 2
+        self.time = 0.0
         self.x = None
-        self.x_glob = None
+        self.xglob = None
         self.u = None
-        self.t_curr = 0.0
+        self.closedloop_time = []
+        self.closedloop_x = []
+        self.closedloop_xglob = []
+        self.closedloop_u = []
 
     def set_timestep(self, dt):
-        self.dt = dt
+        self.timestep = dt
 
     def set_curvilinear_state(self, x):
         self.x = x
 
-    def set_global_state(self, x_glob):
-        self.x_glob = x_glob
+    def set_global_state(self, xglob):
+        self.xglob = xglob
 
     def set_track(self, track):
         self.track = track
 
     def set_ctrl_policy(self, ctrl_policy):
         self.ctrl_policy = ctrl_policy
+        self.ctrl_policy.agent_name = self.name
 
     def calc_ctrl_input(self):
         self.u = self.ctrl_policy.calc_input(self.x)
 
-    def set_model_type(self, model_type):
-        self.model_type = model_type
-
     def forward_dynamics(self):
         pass
 
+    def forward_one_step(self):
+        if self.no_dynamics:
+            self.forward_dynamics()
+            self.update_memory()
+        else:
+            self.calc_ctrl_input()
+            self.forward_dynamics()
+            self.update_memory()
+
+    def update_memory(self):
+        self.closedloop_time.append(self.time)
+        self.closedloop_x.append(self.x)
+        self.closedloop_xglob.append(self.xglob)
+        self.closedloop_u.append(self.u)
+
 
 class NoPolicyModel(BaseModel):
-    def __init__(self, name=None, param=None, x=None, x_glob=None):
+    def __init__(self, name=None, param=None, x=None, xglob=None):
         BaseModel.__init__(self, name=name, param=param)
-        self.set_model_type("no-policy")
+        self.no_dynamics = True
 
     def set_curvilinear_func(self, t_symbol, s_func, ey_func):
         self.t_symbol = t_symbol
@@ -58,7 +75,7 @@ class NoPolicyModel(BaseModel):
 
     def calibrate(self):
         # initialize coordinates with user-defined trajectory
-        self.x, self.x_glob = self.get_estimation(self.t_curr)
+        self.x, self.xglob = self.get_estimation(self.time)
 
     def get_estimation(self, t0):
         # curvilinear coordinates
@@ -72,25 +89,34 @@ class NoPolicyModel(BaseModel):
         # global coordinates
         X, Y = self.track.get_global_position(x_cur_est[4], x_cur_est[5])
         psi = self.track.get_orientation(x_cur_est[4], x_cur_est[5])
-        x_glob_est = np.zeros(self.xdim)
-        x_glob_est[0:3] = x_cur_est[0:3]
-        x_glob_est[3] = psi
-        x_glob_est[4] = X
-        x_glob_est[5] = Y
-        return x_cur_est, x_glob_est
+        xglob_est = np.zeros(self.xdim)
+        xglob_est[0:3] = x_cur_est[0:3]
+        xglob_est[3] = psi
+        xglob_est[4] = X
+        xglob_est[5] = Y
+        return x_cur_est, xglob_est
+
+    def get_trajectory_nsteps(self, t0, delta_t, n):
+        x_cur_est_nsteps = np.zeros((self.xdim, n))
+        xglob_est_nsteps = np.zeros((self.xdim, n))
+        for index in range(n):
+            x_cur_est, xglob_est = self.get_estimation(self.time + index * delta_t)
+            x_cur_est_nsteps[:, index] = x_cur_est
+            xglob_est_nsteps[:, index] = xglob_est
+        return x_cur_est_nsteps, xglob_est_nsteps
 
     def forward_dynamics(self):
-        self.t_curr += self.dt
-        self.x, self.x_glob = self.get_estimation(self.t_curr)
+        self.time += self.timestep
+        self.x, self.xglob = self.get_estimation(self.time)
 
 
 class DynamicBicycleModel(BaseModel):
-    def __init__(self, name=None, param=None, x=None, x_glob=None):
+    def __init__(self, name=None, param=None, x=None, xglob=None):
         BaseModel.__init__(self, name=name, param=param)
 
     def forward_dynamics(self):
-        # This function computes the system evolution. Note that the discretization is deltaT and therefore is needed that
-        # dt <= deltaT and ( dt / deltaT) = integer value
+        # This function computes the system evolution. Note that the discretization is delta_t and therefore is needed that
+        # dt <= delta_t and ( dt / delta_t) = integer value
 
         # Vehicle Parameters
         m = 1.98
@@ -105,7 +131,7 @@ class DynamicBicycleModel(BaseModel):
         Br = 1.0
 
         # Discretization Parameters
-        deltaT = 0.001
+        delta_t = 0.001
         x_next = np.zeros(self.xdim)
         cur_x_next = np.zeros(self.xdim)
 
@@ -113,9 +139,9 @@ class DynamicBicycleModel(BaseModel):
         delta = self.u[0]
         a = self.u[1]
 
-        psi = self.x_glob[3]
-        X = self.x_glob[4]
-        Y = self.x_glob[5]
+        psi = self.xglob[3]
+        X = self.xglob[4]
+        Y = self.xglob[5]
 
         vx = self.x[0]
         vy = self.x[1]
@@ -126,7 +152,7 @@ class DynamicBicycleModel(BaseModel):
 
         # Initialize counter
         i = 0
-        while (i + 1) * deltaT <= self.dt:
+        while (i + 1) * delta_t <= self.timestep:
             # Compute tire split angle
             alpha_f = delta - np.arctan2(vy + lf * wz, vx)
             alpha_r = -np.arctan2(vy - lf * wz, vx)
@@ -135,21 +161,21 @@ class DynamicBicycleModel(BaseModel):
             Fyf = 2 * Df * np.sin(Cf * np.arctan(Bf * alpha_f))
             Fyr = 2 * Dr * np.sin(Cr * np.arctan(Br * alpha_r))
 
-            # Propagate the dynamics of deltaT
-            x_next[0] = vx + deltaT * (a - 1 / m * Fyf * np.sin(delta) + wz * vy)
-            x_next[1] = vy + deltaT * (1 / m * (Fyf * np.cos(delta) + Fyr) - wz * vx)
-            x_next[2] = wz + deltaT * (1 / Iz * (lf * Fyf * np.cos(delta) - lr * Fyr))
-            x_next[3] = psi + deltaT * (wz)
-            x_next[4] = X + deltaT * ((vx * np.cos(psi) - vy * np.sin(psi)))
-            x_next[5] = Y + deltaT * (vx * np.sin(psi) + vy * np.cos(psi))
+            # Propagate the dynamics of delta_t
+            x_next[0] = vx + delta_t * (a - 1 / m * Fyf * np.sin(delta) + wz * vy)
+            x_next[1] = vy + delta_t * (1 / m * (Fyf * np.cos(delta) + Fyr) - wz * vx)
+            x_next[2] = wz + delta_t * (1 / Iz * (lf * Fyf * np.cos(delta) - lr * Fyr))
+            x_next[3] = psi + delta_t * (wz)
+            x_next[4] = X + delta_t * ((vx * np.cos(psi) - vy * np.sin(psi)))
+            x_next[5] = Y + delta_t * (vx * np.sin(psi) + vy * np.cos(psi))
 
             cur = self.track.get_curvature(s)
-            cur_x_next[0] = vx + deltaT * (a - 1 / m * Fyf * np.sin(delta) + wz * vy)
-            cur_x_next[1] = vy + deltaT * (1 / m * (Fyf * np.cos(delta) + Fyr) - wz * vx)
-            cur_x_next[2] = wz + deltaT * (1 / Iz * (lf * Fyf * np.cos(delta) - lr * Fyr))
-            cur_x_next[3] = epsi + deltaT * (wz - (vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - cur * ey) * cur)
-            cur_x_next[4] = s + deltaT * ((vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - cur * ey))
-            cur_x_next[5] = ey + deltaT * (vx * np.sin(epsi) + vy * np.cos(epsi))
+            cur_x_next[0] = vx + delta_t * (a - 1 / m * Fyf * np.sin(delta) + wz * vy)
+            cur_x_next[1] = vy + delta_t * (1 / m * (Fyf * np.cos(delta) + Fyr) - wz * vx)
+            cur_x_next[2] = wz + delta_t * (1 / Iz * (lf * Fyf * np.cos(delta) - lr * Fyr))
+            cur_x_next[3] = epsi + delta_t * (wz - (vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - cur * ey) * cur)
+            cur_x_next[4] = s + delta_t * ((vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - cur * ey))
+            cur_x_next[5] = ey + delta_t * (vx * np.sin(epsi) + vy * np.cos(epsi))
 
             # Update the value of the states
             psi = x_next[3]
@@ -179,5 +205,5 @@ class DynamicBicycleModel(BaseModel):
         cur_x_next[2] = cur_x_next[2] + 0.1 * noise_wz
 
         self.x = cur_x_next
-        self.x_glob = x_next
-        self.t_curr += self.dt
+        self.xglob = x_next
+        self.time += self.timestep
