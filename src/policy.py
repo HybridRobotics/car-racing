@@ -129,26 +129,55 @@ class MPCCBFRacing(ControlPolicyBase):
         cost = 0
         opti.subject_to(xvar[:, 0] == x0)
         # get other vehicles' state estimations
-        obs_est = {}
+        safety_time = 2.0
+        dist_margin_front = x0[0] * safety_time
+        dist_margin_behind = x0[0] * safety_time
+        num_cycle_ego = int(x0[4] / self.racing_sim.racing_track.track_length)
+        dist_ego = x0[4] - num_cycle_ego * self.racing_sim.racing_track.track_length
+        obs_infos = {}
         for name in self.racing_sim.vehicles:
             if name != self.agent_name:
-                obs_est[name] = self.racing_sim.vehicles[name].get_trajectory_nsteps(
+                # get predictions from other vehicles
+                obs_traj, _ = self.racing_sim.vehicles[name].get_trajectory_nsteps(
                     self.time, self.timestep, self.num_of_horizon + 1
                 )
+                # check whether the obstacle is nearby, not consider it if not
+                num_cycle_obs = int(obs_traj[4, 0] / self.racing_sim.racing_track.track_length)
+                dist_obs = obs_traj[4, 0] - num_cycle_obs * self.racing_sim.racing_track.track_length
+                if (dist_ego > dist_obs - dist_margin_front) & (dist_ego < dist_obs + dist_margin_behind):
+                    obs_infos[name] = obs_traj
         # slack variables for control barrier functions
-        cbf_slack = opti.variable(len(obs_est), self.num_of_horizon + 1)
-        # calculate control barrier functions for each obstacle at timestep
+        cbf_slack = opti.variable(len(obs_infos), self.num_of_horizon + 1)
+        # obstacle avoidance
         degree = 2
-        for count, obs_name in enumerate(obs_est):
-            obs_traj, _ = obs_est[obs_name]
+        for count, obs_name in enumerate(obs_infos):
+            obs_traj = obs_infos[obs_name]
+            # get ego agent and obstacles' dimensions
+            obs_sdim = (
+                self.racing_sim.vehicles[self.agent_name].param.length / 2
+                + self.racing_sim.vehicles[obs_name].param.length / 2
+            )
+            obs_eydim = (
+                self.racing_sim.vehicles[self.agent_name].param.width / 2
+                + self.racing_sim.vehicles[obs_name].param.width / 2
+            )
+            # calculate control barrier functions for each obstacle at timestep
             for i in range(self.num_of_horizon):
                 diffs = xvar[4, i] - obs_traj[4, i]
                 diffey = xvar[5, i] - obs_traj[5, i]
                 diffs_next = xvar[4, i + 1] - obs_traj[4, i + 1]
                 diffey_next = xvar[5, i + 1] - obs_traj[5, i + 1]
-                h = diffs ** degree / (0.4 ** degree) + diffey ** degree / (0.2 ** degree) - 1 - cbf_slack[count, i]
+                h = (
+                    diffs ** degree / (obs_sdim ** degree)
+                    + diffey ** degree / (obs_eydim ** degree)
+                    - 1
+                    - cbf_slack[count, i]
+                )
                 h_next = (
-                    diffs ** degree / (0.4 ** degree) + diffey ** degree / (0.2 ** degree) - 1 - cbf_slack[count, i + 1]
+                    diffs ** degree / (obs_sdim ** degree)
+                    + diffey ** degree / (obs_eydim ** degree)
+                    - 1
+                    - cbf_slack[count, i + 1]
                 )
                 opti.subject_to(h_next - h >= -self.alpha * h)
                 opti.subject_to(cbf_slack[count, i] >= 0)
