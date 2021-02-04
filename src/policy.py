@@ -8,8 +8,9 @@ class ControlPolicyBase:
         self.agent_name = None
         self.xdim = 6
         self.udim = 2
-        self.timestep = 0.1
         self.time = 0.0
+        self.timestep = None
+        self.x = None
         self.u = None
 
     def set_racing_sim(self, racing_sim):
@@ -24,8 +25,14 @@ class ControlPolicyBase:
     def set_target_deviation(self, eyt):
         self.eyt = eyt
 
-    def calc_input(self, x0):
+    def set_state(self, x0):
+        self.x = x0
+
+    def calc_input(self):
         pass
+
+    def get_input(self):
+        return self.u
 
 
 class PIDTracking(ControlPolicyBase):
@@ -34,19 +41,19 @@ class PIDTracking(ControlPolicyBase):
         self.set_target_speed(vt)
         self.set_target_deviation(eyt)
 
-    def calc_input(self, x0):
+    def calc_input(self):
         """Computes control action
         Arguments:
             x0: current state position
         """
         u_next = np.zeros(self.udim)
         u_next[0] = (
-            -0.6 * (x0[5] - self.eyt) - 0.9 * x0[3]  # + np.maximum(-0.9, np.minimum(np.random.randn() * 0.25, 0.9))
+            -0.6 * (self.x[5] - self.eyt)
+            - 0.9 * self.x[3]  # + np.maximum(-0.9, np.minimum(np.random.randn() * 0.25, 0.9))
         )
-        u_next[1] = 1.5 * (self.vt - x0[0])  # + np.maximum(-0.8, np.minimum(np.random.randn() * 0.80, 0.8))
+        u_next[1] = 1.5 * (self.vt - self.x[0])  # + np.maximum(-0.8, np.minimum(np.random.randn() * 0.80, 0.8))
         self.u = u_next
         self.time += self.timestep
-        return self.u
 
 
 class MPCTracking(ControlPolicyBase):
@@ -60,7 +67,7 @@ class MPCTracking(ControlPolicyBase):
         self.matrix_Q = matrix_Q
         self.matrix_R = matrix_R
 
-    def calc_input(self, x0):
+    def calc_input(self):
         xt = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(self.xdim, 1)
         start_timer = datetime.datetime.now()
         opti = ca.Opti()
@@ -68,7 +75,7 @@ class MPCTracking(ControlPolicyBase):
         xvar = opti.variable(self.xdim, self.num_of_horizon + 1)
         uvar = opti.variable(self.udim, self.num_of_horizon)
         cost = 0
-        opti.subject_to(xvar[:, 0] == x0)
+        opti.subject_to(xvar[:, 0] == self.x)
         # dynamics + state/input constraints
         for i in range(self.num_of_horizon):
             # system dynamics
@@ -97,14 +104,13 @@ class MPCTracking(ControlPolicyBase):
         opti.minimize(cost)
         opti.solver("ipopt", option)
         sol = opti.solve()
+        end_timer = datetime.datetime.now()
+        solver_time = end_timer - start_timer
+        print("solver time: ", (end_timer - start_timer).total_seconds())
         self.x_pred = sol.value(xvar).T
         self.u_pred = sol.value(uvar).T
         self.u = self.u_pred[0, :]
         self.time += self.timestep
-        end_timer = datetime.datetime.now()
-        solver_time = end_timer - start_timer
-        print("solver time: ", (end_timer - start_timer).total_seconds())
-        return self.u
 
 
 class MPCCBFRacing(ControlPolicyBase):
@@ -119,7 +125,7 @@ class MPCCBFRacing(ControlPolicyBase):
         self.matrix_R = matrix_R
         self.alpha = 0.6
 
-    def calc_input(self, x0):
+    def calc_input(self):
         xt = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(self.xdim, 1)
         start_timer = datetime.datetime.now()
         opti = ca.Opti()
@@ -127,13 +133,13 @@ class MPCCBFRacing(ControlPolicyBase):
         xvar = opti.variable(self.xdim, self.num_of_horizon + 1)
         uvar = opti.variable(self.udim, self.num_of_horizon)
         cost = 0
-        opti.subject_to(xvar[:, 0] == x0)
+        opti.subject_to(xvar[:, 0] == self.x)
         # get other vehicles' state estimations
         safety_time = 2.0
-        dist_margin_front = x0[0] * safety_time
-        dist_margin_behind = x0[0] * safety_time
-        num_cycle_ego = int(x0[4] / self.racing_sim.racing_track.track_length)
-        dist_ego = x0[4] - num_cycle_ego * self.racing_sim.racing_track.track_length
+        dist_margin_front = self.x[0] * safety_time
+        dist_margin_behind = self.x[0] * safety_time
+        num_cycle_ego = int(self.x[4] / self.racing_sim.track.lap_length)
+        dist_ego = self.x[4] - num_cycle_ego * self.racing_sim.track.lap_length
         obs_infos = {}
         for name in self.racing_sim.vehicles:
             if name != self.agent_name:
@@ -142,8 +148,8 @@ class MPCCBFRacing(ControlPolicyBase):
                     self.time, self.timestep, self.num_of_horizon + 1
                 )
                 # check whether the obstacle is nearby, not consider it if not
-                num_cycle_obs = int(obs_traj[4, 0] / self.racing_sim.racing_track.track_length)
-                dist_obs = obs_traj[4, 0] - num_cycle_obs * self.racing_sim.racing_track.track_length
+                num_cycle_obs = int(obs_traj[4, 0] / self.racing_sim.track.lap_length)
+                dist_obs = obs_traj[4, 0] - num_cycle_obs * self.racing_sim.track.lap_length
                 if (dist_ego > dist_obs - dist_margin_front) & (dist_ego < dist_obs + dist_margin_behind):
                     obs_infos[name] = obs_traj
         # slack variables for control barrier functions
@@ -219,4 +225,3 @@ class MPCCBFRacing(ControlPolicyBase):
         self.u_pred = sol.value(uvar).T
         self.u = self.u_pred[0, :]
         self.time += self.timestep
-        return self.u

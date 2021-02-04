@@ -9,8 +9,8 @@ def tracking(args):
     track = racing_env.ClosedTrack(track_spec, track_width)
     # setup ego car
     ego = racing_car.DynamicBicycleModel(name="ego", param=racing_car.CarParam(color="r"))
-    ego.set_curvilinear_state(np.zeros((6,)))
-    ego.set_global_state(np.zeros((6,)))
+    ego.set_state_curvilinear(np.zeros((6,)))
+    ego.set_state_global(np.zeros((6,)))
     if args["ctrl_policy"] == "pid":
         ego.set_ctrl_policy(policy.PIDTracking(vt=0.8))
     elif args["ctrl_policy"] == "mpc-lti":
@@ -26,7 +26,7 @@ def tracking(args):
     simulator.set_timestep(0.1)
     simulator.set_track(track)
     simulator.add_vehicle(ego)
-    simulator.sim(sim_time=100.0)
+    simulator.sim(sim_time=50.0)
 
 
 if __name__ == "__main__":

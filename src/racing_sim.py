@@ -6,21 +6,21 @@ import racing_car
 
 class CarRacingSim:
     def __init__(self):
-        self.racing_track = None
+        self.track = None
         self.vehicles = {}
 
     def set_timestep(self, dt):
         self.timestep = dt
 
     def set_track(self, track):
-        self.racing_track = track
+        self.track = track
 
     def add_vehicle(self, vehicle):
         self.vehicles[vehicle.name] = vehicle
-        self.vehicles[vehicle.name].set_track(self.racing_track)
+        self.vehicles[vehicle.name].set_track(self.track)
         self.vehicles[vehicle.name].set_timestep(self.timestep)
 
-    def sim(self, sim_time=10.0):
+    def sim(self, sim_time=50.0):
         for i in range(0, int(sim_time / self.timestep)):
             for name in self.vehicles:
                 # update system state
@@ -57,19 +57,15 @@ class CarRacingSim:
         fig, ax = plt.subplots()
         # plotting racing track
         num_sampling_per_meter = 100
-        num_track_points = int(np.floor(num_sampling_per_meter * self.racing_track.track_length))
+        num_track_points = int(np.floor(num_sampling_per_meter * self.track.lap_length))
         points_out = np.zeros((num_track_points, 2))
         points_center = np.zeros((num_track_points, 2))
         points_in = np.zeros((num_track_points, 2))
         for i in range(0, num_track_points):
-            points_out[i, :] = self.racing_track.get_global_position(
-                i / float(num_sampling_per_meter), self.racing_track.width
-            )
-            points_center[i, :] = self.racing_track.get_global_position(i / float(num_sampling_per_meter), 0.0)
-            points_in[i, :] = self.racing_track.get_global_position(
-                i / float(num_sampling_per_meter), -self.racing_track.width
-            )
-        # ax.plot(self.racing_track.point_and_tangent[:, 0], self.racing_track.point_and_tangent[:, 1], "o") # plot joint point between segments
+            points_out[i, :] = self.track.get_global_position(i / float(num_sampling_per_meter), self.track.width)
+            points_center[i, :] = self.track.get_global_position(i / float(num_sampling_per_meter), 0.0)
+            points_in[i, :] = self.track.get_global_position(i / float(num_sampling_per_meter), -self.track.width)
+        # ax.plot(self.track.point_and_tangent[:, 0], self.track.point_and_tangent[:, 1], "o") # plot joint point between segments
         ax.plot(points_center[:, 0], points_center[:, 1], "--r")
         ax.plot(points_in[:, 0], points_in[:, 1], "-b")
         ax.plot(points_out[:, 0], points_out[:, 1], "-b")

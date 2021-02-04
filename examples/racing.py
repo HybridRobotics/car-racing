@@ -14,16 +14,16 @@ def racing(args):
     matrix_R = np.diag([0.1, 0.1])
     # setup ego car
     ego = racing_car.DynamicBicycleModel(name="ego", param=racing_car.CarParam(color="r"))
-    ego.set_curvilinear_state(np.zeros((6,)))
-    ego.set_global_state(np.zeros((6,)))
+    ego.set_state_curvilinear(np.zeros((6,)))
+    ego.set_state_global(np.zeros((6,)))
     ego.set_ctrl_policy(policy.MPCCBFRacing(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8))
     ego.ctrl_policy.set_timestep(0.1)
     # setup surrounding cars
     t_symbol = sp.symbols("t")
     car1 = racing_car.NoPolicyModel(name="car1", param=racing_car.CarParam(color="b"))
-    car1.set_curvilinear_func(t_symbol, 0.1 * t_symbol + 1.0, 0.1 + 0.0 * t_symbol)
+    car1.set_state_curvilinear_func(t_symbol, 0.1 * t_symbol + 1.0, 0.1 + 0.0 * t_symbol)
     car2 = racing_car.NoPolicyModel(name="car2", param=racing_car.CarParam(color="b"))
-    car2.set_curvilinear_func(t_symbol, 0.1 * t_symbol + 10.0, -0.1 + 0.0 * t_symbol)
+    car2.set_state_curvilinear_func(t_symbol, 0.1 * t_symbol + 10.0, -0.1 + 0.0 * t_symbol)
     # setup simulation
     simulator = racing_sim.CarRacingSim()
     simulator.set_timestep(0.1)
@@ -31,10 +31,8 @@ def racing(args):
     simulator.add_vehicle(ego)
     ego.ctrl_policy.set_racing_sim(simulator)
     simulator.add_vehicle(car1)
-    car1.calibrate()
-    # simulator.add_vehicle(car2)
-    # car2.calibrate()
-    simulator.sim(sim_time=30.0)
+    simulator.add_vehicle(car2)
+    simulator.sim(sim_time=50.0)
 
 
 if __name__ == "__main__":

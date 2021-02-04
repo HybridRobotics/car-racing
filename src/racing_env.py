@@ -16,7 +16,7 @@ class ClosedTrack:
         spec: geometry of the track
         width: track width
         point_and_tangent: specs of each segments
-        track_length: length of the closed track
+        lap_length: length of the closed track
         """
         self.width = width
         self.spec = spec
@@ -41,11 +41,11 @@ class ClosedTrack:
                 psi = ang  # Angle of the tangent vector at the last point of the segment
 
                 if i == 0:
-                    NewLine = np.array([x, y, psi, point_and_tangent[i, 3], l, 0])
+                    newline = np.array([x, y, psi, point_and_tangent[i, 3], l, 0])
                 else:
-                    NewLine = np.array([x, y, psi, point_and_tangent[i - 1, 3] + point_and_tangent[i - 1, 4], l, 0])
+                    newline = np.array([x, y, psi, point_and_tangent[i - 1, 3] + point_and_tangent[i - 1, 4], l, 0])
 
-                point_and_tangent[i, :] = NewLine  # Write the new info
+                point_and_tangent[i, :] = newline  # Write the new info
             else:
                 l = spec[i, 0]  # Length of the segment
                 r = spec[i, 1]  # Radius of curvature
@@ -83,11 +83,11 @@ class ClosedTrack:
                 )  # y coordinate of the last point of the segment
 
                 if i == 0:
-                    NewLine = np.array([x, y, psi, point_and_tangent[i, 3], l, 1 / r])
+                    newline = np.array([x, y, psi, point_and_tangent[i, 3], l, 1 / r])
                 else:
-                    NewLine = np.array([x, y, psi, point_and_tangent[i - 1, 3] + point_and_tangent[i - 1, 4], l, 1 / r])
+                    newline = np.array([x, y, psi, point_and_tangent[i - 1, 3] + point_and_tangent[i - 1, 4], l, 1 / r])
 
-                point_and_tangent[i, :] = NewLine  # Write the new info
+                point_and_tangent[i, :] = newline  # Write the new info
             # plt.plot(x, y, 'or')
 
         xs = point_and_tangent[-2, 0]
@@ -100,11 +100,11 @@ class ClosedTrack:
         # plt.show()
         l = np.sqrt((xf - xs) ** 2 + (yf - ys) ** 2)
 
-        NewLine = np.array([xf, yf, psif, point_and_tangent[-2, 3] + point_and_tangent[-2, 4], l, 0])
-        point_and_tangent[-1, :] = NewLine
+        newline = np.array([xf, yf, psif, point_and_tangent[-2, 3] + point_and_tangent[-2, 4], l, 0])
+        point_and_tangent[-1, :] = newline
 
         self.point_and_tangent = point_and_tangent
-        self.track_length = point_and_tangent[-1, 3] + point_and_tangent[-1, 4]
+        self.lap_length = point_and_tangent[-1, 3] + point_and_tangent[-1, 4]
 
     def get_global_position(self, s, ey):
         """coordinate transformation from curvilinear reference frame (e, ey) to inertial reference frame (X, Y)
@@ -112,10 +112,10 @@ class ClosedTrack:
         """
         # wrap s along the track
         s_tolerance = 0.001
-        while s > self.track_length:
-            s = s - self.track_length
+        while s > self.lap_length:
+            s = s - self.lap_length
         while s < 0:
-            s = s + self.track_length
+            s = s + self.lap_length
 
         # Compute the segment in which system is evolving
         point_and_tangent = self.point_and_tangent
@@ -171,10 +171,10 @@ class ClosedTrack:
     def get_orientation(self, s, ey):
         # wrap s along the track
         s_tolerance = 0.001
-        while s > self.track_length:
-            s = s - self.track_length
+        while s > self.lap_length:
+            s = s - self.lap_length
         while s < 0:
-            s = s + self.track_length
+            s = s + self.lap_length
 
         point_and_tangent = self.point_and_tangent
         index = np.all(
@@ -337,11 +337,11 @@ class ClosedTrack:
         point_and_tangent: points and tangent vectors defining the map (these quantities are initialized in the map object)
         """
         # In case on a lap after the first one
-        while s > self.track_length:
-            s = s - self.track_length
+        while s > self.lap_length:
+            s = s - self.lap_length
         while s < 0:
-            s = s + self.track_length
-        # Given s \in [0, track_length] compute the curvature
+            s = s + self.lap_length
+        # Given s \in [0, lap_length] compute the curvature
         # Compute the segment in which system is evolving
         index = np.all(
             [[s >= self.point_and_tangent[:, 3]], [s < self.point_and_tangent[:, 3] + self.point_and_tangent[:, 4]]],

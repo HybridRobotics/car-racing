@@ -17,6 +17,7 @@ class BaseModel:
         self.xdim = 6
         self.udim = 2
         self.time = 0.0
+        self.timestep = None
         self.x = None
         self.xglob = None
         self.u = None
@@ -28,10 +29,10 @@ class BaseModel:
     def set_timestep(self, dt):
         self.timestep = dt
 
-    def set_curvilinear_state(self, x):
+    def set_state_curvilinear(self, x):
         self.x = x
 
-    def set_global_state(self, xglob):
+    def set_state_global(self, xglob):
         self.xglob = xglob
 
     def set_track(self, track):
@@ -42,7 +43,9 @@ class BaseModel:
         self.ctrl_policy.agent_name = self.name
 
     def calc_ctrl_input(self):
-        self.u = self.ctrl_policy.calc_input(self.x)
+        self.ctrl_policy.set_state(self.x)
+        self.ctrl_policy.calc_input()
+        self.u = self.ctrl_policy.get_input()
 
     def forward_dynamics(self):
         pass
@@ -68,17 +71,13 @@ class NoPolicyModel(BaseModel):
         BaseModel.__init__(self, name=name, param=param)
         self.no_dynamics = True
 
-    def set_curvilinear_func(self, t_symbol, s_func, ey_func):
+    def set_state_curvilinear_func(self, t_symbol, s_func, ey_func):
         self.t_symbol = t_symbol
         self.s_func = s_func
         self.ey_func = ey_func
 
-    def calibrate(self):
-        # initialize coordinates with user-defined trajectory
-        self.x, self.xglob = self.get_estimation(self.time)
-
     def get_estimation(self, t0):
-        # curvilinear coordinates
+        # position estimation in curvilinear coordinates
         x_cur_est = np.zeros(self.xdim)
         x_cur_est[0] = sp.diff(self.s_func, self.t_symbol).subs(self.t_symbol, t0)
         x_cur_est[1] = sp.diff(self.ey_func, self.t_symbol).subs(self.t_symbol, t0)
@@ -86,7 +85,7 @@ class NoPolicyModel(BaseModel):
         x_cur_est[3] = 0
         x_cur_est[4] = self.s_func.subs(self.t_symbol, t0)
         x_cur_est[5] = self.ey_func.subs(self.t_symbol, t0)
-        # global coordinates
+        # position estimation in global coordinates
         X, Y = self.track.get_global_position(x_cur_est[4], x_cur_est[5])
         psi = self.track.get_orientation(x_cur_est[4], x_cur_est[5])
         xglob_est = np.zeros(self.xdim)
