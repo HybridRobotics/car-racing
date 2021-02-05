@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import racing_env, racing_car, racing_sim, policy, utils
+from pycar_racing import racing_env, racing_car, racing_sim, policy, utils
 
 
 def linear_time_invariant():

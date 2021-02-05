@@ -9,7 +9,7 @@ class ControlPolicyBase:
         self.xdim = 6
         self.udim = 2
         self.time = 0.0
-        self.timestep = None
+        self.timestep = 0.0
         self.x = None
         self.u = None
 
