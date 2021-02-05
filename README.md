@@ -11,6 +11,7 @@ The code in this repository is based on the following:
 
 ##### Environments
 * Create your environment via `conda env create -f environment.yml`. The default conda environment name is `car-racing`, and you could also choose that name with your own preferences by editing the .yml file.
+* Currently the repository is not created as standard package through setuptools, use `export PYTHONPATH=./src` make sure you are able to run the examples.
 
 ##### Examples
 ###### System identifications
