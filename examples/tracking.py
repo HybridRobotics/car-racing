@@ -46,8 +46,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("--ctrl-policy", type=str)
     parser.add_argument("--simulation", action="store_true")
-    parser.add_argument("--ctrl-policy", type=str, default="pid")
     parser.add_argument("--plotting", action="store_true")
     parser.add_argument("--animation", action="store_true")
     args = vars(parser.parse_args())

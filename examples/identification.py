@@ -24,6 +24,7 @@ def linear_time_invariant():
     ego.set_state_curvilinear(np.array([0.3, 0, 0, 0, 0, 0]))
     ego.set_state_global(np.array([0.3, 0, 0, 0, 0, 0]))
     ego.set_ctrl_policy(policy.PIDTracking(vt=0.5))
+    ego.ctrl_policy.set_timestep(0.1)
     # setup simulation
     simulator = racing_sim.CarRacingSim()
     simulator.set_timestep(0.1)
