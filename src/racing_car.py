@@ -3,10 +3,11 @@ import sympy as sp
 
 
 class CarParam:
-    def __init__(self, length=0.4, width=0.2, color="b"):
+    def __init__(self, length=0.4, width=0.2, facecolor="None", edgecolor="black"):
         self.length = length
         self.width = width
-        self.color = color
+        self.facecolor = facecolor
+        self.edgecolor = edgecolor
 
 
 class BaseModel:

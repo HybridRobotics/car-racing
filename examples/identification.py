@@ -20,7 +20,7 @@ def linear_time_invariant():
     track_width = 1.0
     track = racing_env.ClosedTrack(track_spec, track_width)
     # setup ego car
-    ego = racing_car.DynamicBicycleModel(name="ego", param=racing_car.CarParam(color="r"))
+    ego = racing_car.DynamicBicycleModel(name="ego", param=racing_car.CarParam(edgecolor="black"))
     ego.set_state_curvilinear(np.array([0.3, 0, 0, 0, 0, 0]))
     ego.set_state_global(np.array([0.3, 0, 0, 0, 0, 0]))
     ego.set_ctrl_policy(policy.PIDTracking(vt=0.5))

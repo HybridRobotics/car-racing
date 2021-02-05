@@ -46,6 +46,7 @@ class PIDTracking(ControlPolicyBase):
         Arguments:
             x0: current state position
         """
+        start_timer = datetime.datetime.now()
         u_next = np.zeros(self.udim)
         u_next[0] = (
             -0.6 * (self.x[5] - self.eyt)
@@ -54,6 +55,9 @@ class PIDTracking(ControlPolicyBase):
         u_next[1] = 1.5 * (self.vt - self.x[0])  # + np.maximum(-0.8, np.minimum(np.random.randn() * 0.80, 0.8))
         self.u = u_next
         self.time += self.timestep
+        end_timer = datetime.datetime.now()
+        solver_time = (end_timer - start_timer).total_seconds()
+        print("solver time: {}".format(solver_time))
 
 
 class MPCTracking(ControlPolicyBase):
@@ -105,8 +109,8 @@ class MPCTracking(ControlPolicyBase):
         opti.solver("ipopt", option)
         sol = opti.solve()
         end_timer = datetime.datetime.now()
-        solver_time = end_timer - start_timer
-        print("solver time: ", (end_timer - start_timer).total_seconds())
+        solver_time = (end_timer - start_timer).total_seconds()
+        print("solver time: {}".format(solver_time))
         self.x_pred = sol.value(xvar).T
         self.u_pred = sol.value(uvar).T
         self.u = self.u_pred[0, :]
@@ -155,34 +159,34 @@ class MPCCBFRacing(ControlPolicyBase):
         # slack variables for control barrier functions
         cbf_slack = opti.variable(len(obs_infos), self.num_of_horizon + 1)
         # obstacle avoidance
-        degree = 2
+        safety_margin = 0.15
+        degree = 6  # 2, 4, 6, 8
         for count, obs_name in enumerate(obs_infos):
             obs_traj = obs_infos[obs_name]
             # get ego agent and obstacles' dimensions
-            obs_sdim = (
-                self.racing_sim.vehicles[self.agent_name].param.length / 2
-                + self.racing_sim.vehicles[obs_name].param.length / 2
-            )
-            obs_eydim = (
-                self.racing_sim.vehicles[self.agent_name].param.width / 2
-                + self.racing_sim.vehicles[obs_name].param.width / 2
-            )
+            l_agent = self.racing_sim.vehicles[self.agent_name].param.length / 2
+            w_agent = self.racing_sim.vehicles[self.agent_name].param.width / 2
+            l_obs = self.racing_sim.vehicles[obs_name].param.length / 2
+            w_obs = self.racing_sim.vehicles[obs_name].param.width / 2
             # calculate control barrier functions for each obstacle at timestep
             for i in range(self.num_of_horizon):
-                diffs = xvar[4, i] - obs_traj[4, i]
+                num_cycle_obs = int(obs_traj[4, 0] / self.racing_sim.track.lap_length)
+                diffs = xvar[4, i] - obs_traj[4, i] - (num_cycle_ego - num_cycle_obs) * self.racing_sim.track.lap_length
                 diffey = xvar[5, i] - obs_traj[5, i]
                 diffs_next = xvar[4, i + 1] - obs_traj[4, i + 1]
                 diffey_next = xvar[5, i + 1] - obs_traj[5, i + 1]
                 h = (
-                    diffs ** degree / (obs_sdim ** degree)
-                    + diffey ** degree / (obs_eydim ** degree)
+                    diffs ** degree / ((l_agent + l_obs) ** degree)
+                    + diffey ** degree / ((w_agent + w_obs) ** degree)
                     - 1
+                    - safety_margin
                     - cbf_slack[count, i]
                 )
                 h_next = (
-                    diffs ** degree / (obs_sdim ** degree)
-                    + diffey ** degree / (obs_eydim ** degree)
+                    diffs_next ** degree / ((l_agent + l_obs) ** degree)
+                    + diffey_next ** degree / ((w_agent + w_obs) ** degree)
                     - 1
+                    - safety_margin
                     - cbf_slack[count, i + 1]
                 )
                 opti.subject_to(h_next - h >= -self.alpha * h)
@@ -220,7 +224,7 @@ class MPCCBFRacing(ControlPolicyBase):
         sol = opti.solve()
         end_timer = datetime.datetime.now()
         solver_time = (end_timer - start_timer).total_seconds()
-        print("solver time: ", solver_time)
+        print("solver time: {}".format(solver_time))
         self.x_pred = sol.value(xvar).T
         self.u_pred = sol.value(uvar).T
         self.u = self.u_pred[0, :]
