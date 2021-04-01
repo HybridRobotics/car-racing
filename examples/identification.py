@@ -32,7 +32,7 @@ def linear_time_invariant():
     simulator.add_vehicle(ego)
     simulator.sim(sim_time=500.0)
     # calculate linearized dynamics
-    xdata = np.stack(simulator.vehicles["ego"].closedloop_x, axis=0)
+    xdata = np.stack(simulator.vehicles["ego"].closedloop_xcurv, axis=0)
     udata = np.stack(simulator.vehicles["ego"].closedloop_u, axis=0)
     lamb = 1e-9
     matrix_A, matrix_B, error = utils.linear_regression(xdata, udata, lamb)

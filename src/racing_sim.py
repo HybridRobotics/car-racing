@@ -29,7 +29,7 @@ class CarRacingSim:
 
     def plot_state(self, name):
         time = np.stack(self.vehicles[name].closedloop_time, axis=0)
-        traj = np.stack(self.vehicles[name].closedloop_x, axis=0)
+        traj = np.stack(self.vehicles[name].closedloop_xcurv, axis=0)
         fig, axs = plt.subplots(4)
         axs[0].plot(time, traj[:, 0], "-o", linewidth=1, markersize=1)
         axs[0].set_xlabel("time [s]", fontsize=14)
