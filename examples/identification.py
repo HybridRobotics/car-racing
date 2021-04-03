@@ -45,4 +45,3 @@ def linear_time_invariant():
 
 if __name__ == "__main__":
     linear_time_invariant()
-

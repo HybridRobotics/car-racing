@@ -21,6 +21,7 @@ def vehicle_dynamics(dynamics_param, curv, xglob, xcurv, delta_t, u):
     s = xcurv[4]
     ey = xcurv[5]
 
+    # Compute tire slip angle
     alpha_f = delta - np.arctan2(vy + lf * wz, vx)
     alpha_r = -np.arctan2(vy - lf * wz, vx)
 
@@ -44,5 +45,3 @@ def vehicle_dynamics(dynamics_param, curv, xglob, xcurv, delta_t, u):
     xcurv_next[5] = ey + delta_t * (vx * np.sin(epsi) + vy * np.cos(epsi))
 
     return xglob_next, xcurv_next 
-
-
