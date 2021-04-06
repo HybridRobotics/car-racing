@@ -1,6 +1,8 @@
 import numpy as np
 import sympy as sp
 import vehicle_dynamics
+import rospy
+from car_racing_dev.msg import VehicleControl
 
 
 class BicycleDynamicsParam:
@@ -82,6 +84,18 @@ class BaseModel:
         self.closedloop_xglob.append(self.xglob)
         self.closedloop_u.append(self.u)
 
+class RealtimeBaseModel:
+    def __init__(self):
+        self.__sub_input = None
+        self.__pub_state = None
+
+    def __input_cb(self, msg):
+        self.u[1] = msg.acc
+        self.u[0] = msg.delta
+
+    def set_subscriber(self):
+        self.__sub_input = rospy.Subscriber('vehicle1/input', VehicleControl, self.__input_cb)
+        
 
 class NoPolicyModel(BaseModel):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
@@ -166,3 +180,9 @@ class DynamicBicycleModel(BaseModel):
         self.xcurv = xcurv_next
         self.xglob = xglob_next
         self.time += self.timestep
+
+class RealtimeDynamicBicycleModel(DynamicBicycleModel, RealtimeBaseModel):
+    def __init__(self, name = None, param = None, xcurv = None, xglob = None):
+        DynamicBicycleModel.__init__(self, name = name, param = param)
+        RealtimeBaseModel.__init__(self)
+        

@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.animation as anim
 import racing_env
+import rospy
+from car_racing_dev.msg import VehicleControl, VehicleState
 
 
 class CarRacingSim:
@@ -15,7 +17,7 @@ class CarRacingSim:
 
     def set_track(self, track):
         self.track = track
-
+    
     def add_vehicle(self, vehicle):
         self.vehicles[vehicle.name] = vehicle
         self.vehicles[vehicle.name].set_track(self.track)
@@ -133,3 +135,35 @@ class CarRacingSim:
 
         media = anim.FuncAnimation(fig, update, frames=np.arange(0, trajglob.shape[0]), interval=100)
         media.save("media/animation/" + filename + ".gif", dpi=80, writer="imagemagick")
+
+class RealtimeCarRacingSim(CarRacingSim):
+    def __init__(self):
+        CarRacingSim.__init__(self)
+        self.__sub_state = None
+        self.__pub_state = None
+        self.vehicle_state_glob = None
+        self.vehicle_state_curv = None
+
+    def set_state_glob(self, state):
+        self.vehicle_state_glob = state
+    
+    def set_state_curv(self, state):
+        self.vehicle_state_curv = state
+
+    def __state_cb(self, msg):
+        self.vehicle_state_curv[0] = msg.state_curv.vx
+        self.vehicle_state_curv[1] = msg.state_curv.vy
+        self.vehicle_state_curv[2] = msg.state_curv.wz
+        self.vehicle_state_curv[3] = msg.state_curv.epsi
+        self.vehicle_state_curv[4] = msg.state_curv.s
+        self.vehicle_state_curv[5] = msg.state_curv.ey
+
+        self.vehicle_state_glob[0] = msg.state_glob.vx
+        self.vehicle_state_glob[1] = msg.state_glob.vy
+        self.vehicle_state_glob[2] = msg.state_glob.wz
+        self.vehicle_state_glob[3] = msg.state_glob.psi
+        self.vehicle_state_glob[4] = msg.state_glob.x
+        self.vehicle_state_glob[5] = msg.state_glob.y
+
+    def set_subscriber(self):
+        self.__sub_state = rospy.Subscriber('vehicle1/state', VehicleState, self.__state_cb)    

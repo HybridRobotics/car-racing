@@ -1,0 +1,15 @@
+<launch>
+	<!-- Vehicle -->
+    <node pkg="car_racing_dev" type="vehicle1.py" name="vehicle1" /> 
+
+    <!-- Simulator -->
+    <node pkg="car_racing_dev" type="start_simulation.py" name="simulator" />
+
+    <!-- Controller -->
+    <node pkg="car_racing_dev" type="controller1.py" name="controller1" />
+    <!-- <node pkg="car_racing_dev" type="keyboard.py" name="keyboard" />-->
+
+    <!-- Visulization -->
+    <node pkg="car_racing_dev" type="start_visulization.py" name="visulization"/>
+
+</launch>

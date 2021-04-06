@@ -1,0 +1,3 @@
+string name
+VehicleStateCurv state_curv
+VehicleStateGlob state_glob
