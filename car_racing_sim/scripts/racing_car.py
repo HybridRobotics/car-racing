@@ -6,7 +6,19 @@ from car_racing_dev.msg import VehicleControl
 
 
 class BicycleDynamicsParam:
-    def __init__(self, m = 1.98, lf = 0.125, lr = 0.125, Iz = 0.024, Df = 0.8 * 1.98 * 9.81 / 2.0, Cf = 1.25, Bf = 1.0, Dr = 0.8 * 1.98 * 9.81 / 2.0, Cr = 1.25, Br = 1.0):
+    def __init__(
+        self,
+        m=1.98,
+        lf=0.125,
+        lr=0.125,
+        Iz=0.024,
+        Df=0.8 * 1.98 * 9.81 / 2.0,
+        Cf=1.25,
+        Bf=1.0,
+        Dr=0.8 * 1.98 * 9.81 / 2.0,
+        Cr=1.25,
+        Br=1.0,
+    ):
         self.m = m
         self.lf = lf
         self.lr = lr
@@ -17,8 +29,10 @@ class BicycleDynamicsParam:
         self.Dr = Dr
         self.Cr = Cr
         self.Br = Br
+
     def get_params(self):
-        return self.m, self.lf, self.lr, self.Iz, self.Df, self.Cf, self.Bf, self.Dr, self.Cr, self.Br  
+        return self.m, self.lf, self.lr, self.Iz, self.Df, self.Cf, self.Bf, self.Dr, self.Cr, self.Br
+
 
 class CarParam:
     def __init__(self, length=0.4, width=0.2, facecolor="None", edgecolor="black"):
@@ -27,6 +41,7 @@ class CarParam:
         self.facecolor = facecolor
         self.edgecolor = edgecolor
         self.dynamics_param = BicycleDynamicsParam()
+
 
 class BaseModel:
     def __init__(self, name=None, param=None):
@@ -84,6 +99,7 @@ class BaseModel:
         self.closedloop_xglob.append(self.xglob)
         self.closedloop_u.append(self.u)
 
+
 class RealtimeBaseModel:
     def __init__(self):
         self.__sub_input = None
@@ -94,8 +110,8 @@ class RealtimeBaseModel:
         self.u[0] = msg.delta
 
     def set_subscriber(self):
-        self.__sub_input = rospy.Subscriber('vehicle1/input', VehicleControl, self.__input_cb)
-        
+        self.__sub_input = rospy.Subscriber("vehicle1/input", VehicleControl, self.__input_cb)
+
 
 class NoPolicyModel(BaseModel):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
@@ -160,7 +176,9 @@ class DynamicBicycleModel(BaseModel):
         while (i + 1) * delta_t <= self.timestep:
             s = xcurv_next[4]
             curv = self.track.get_curvature(s)
-            xglob_next, xcurv_next = vehicle_dynamics.vehicle_dynamics(Param.dynamics_param, curv, xglob_next, xcurv_next, delta_t, self.u)
+            xglob_next, xcurv_next = vehicle_dynamics.vehicle_dynamics(
+                Param.dynamics_param, curv, xglob_next, xcurv_next, delta_t, self.u
+            )
             if s < 0:
                 pass
                 # Don't need this checker as curvature can be calculated even s < 0
@@ -181,8 +199,9 @@ class DynamicBicycleModel(BaseModel):
         self.xglob = xglob_next
         self.time += self.timestep
 
+
 class RealtimeDynamicBicycleModel(DynamicBicycleModel, RealtimeBaseModel):
-    def __init__(self, name = None, param = None, xcurv = None, xglob = None):
-        DynamicBicycleModel.__init__(self, name = name, param = param)
+    def __init__(self, name=None, param=None, xcurv=None, xglob=None):
+        DynamicBicycleModel.__init__(self, name=name, param=param)
         RealtimeBaseModel.__init__(self)
-        
+
