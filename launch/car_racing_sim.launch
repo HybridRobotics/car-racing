@@ -1,0 +1,16 @@
+<launch>
+	<!-- Vehicle -->
+    <node pkg="car_racing" type="vehicle1.py" name="vehicle1" /> 
+
+    <!-- Simulator -->
+    <node pkg="car_racing" type="simulator.py" name="simulator" />
+
+    <!-- Controller -->
+    <arg name="ctrl_policy" default = "pid"/>
+    <param name="ctrl_policy" value="$(arg ctrl_policy)"/>
+    <node pkg="car_racing" type="controller1.py" name="controller1"/>
+
+    <!-- Visulization -->
+    <node pkg="car_racing" type="visualization.py" name="visulization"/>
+
+</launch>
