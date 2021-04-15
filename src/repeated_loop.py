@@ -26,6 +26,7 @@ class MPCCBFRacingRepeatedLoop(base.MPCCBFRacing):
     def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
         base.MPCCBFRacing.__init__(
             self, matrix_A, matrix_B, matrix_Q, matrix_R, vt, eyt)
+        self.realtime_flag = False
 
 
 # repeated loop dynamic model

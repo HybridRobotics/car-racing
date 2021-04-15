@@ -17,6 +17,14 @@ find_package(catkin REQUIRED COMPONENTS
    VehicleStateCurv.msg
    VehicleStateGlob.msg
    VehicleState.msg
+   TrackInfo.msg
+   NumVehicle.msg
+   VehicleList.msg
+ )
+
+ add_service_files(
+   FILES
+   AddNewVehicle.srv
  )
 
  generate_messages(

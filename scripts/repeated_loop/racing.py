@@ -11,7 +11,7 @@ import repeated_loop, base, racing_env
 def racing(args):
     if args["simulation"]:
         track_spec = np.genfromtxt(
-            "data/track_spec/default.csv", delimiter=",")
+            "data/track_layout/ellipse.csv", delimiter=",")
         track_width = 1.0
         track = racing_env.ClosedTrack(track_spec, track_width)
         matrix_A = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=",")

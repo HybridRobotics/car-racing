@@ -42,7 +42,7 @@ def linear_time_invariant():
     lamb = 1e-9
     matrix_A, matrix_B, error = system_id.linear_regression(
         xdata, udata, lamb)
-    np.savetxt("data/track_spec/default.csv", track_spec, delimiter=",")
+    np.savetxt("data/track_layout/ellipse.csv", track_spec, delimiter=",")
     np.savetxt("data/sys/LTI/matrix_A.csv", matrix_A, delimiter=",")
     np.savetxt("data/sys/LTI/matrix_B.csv", matrix_B, delimiter=",")
     print(matrix_A)

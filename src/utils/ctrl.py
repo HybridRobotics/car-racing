@@ -69,7 +69,7 @@ def mpc(xcurv, xtarget, udim, num_of_horizon, matrix_A, matrix_B, matrix_Q, matr
     return u_pred[0, :]
 
 
-def mpccbf(xcurv, xtarget, udim, num_of_horizon, matrix_A, matrix_B, matrix_Q, matrix_R, vehicles, agent_name, lap_length, time, timestep, alpha):
+def mpccbf(xcurv, xtarget, udim, num_of_horizon, matrix_A, matrix_B, matrix_Q, matrix_R, vehicles, agent_name, lap_length, time, timestep, alpha, realtime_flag):
     vt = xtarget[0]
     eyt = xtarget[5]
     start_timer = datetime.datetime.now()
@@ -79,6 +79,7 @@ def mpccbf(xcurv, xtarget, udim, num_of_horizon, matrix_A, matrix_B, matrix_Q, m
     uvar = opti.variable(udim, num_of_horizon)
     cost = 0
     opti.subject_to(xvar[:, 0] == xcurv)
+
     # get other vehicles' state estimations
     safety_time = 2.0
     dist_margin_front = xcurv[0] * safety_time
@@ -86,12 +87,18 @@ def mpccbf(xcurv, xtarget, udim, num_of_horizon, matrix_A, matrix_B, matrix_Q, m
     num_cycle_ego = int(xcurv[4] / lap_length)
     dist_ego = xcurv[4] - num_cycle_ego * lap_length
     obs_infos = {}
-    for name in vehicles:
+    for name in list(vehicles):
         if name != agent_name:
             # get predictions from other vehicles
-            obs_traj, _ = vehicles[name].get_trajectory_nsteps(
-                time, timestep, num_of_horizon + 1
-            )
+            if realtime_flag == False:
+                obs_traj, _ = vehicles[name].get_trajectory_nsteps(
+                    time, timestep, num_of_horizon + 1
+                )
+            elif realtime_flag == True:
+                obs_traj, _ = vehicles[name].get_trajectory_nsteps(
+                    num_of_horizon + 1)
+            else:
+                pass
             # check whether the obstacle is nearby, not consider it if not
             num_cycle_obs = int(obs_traj[4, 0] / lap_length)
             dist_obs = obs_traj[4, 0] - num_cycle_obs * lap_length

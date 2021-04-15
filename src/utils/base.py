@@ -80,12 +80,20 @@ class MPCCBFRacing(ControlBase):
         self.matrix_Q = matrix_Q
         self.matrix_R = matrix_R
         self.alpha = 0.6
+        self.realtime_flag = None
 
     def calc_input(self):
         xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]
                            ).reshape(self.xdim, 1)
-        self.u = ctrl.mpccbf(self.x, xtarget, self.udim, self.num_of_horizon, self.matrix_A, self.matrix_B, self.matrix_Q, self.matrix_R,
-                               self.racing_sim.vehicles, self.agent_name, self.racing_sim.track.lap_length, self.time, self.timestep, self.alpha)
+        # determin if it is a real-time simulator
+        if self.realtime_flag == False:
+            self.u = ctrl.mpccbf(self.x, xtarget, self.udim, self.num_of_horizon, self.matrix_A, self.matrix_B, self.matrix_Q, self.matrix_R,
+                               self.racing_sim.vehicles, self.agent_name, self.racing_sim.track.lap_length, self.time, self.timestep, self.alpha, self.realtime_flag)
+        elif self.realtime_flag == True:
+             self.u = ctrl.mpccbf(self.x, xtarget, self.udim, self.num_of_horizon, self.matrix_A, self.matrix_B, self.matrix_Q, self.matrix_R,
+                               self.vehicles, self.agent_name, self.lap_length, self.time, self.timestep, self.alpha, self.realtime_flag)
+        else:
+            pass
         self.time += self.timestep
 
 
