@@ -5,13 +5,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib import animation
 import time
-import sys
-tests_path = sys.path[0]
-src_utils_path = tests_path+'/../../src/utils'
-src_path = tests_path+'/../../src'
-sys.path.append(src_utils_path)
-sys.path.append(src_path)
-import racing_env, realtime
+from utils import racing_env
+from sim import realtime
 from car_racing.msg import VehicleControl, VehicleState
 from car_racing.srv import AddNewVehicle
 
@@ -28,10 +23,9 @@ def start_visualization():
     ax.set_ylim(-12, 8)
     ax.axis('equal')
     vis.set_ax(ax)
-    # determin if new vehicle is added
+    # determine if new vehicle is added
     s = rospy.Service('add_vehicle_visualization',
                       AddNewVehicle, vis.add_vehicle)
-
     while not rospy.is_shutdown():
         ani = animation.FuncAnimation(fig, vis.update, init_func=vis.init)
         plt.show()

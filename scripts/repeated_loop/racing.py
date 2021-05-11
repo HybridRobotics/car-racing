@@ -2,16 +2,13 @@ import matplotlib.pyplot as plt
 import pickle
 import sympy as sp
 import numpy as np
-import sys
-sys.path.append('src')
-sys.path.append('src/utils')
 import repeated_loop, base, racing_env
 
 
 def racing(args):
+    track_layout = args["track_layout"]
+    track_spec = np.genfromtxt("data/track_layout/"+track_layout+".csv" ,delimiter=",")
     if args["simulation"]:
-        track_spec = np.genfromtxt(
-            "data/track_layout/ellipse.csv", delimiter=",")
         track_width = 1.0
         track = racing_env.ClosedTrack(track_spec, track_width)
         matrix_A = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=",")
@@ -26,16 +23,22 @@ def racing(args):
         ego.set_ctrl_policy(repeated_loop.MPCCBFRacingRepeatedLoop(
             matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8))
         ego.ctrl_policy.set_timestep(0.1)
+        ego.set_track(track)
         # setup surrounding cars
         t_symbol = sp.symbols("t")
+        
         car1 = repeated_loop.NoDynamicsModelRepeatedLoop(
             name="car1", param=base.CarParam(edgecolor="orange"))
+        car1.set_track(track)
         car1.set_state_curvilinear_func(
             t_symbol, 0.2 * t_symbol + 4.0, 0.1 + 0.0 * t_symbol)
+
         car2 = repeated_loop.NoDynamicsModelRepeatedLoop(
             name="car2", param=base.CarParam(edgecolor="orange"))
+        car2.set_track(track)
         car2.set_state_curvilinear_func(
             t_symbol, 0.2 * t_symbol + 10.0, -0.1 + 0.0 * t_symbol)
+
         # setup simulation
         simulator = repeated_loop.CarRacingSimRepeatedLoop()
         simulator.set_timestep(0.1)
@@ -63,5 +66,6 @@ if __name__ == "__main__":
     parser.add_argument("--simulation", action="store_true")
     parser.add_argument("--plotting", action="store_true")
     parser.add_argument("--animation", action="store_true")
+    parser.add_argument("--track-layout", type=str)
     args = vars(parser.parse_args())
     racing(args)

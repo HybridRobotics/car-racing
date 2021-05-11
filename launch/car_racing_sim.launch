@@ -2,7 +2,7 @@
     <!-- Simulator -->
     <arg name="track_layout" default = "ellipse"/>
     <param name="track_layout" value="$(arg track_layout)"/>
-    <node pkg="car_racing" type="simulator.py" name="simulator" />
+    <node pkg="car_racing" type="simulator.py" name="simulator" cwd="node"/>
 
     <!-- Visulization -->
     <node pkg="car_racing" type="visualization.py" name="visulization"/>

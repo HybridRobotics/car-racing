@@ -1,10 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-sys.path.append('src')
-sys.path.append('src/utils')
 import repeated_loop, base, racing_env, system_id
-
 
 
 def linear_time_invariant():
@@ -30,6 +27,7 @@ def linear_time_invariant():
     ego.set_state_global(np.array([0.3, 0, 0, 0, 0, 0]))
     ego.set_ctrl_policy(repeated_loop.PIDTrackingRepeatedLoop(vt=0.5))
     ego.ctrl_policy.set_timestep(0.1)
+    ego.set_track(track)
     # setup simulation
     simulator = repeated_loop.CarRacingSimRepeatedLoop()
     simulator.set_timestep(0.1)

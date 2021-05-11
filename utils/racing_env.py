@@ -242,7 +242,7 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
     return s, ey, epsi, CompletedFlag
 
 
-def get_curvature(lap_length, width, point_and_tangent, s):
+def get_curvature(lap_length, point_and_tangent, s):
     """curvature computation
     s: curvilinear abscissa at which the curvature has to be evaluated
     point_and_tangent: points and tangent vectors defining the map (these quantities are initialized in the map object)
@@ -256,7 +256,7 @@ def get_curvature(lap_length, width, point_and_tangent, s):
     # Compute the segment in which system is evolving
     index = np.all(
         [[s >= point_and_tangent[:, 3]], [
-            s < point_and_tangent[:, 3] + point_and_tangent[:, 4]]],
+            s <= point_and_tangent[:, 3] + point_and_tangent[:, 4]]],
         axis=0,
     )
     i = int(np.where(np.squeeze(index))[0])
@@ -269,7 +269,6 @@ def computeAngle(point1, origin, point2):
     # The orientation of this angle matches that of the coordinate system. Tha is why a minus sign is needed
     v1 = np.array(point1) - np.array(origin)
     v2 = np.array(point2) - np.array(origin)
-    #
     # cosang = np.dot(v1, v2)
     # sinang = la.norm(np.cross(v1, v2))
     #
@@ -277,12 +276,10 @@ def computeAngle(point1, origin, point2):
     # laa = la.norm(v1)
     # lba = la.norm(v2)
     # costheta = dp / (laa * lba)
-
     # dot product between [x1, y1] and [x2, y2]
     dot = v1[0] * v2[0] + v1[1] * v2[1]
     det = v1[0] * v2[1] - v1[1] * v2[0]  # determinant
     angle = np.arctan2(det, dot)  # atan2(y, x) or atan2(sin, cos)
-
     return angle  # np.arctan2(sinang, cosang)
 
 
@@ -311,7 +308,6 @@ class ClosedTrack:
         get_orientation: get (psi) from (s, ey)
         get_local_position: get (s, ey, epsi, CompletedFlag) from (X, Y, psi)
     """
-
     def __init__(self, spec, width):
         """Initialization
         spec: geometry of the track
@@ -438,6 +434,5 @@ class ClosedTrack:
         return s, ey, epsi, CompletedFlag
 
     def get_curvature(self, s):
-        curv = get_curvature(self.lap_length, self.width,
-                             self.point_and_tangent, s)
+        curv = get_curvature(self.lap_length, self.point_and_tangent, s)
         return curv

@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
    TrackInfo.msg
    NumVehicle.msg
    VehicleList.msg
+   OptimalTraj.msg
  )
 
  add_service_files(

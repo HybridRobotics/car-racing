@@ -1,15 +1,12 @@
 import matplotlib.pyplot as plt
 import pickle
 import numpy as np
-import sys
-sys.path.append('src')
-sys.path.append('src/utils')
 import repeated_loop, base, racing_env
 
 def tracking(args):
+    track_layout = args["track_layout"]
+    track_spec = np.genfromtxt("data/track_layout/"+track_layout+".csv" ,delimiter=",")
     if args["simulation"]:
-        track_spec = np.genfromtxt(
-            "data/track_layout/ellipse.csv", delimiter=",")
         track_width = 1.0
         track = racing_env.ClosedTrack(track_spec, track_width)
         # setup ego car
@@ -31,6 +28,7 @@ def tracking(args):
         else:
             raise NotImplementedError
         ego.ctrl_policy.set_timestep(0.1)
+        ego.set_track(track)
         # setup simulation
         simulator = repeated_loop.CarRacingSimRepeatedLoop()
         simulator.set_timestep(0.1)
@@ -45,6 +43,7 @@ def tracking(args):
     if args["plotting"]:
         simulator.plot_simulation()
         simulator.plot_state("ego")
+        simulator.plot_input("ego")
     if args["animation"]:
         simulator.animate(filename="tracking")
 
@@ -57,5 +56,6 @@ if __name__ == "__main__":
     parser.add_argument("--simulation", action="store_true")
     parser.add_argument("--plotting", action="store_true")
     parser.add_argument("--animation", action="store_true")
+    parser.add_argument("--track-layout", type=str)
     args = vars(parser.parse_args())
     tracking(args)

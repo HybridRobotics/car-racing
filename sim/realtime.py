@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib import animation
 import time
-from car_racing.msg import VehicleControl, VehicleState, VehicleList, NumVehicle, TrackInfo
-import vehicle_dynamics, base, ctrl, racing_env
+from car_racing.msg import VehicleControl, VehicleState, VehicleList, NumVehicle, TrackInfo, OptimalTraj
+from utils import vehicle_dynamics, base, ctrl, racing_env
+import copy
 
 
 # real-time dynamic model
@@ -15,6 +16,7 @@ class ModelRealtimeBase:
         self.lap_length = None
         self.lap_width = None
         self.point_and_tangent = None
+        self.track_layout = None
         # visualization relevant attributes
         self.ax = None
         self.ani = None
@@ -41,18 +43,21 @@ class ModelRealtimeBase:
                 tmp = tmp + 1
         self.lap_length = msg.length
         self.lap_width = msg.width
+        self.track_layout = msg.track_layout
 
     def set_subscriber_track(self):
         self.__sub_track = rospy.Subscriber(
             'track_info', TrackInfo, self.__track_cb)
         # wait for the track info
         if self.lap_length == None:
-            time.sleep(0.1)
+            time.sleep(0.2)
         else:
             pass
 
     # vehicle input call back function, update the vehicle's input
     def __input_cb(self, msg):
+        if self.u is None:
+            self.u = np.zeros(2)
         self.u[1] = msg.acc
         self.u[0] = msg.delta
 
@@ -152,7 +157,7 @@ class DynamicBicycleModelRealtime(base.DynamicBicycleModel, ModelRealtimeBase):
     # in this estimation, the vehicles is assumed to move with input is equal to zero
     def get_estimation(self, xglob, xcurv):
         curv = racing_env.get_curvature(
-            self.lap_length, self.lap_width, self.point_and_tangent, xcurv[4])
+            self.lap_length, self.point_and_tangent, xcurv[4])
         xcurv_est = np.zeros(6)
         xglob_est = np.zeros(6)
         xcurv_est[0:3] = xcurv[0:3]
@@ -195,11 +200,97 @@ class ControlRealtimeBase:
         self.lap_length = None
         self.lap_width = None
         self.point_and_tangent = None
+        self.track_layout = None
+        # optimal trajectory
+        self.opti_traj_xcurv = None
+        self.opti_size = None
         # subscriber for vehicle's state (in Frenet coordinate) and track
         self.__sub_state_curv = None
         self.__sub_track = None
+        self.__sub_optimal_traj = None
         # publisher for vehicle's input
         self.__pub_input = None
+        # indicate the realtime simulator
+        self.realtime_flag = True
+        self.xglob = np.zeros(6)
+
+    def __track_cb(self, msg):
+        size1 = msg.size
+        size0 = int(np.size(msg.point_and_tangent)/size1)
+        self.point_and_tangent = np.zeros((size0, size1))
+        tmp = 0
+        for index_1 in range(size1):
+            for index_0 in range(size0):
+                self.point_and_tangent[index_0,
+                                       index_1] = msg.point_and_tangent[tmp]
+                tmp = tmp + 1
+        self.lap_length = msg.length
+        self.lap_width = msg.width
+        self.track_layout = msg.track_layout
+
+    def set_subscriber_track(self):
+        self.__sub_track = rospy.Subscriber(
+            'track_info', TrackInfo, self.__track_cb)
+        if self.lap_length == None:
+            time.sleep(0.1)
+        else:
+            pass
+
+    def __optimal_traj_cb(self, msg):
+        size = msg.size
+        self.opti_size = msg.size
+        self.opti_traj_xcurv = np.zeros((size, 6))
+        tmp = 0
+        for index in range(size):
+            for index_1 in range(6):
+                self.opti_traj_xcurv[index, index_1] = msg.list_xcurv[tmp]
+                tmp = tmp + 1
+
+    def set_subscriber_optimal_traj(self):
+        self.__sub_optimal_traj = rospy.Subscriber('optimal_traj', OptimalTraj, self.__optimal_traj_cb)
+        if self.opti_traj_xcurv == None:
+            time.sleep(0.1)
+        else:
+            pass
+
+    def __track_cb(self, msg):
+        size1 = msg.size
+        size0 = int(np.size(msg.point_and_tangent)/size1)
+        self.point_and_tangent = np.zeros((size0, size1))
+        tmp = 0
+        for index_1 in range(size1):
+            for index_0 in range(size0):
+                self.point_and_tangent[index_0,
+                                       index_1] = msg.point_and_tangent[tmp]
+                tmp = tmp + 1
+        self.lap_length = msg.length
+        self.lap_width = msg.width
+        self.track_layout = msg.track_layout
+
+    def set_subscriber_track(self):
+        self.__sub_track = rospy.Subscriber(
+            'track_info', TrackInfo, self.__track_cb)
+        if self.lap_length == None:
+            time.sleep(0.1)
+        else:
+            pass
+
+    def __optimal_traj_cb(self, msg):
+        size = msg.size
+        self.opti_size = msg.size
+        self.opti_traj_xcurv = np.zeros((size, 6))
+        tmp = 0
+        for index in range(size):
+            for index_1 in range(6):
+                self.opti_traj_xcurv[index, index_1] = msg.list_xcurv[tmp]
+                tmp = tmp + 1
+
+    def set_subscriber_optimal_traj(self):
+        self.__sub_optimal_traj = rospy.Subscriber('optimal_traj', OptimalTraj, self.__optimal_traj_cb)
+        if self.opti_traj_xcurv == None:
+            time.sleep(0.1)
+        else:
+            pass
 
     def __track_cb(self, msg):
         size1 = msg.size
@@ -223,24 +314,50 @@ class ControlRealtimeBase:
             pass
 
     def __state_cb(self, msg):
-        self.x[0] = msg.state_curv.vx
-        self.x[1] = msg.state_curv.vy
-        self.x[2] = msg.state_curv.wz
-        self.x[3] = msg.state_curv.epsi
-        self.x[4] = msg.state_curv.s
-        self.x[5] = msg.state_curv.ey
-
+        if self.x is None:
+            self.x = np.zeros(6,)
+            self.xglob = np.zeros(6,)
+            self.x[0] = msg.state_curv.vx
+            self.x[1] = msg.state_curv.vy
+            self.x[2] = msg.state_curv.wz
+            self.x[3] = msg.state_curv.epsi
+            self.x[4] = msg.state_curv.s
+            self.x[5] = msg.state_curv.ey
+            self.xglob[0] = msg.state_glob.vx
+            self.xglob[1] = msg.state_glob.vy
+            self.xglob[2] = msg.state_glob.wz
+            self.xglob[3] = msg.state_glob.psi
+            self.xglob[4] = msg.state_glob.x
+            self.xglob[5] = msg.state_glob.y
+            # for initial state, it should be at the first lap for the corresponding controller
+            x = copy.deepcopy(self.x)
+            while x[4]>self.lap_length:
+                x[4] = x[4] - self.lap_length
+            self.traj_xcurv.append(x)
+            self.traj_xglob.append(self.xglob)
+        else:
+            self.x[0] = msg.state_curv.vx
+            self.x[1] = msg.state_curv.vy
+            self.x[2] = msg.state_curv.wz
+            self.x[3] = msg.state_curv.epsi
+            self.x[4] = msg.state_curv.s
+            self.x[5] = msg.state_curv.ey
+            self.xglob[0] = msg.state_glob.vx
+            self.xglob[1] = msg.state_glob.vy
+            self.xglob[2] = msg.state_glob.wz
+            self.xglob[3] = msg.state_glob.psi
+            self.xglob[4] = msg.state_glob.x
+            self.xglob[5] = msg.state_glob.y
+            
     def set_subscriber_state(self, veh_name):
         tmp = 'simulator/'+veh_name+'/state'
         self.__sub_state = rospy.Subscriber(
             tmp, VehicleState, self.__state_cb)
 
-
 class PIDTrackingRealtime(base.PIDTracking, ControlRealtimeBase):
     def __init__(self, vt=0.6, eyt=0.0):
         base.PIDTracking.__init__(self, vt, eyt)
         ControlRealtimeBase.__init__(self)
-
 
 class MPCTrackingRealtime(base.MPCTracking, ControlRealtimeBase):
     def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
@@ -248,6 +365,10 @@ class MPCTrackingRealtime(base.MPCTracking, ControlRealtimeBase):
             self, matrix_A, matrix_B, matrix_Q, matrix_R, vt, eyt)
         ControlRealtimeBase.__init__(self)
 
+class LMPCRacingRealtime(base.LMPCRacing, ControlRealtimeBase):
+    def __init__(self, num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC, matrix_R_LMPC, matrix_dR_LMPC, xdim, udim, shift, timestep, laps, time_lmpc):
+        base.LMPCRacing.__init__(self, num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC, matrix_R_LMPC, matrix_dR_LMPC, xdim, udim, shift, timestep, laps, time_lmpc)
+        ControlRealtimeBase.__init__(self)
 
 class MPCCBFRacingRealtime(base.MPCCBFRacing, ControlRealtimeBase):
     def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
@@ -257,8 +378,6 @@ class MPCCBFRacingRealtime(base.MPCCBFRacing, ControlRealtimeBase):
         # vehicle's list
         self.vehicles = {}
         self.num_veh = None
-        # indicate the realtime simulator
-        self.realtime_flag = True
         # get vehicle's list from simulator node
         self.__sub_num_veh = None
         self.__sub_veh_list = None
@@ -297,7 +416,6 @@ class MPCCBFRacingRealtime(base.MPCCBFRacing, ControlRealtimeBase):
         self.__sub_veh_list = rospy.Subscriber(
             'vehicle_list', VehicleList, self.__sub_veh_list_cb)
 
-
 # real-time simulator
 class CarRacingSimRealtime(base.CarRacingSim):
     def __init__(self):
@@ -307,6 +425,7 @@ class CarRacingSimRealtime(base.CarRacingSim):
         self.__pub_veh_list = None
         self.__pub_veh_num = None
         self.__pub_track = None
+        self.__pub_optimal_traj = None
 
     # add new vehicle in vehicle list
     def add_vehicle(self, req):
@@ -318,7 +437,6 @@ class CarRacingSimRealtime(base.CarRacingSim):
         self.vehicles[req.name].set_subscriber_sim(req.name)
         self.num_vehicle = self.num_vehicle + 1
         return 1
-
 
 # real-time visualization
 class VisualizationRealtime:
@@ -334,8 +452,12 @@ class VisualizationRealtime:
         self.lap_length = None
         self.lap_width = None
         self.point_and_tangent = None
-        # subscriber for track
+        self.track_layout = None
+        # optimal trajectory
+        self.opti_traj_xglob = None
+        # subscriber for track and optimal trajectory
         self.__sub_track = None
+        self.__sub_optimal_traj = None
 
     def __track_cb(self, msg):
         size1 = msg.size
@@ -349,11 +471,28 @@ class VisualizationRealtime:
                 tmp = tmp + 1
         self.lap_length = msg.length
         self.lap_width = msg.width
+        self.track_layout = msg.track_layout
 
     def set_subscriber_track(self):
         self.__sub_track = rospy.Subscriber(
             'track_info', TrackInfo, self.__track_cb)
         if self.lap_length == None:
+            time.sleep(0.1)
+        else:
+            pass
+
+    def __optimal_traj_cb(self, msg):
+        size = msg.size
+        self.opti_traj_xglob = np.zeros((size, 6))
+        tmp = 0
+        for index  in range(size):
+            for index_1 in range(6):
+                self.opti_traj_xglob[index, index_1] = msg.list_xglob[tmp]
+                tmp = tmp + 1
+    
+    def set_subscriber_optimal_traj(self):
+        self.__sub_optimal_traj = rospy.Subscriber('optimal_traj', OptimalTraj, self.__optimal_traj_cb)
+        if self.opti_traj_xglob == None:
             time.sleep(0.1)
         else:
             pass

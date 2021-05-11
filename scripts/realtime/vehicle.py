@@ -2,15 +2,10 @@
 import rospy
 import numpy as np
 import datetime
-import sys
 import time
-scripts_realtime_path = sys.path[0]
-src_utils_path = scripts_realtime_path+'/../../src/utils'
-src_path = scripts_realtime_path+'/../../src'
-sys.path.append(src_utils_path)
-sys.path.append(src_path)
 from car_racing.msg import VehicleControl, VehicleState, VehicleStateCurv, VehicleStateGlob, TrackInfo
-import vehicle_dynamics, racing_env, base, realtime
+from utils import vehicle_dynamics, racing_env, base
+from sim import realtime
 from car_racing.srv import AddNewVehicle
 
 
@@ -31,7 +26,6 @@ def add_vehicle_client_simulator(veh_name, veh_color):
         return completed_flag
     except rospy.ServiceException as e:
         print("Service call failed: %s" % e)
-
 
 # call ros service to add the vehicle in visualization node
 def add_vehicle_client_visualization(veh_name, veh_color):
@@ -57,7 +51,6 @@ def set_vehicle(args):
     veh = realtime.DynamicBicycleModelRealtime(
         name=veh_name, param=base.CarParam())
     veh.set_subscriber_track()
-    veh.u = np.zeros(2)
     veh.set_subscriber_input(veh_name)
     veh_state_topic = veh_name + '/state'
     veh.__pub_state = rospy.Publisher(
@@ -66,7 +59,7 @@ def set_vehicle(args):
     veh.set_state_curvilinear(initial_xcurv)
     s0 = initial_xcurv[4]
     ey0 = initial_xcurv[5]
-    veh.closedloop_xcurv.append(initial_xcurv)
+    veh.realtime_flag = True
     xglob0 = np.zeros(6)
     xglob0[0:3] = initial_xcurv[0:3]
     psi0 = racing_env.get_orientation(
@@ -77,7 +70,6 @@ def set_vehicle(args):
     xglob0[4] = x0
     xglob0[5] = y0
     veh.set_state_global(xglob0)
-    veh.closedloop_xglob.append(xglob0)
     loop_rate = 100
     timestep = 1 / loop_rate
     veh.set_timestep(timestep)
@@ -91,18 +83,10 @@ def set_vehicle(args):
         current_time = datetime.datetime.now()
         # update the vehicle's state at 100 Hz
         if (current_time-start_timer).total_seconds() > (tmp+1)*(1/100):
-            s = veh.xcurv[4]
-            curv = racing_env.get_curvature(
-                veh.lap_length, veh.lap_width, veh.point_and_tangent, s)
-            xglob_next, xcurv_next = vehicle_dynamics.vehicle_dynamics(
-                veh.param.dynamics_param, curv, veh.xglob, veh.xcurv, timestep, veh.u)
-            veh.closedloop_xcurv.append(xcurv_next)
-            veh.closedloop_xglob.append(xglob_next)
-            msg_state.state_curv = get_msg_xcurv(xcurv_next)
-            msg_state.state_glob = get_msg_xglob(xglob_next)
+            veh.forward_one_step(veh.realtime_flag)
+            msg_state.state_curv = get_msg_xcurv(veh.xcurv)
+            msg_state.state_glob = get_msg_xglob(veh.xglob)
             veh.__pub_state.publish(msg_state)
-            veh.set_state_curvilinear(xcurv_next)
-            veh.set_state_global(xglob_next)
             tmp = tmp + 1
         else:
             pass
