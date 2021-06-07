@@ -10,7 +10,7 @@ import copy
 
 
 # real-time dynamic model
-class ModelRealtimeBase:
+class ModelBase:
     def __init__(self):
         # track relevant attributes
         self.lap_length = None
@@ -67,11 +67,11 @@ class ModelRealtimeBase:
             tmp, VehicleControl, self.__input_cb)
 
 
-class DynamicBicycleModelRealtime(base.DynamicBicycleModel, ModelRealtimeBase):
+class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
         base.DynamicBicycleModel.__init__(
             self, name=name, param=param)
-        ModelRealtimeBase.__init__(self)
+        ModelBase.__init__(self)
 
     # vehicle state call back function, get the vehicle's state
     def __state_cb(self, msg):
@@ -194,7 +194,7 @@ class DynamicBicycleModelRealtime(base.DynamicBicycleModel, ModelRealtimeBase):
 
 
 # real-time controller
-class ControlRealtimeBase:
+class ControlBase:
     def __init__(self):
         # track information
         self.lap_length = None
@@ -247,7 +247,8 @@ class ControlRealtimeBase:
                 tmp = tmp + 1
 
     def set_subscriber_optimal_traj(self):
-        self.__sub_optimal_traj = rospy.Subscriber('optimal_traj', OptimalTraj, self.__optimal_traj_cb)
+        self.__sub_optimal_traj = rospy.Subscriber(
+            'optimal_traj', OptimalTraj, self.__optimal_traj_cb)
         if self.opti_traj_xcurv == None:
             time.sleep(0.1)
         else:
@@ -286,7 +287,8 @@ class ControlRealtimeBase:
                 tmp = tmp + 1
 
     def set_subscriber_optimal_traj(self):
-        self.__sub_optimal_traj = rospy.Subscriber('optimal_traj', OptimalTraj, self.__optimal_traj_cb)
+        self.__sub_optimal_traj = rospy.Subscriber(
+            'optimal_traj', OptimalTraj, self.__optimal_traj_cb)
         if self.opti_traj_xcurv == None:
             time.sleep(0.1)
         else:
@@ -331,10 +333,11 @@ class ControlRealtimeBase:
             self.xglob[5] = msg.state_glob.y
             # for initial state, it should be at the first lap for the corresponding controller
             x = copy.deepcopy(self.x)
-            while x[4]>self.lap_length:
+            xglob = copy.deepcopy(self.xglob)
+            while x[4] > self.lap_length:
                 x[4] = x[4] - self.lap_length
             self.traj_xcurv.append(x)
-            self.traj_xglob.append(self.xglob)
+            self.traj_xglob.append(xglob)
         else:
             self.x[0] = msg.state_curv.vx
             self.x[1] = msg.state_curv.vy
@@ -348,33 +351,37 @@ class ControlRealtimeBase:
             self.xglob[3] = msg.state_glob.psi
             self.xglob[4] = msg.state_glob.x
             self.xglob[5] = msg.state_glob.y
-            
+
     def set_subscriber_state(self, veh_name):
         tmp = 'simulator/'+veh_name+'/state'
         self.__sub_state = rospy.Subscriber(
             tmp, VehicleState, self.__state_cb)
 
-class PIDTrackingRealtime(base.PIDTracking, ControlRealtimeBase):
+
+class PIDTracking(base.PIDTracking, ControlBase):
     def __init__(self, vt=0.6, eyt=0.0):
         base.PIDTracking.__init__(self, vt, eyt)
-        ControlRealtimeBase.__init__(self)
+        ControlBase.__init__(self)
 
-class MPCTrackingRealtime(base.MPCTracking, ControlRealtimeBase):
-    def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
+
+class MPCTracking(base.MPCTracking, ControlBase):
+    def __init__(self, mpc_lti_param):
         base.MPCTracking.__init__(
-            self, matrix_A, matrix_B, matrix_Q, matrix_R, vt, eyt)
-        ControlRealtimeBase.__init__(self)
+            self, mpc_lti_param)
+        ControlBase.__init__(self)
 
-class LMPCRacingRealtime(base.LMPCRacing, ControlRealtimeBase):
-    def __init__(self, num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC, matrix_R_LMPC, matrix_dR_LMPC, xdim, udim, shift, timestep, laps, time_lmpc):
-        base.LMPCRacing.__init__(self, num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC, matrix_R_LMPC, matrix_dR_LMPC, xdim, udim, shift, timestep, laps, time_lmpc)
-        ControlRealtimeBase.__init__(self)
 
-class MPCCBFRacingRealtime(base.MPCCBFRacing, ControlRealtimeBase):
-    def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
+class LMPCRacing(base.LMPCRacing, ControlBase):
+    def __init__(self, lmpc_param):
+        base.LMPCRacing.__init__(self, lmpc_param)
+        ControlBase.__init__(self)
+
+
+class MPCCBFRacing(base.MPCCBFRacing, ControlBase):
+    def __init__(self, mpc_cbf_param):
         base.MPCCBFRacing.__init__(
-            self, matrix_A, matrix_B, matrix_Q, matrix_R, vt, eyt)
-        ControlRealtimeBase.__init__(self)
+            self, mpc_cbf_param)
+        ControlBase.__init__(self)
         # vehicle's list
         self.vehicles = {}
         self.num_veh = None
@@ -393,14 +400,14 @@ class MPCCBFRacingRealtime(base.MPCCBFRacing, ControlRealtimeBase):
                 name = msg.vehicle_list[index]
                 # ego vehicle
                 if name == self.agent_name:
-                    self.vehicles[name] = DynamicBicycleModelRealtime(
+                    self.vehicles[name] = DynamicBicycleModel(
                         name=name, param=base.CarParam())
                     self.vehicles[name].name = self.agent_name
                     self.vehicles[name].xglob = np.zeros(6)
                     self.vehicles[name].xcurv = np.zeros(6)
                 # other vehicle
                 else:
-                    self.vehicles[name] = DynamicBicycleModelRealtime(
+                    self.vehicles[name] = DynamicBicycleModel(
                         name=name, param=base.CarParam())
                     self.vehicles[name].xglob = np.zeros(6)
                     self.vehicles[name].xcurv = np.zeros(6)
@@ -417,7 +424,9 @@ class MPCCBFRacingRealtime(base.MPCCBFRacing, ControlRealtimeBase):
             'vehicle_list', VehicleList, self.__sub_veh_list_cb)
 
 # real-time simulator
-class CarRacingSimRealtime(base.CarRacingSim):
+
+
+class CarRacingSim(base.CarRacingSim):
     def __init__(self):
         base.CarRacingSim.__init__(self)
         self.num_vehicle = 0
@@ -429,7 +438,7 @@ class CarRacingSimRealtime(base.CarRacingSim):
 
     # add new vehicle in vehicle list
     def add_vehicle(self, req):
-        self.vehicles[req.name] = DynamicBicycleModelRealtime(
+        self.vehicles[req.name] = DynamicBicycleModel(
             name=req.name, param=base.CarParam())
         self.vehicles[req.name].xglob = np.zeros(6)
         self.vehicles[req.name].xcurv = np.zeros(6)
@@ -439,7 +448,9 @@ class CarRacingSimRealtime(base.CarRacingSim):
         return 1
 
 # real-time visualization
-class VisualizationRealtime:
+
+
+class Visualization:
     def __init__(self):
         # visualization relevant attributes
         self.patch = None
@@ -485,13 +496,14 @@ class VisualizationRealtime:
         size = msg.size
         self.opti_traj_xglob = np.zeros((size, 6))
         tmp = 0
-        for index  in range(size):
+        for index in range(size):
             for index_1 in range(6):
                 self.opti_traj_xglob[index, index_1] = msg.list_xglob[tmp]
                 tmp = tmp + 1
-    
+
     def set_subscriber_optimal_traj(self):
-        self.__sub_optimal_traj = rospy.Subscriber('optimal_traj', OptimalTraj, self.__optimal_traj_cb)
+        self.__sub_optimal_traj = rospy.Subscriber(
+            'optimal_traj', OptimalTraj, self.__optimal_traj_cb)
         if self.opti_traj_xglob == None:
             time.sleep(0.1)
         else:
@@ -501,7 +513,7 @@ class VisualizationRealtime:
         self.ax = ax
 
     def add_vehicle(self, req):
-        self.vehicles[req.name] = DynamicBicycleModelRealtime(
+        self.vehicles[req.name] = DynamicBicycleModel(
             name=req.name, param=base.CarParam())
         self.vehicles[req.name].ax = self.ax
         self.vehicles[req.name].xglob = np.zeros(6)

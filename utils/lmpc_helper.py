@@ -7,7 +7,6 @@ from cvxopt.solvers import qp
 from utils import racing_env
 
 
-
 def compute_cost(xcurv, u, lap_length):
     # The cost has the same elements of the vector x --> time +1
     cost = 10000 * np.ones((xcurv.shape[0]))
@@ -49,7 +48,7 @@ def regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_s
     K = []
     for i in used_iter:
         index_selected_i, K_i = compute_index(h, ss_xcurv, u_ss, time_ss, i, x_lin, state_features, scaling, max_num_point,
-                                             consider_input)
+                                              consider_input)
         index_selected.append(index_selected_i)
         K.append(K_i)
     # =========================
@@ -61,7 +60,7 @@ def regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_s
     b = compute_b(ss_xcurv, y_index, used_iter,
                   matrix, M_vx, index_selected, K)
     Ai[y_index, state_features], Bi[y_index, input_features], Ci[y_index] = lmpc_loc_lin_reg(Q_vx, b, state_features,
-                                                                                         input_features, qp)
+                                                                                             input_features, qp)
     # =======================================
     # ====== Identify Lateral Dynamics ======
     input_features = [0]
@@ -71,12 +70,12 @@ def regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_s
     b = compute_b(ss_xcurv, y_index, used_iter,
                   matrix, M_lat, index_selected, K)
     Ai[y_index, state_features], Bi[y_index, input_features], Ci[y_index] = lmpc_loc_lin_reg(Q_lat, b, state_features,
-                                                                                         input_features, qp)
+                                                                                             input_features, qp)
     y_index = 2  # wz
     b = compute_b(ss_xcurv, y_index, used_iter,
                   matrix, M_lat, index_selected, K)
     Ai[y_index, state_features], Bi[y_index, input_features], Ci[y_index] = lmpc_loc_lin_reg(Q_lat, b, state_features,
-                                                                                         input_features, qp)
+                                                                                             input_features, qp)
     # ===========================
     # ===== Linearization =======
     vx = x0[0]
@@ -182,9 +181,9 @@ def select_points(ss_xcurv, Qfun, iter, x0, num_ss_points, shift):
     norm = la.norm(diff, 1, axis=1)
     min_norm = np.argmin(norm)
     if (min_norm + shift >= 0):
-        ss_points = xcurv[int(shift + min_norm)                          :int(shift + min_norm + num_ss_points), :].T
+        ss_points = xcurv[int(shift + min_norm):int(shift + min_norm + num_ss_points), :].T
         sel_Qfun = Qfun[int(shift + min_norm):int(shift +
-                                                 min_norm + num_ss_points), iter]
+                                                  min_norm + num_ss_points), iter]
     else:
         ss_points = xcurv[int(min_norm):int(min_norm + num_ss_Points), :].T
         sel_Qfun = Qfun[int(min_norm):int(min_norm + num_ss_Points), iter]
@@ -196,6 +195,7 @@ class closedloop_data():
     Attributes:
         update_initial_conditions: function which updates initial conditions and clear the memory
     """
+
     def __init__(self, timestep, sim_time, v0):
         """Initialization
         Arguments:
@@ -229,6 +229,7 @@ class closedloop_data():
 class lmpc_prediction():
     """Object collecting the predictions and SS at eath time step
     """
+
     def __init__(self, N, xdim, udim, points_lmpc, num_ss_points, laps_number):
         """
         Initialization:

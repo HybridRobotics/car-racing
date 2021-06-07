@@ -6,43 +6,44 @@ import matplotlib.animation as anim
 from utils import vehicle_dynamics, base
 
 
-# repeated loop controller
-class PIDTrackingRepeatedLoop(base.PIDTracking):
+# off-board controller
+class PIDTracking(base.PIDTracking):
     def __init__(self, vt=0.6, eyt=0.0):
         base.PIDTracking.__init__(self, vt, eyt)
 
 
-class MPCTrackingRepeatedLoop(base.MPCTracking):
-    def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
+class MPCTracking(base.MPCTracking):
+    def __init__(self, mpc_lti_param):
         base.MPCTracking.__init__(
-            self, matrix_A, matrix_B, matrix_Q, matrix_R, vt, eyt)
+            self, mpc_lti_param)
 
 
-class MPCCBFRacingRepeatedLoop(base.MPCCBFRacing):
-    def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
+class MPCCBFRacing(base.MPCCBFRacing):
+    def __init__(self, mpc_cbf_param):
         base.MPCCBFRacing.__init__(
-            self, matrix_A, matrix_B, matrix_Q, matrix_R, vt, eyt)
+            self, mpc_cbf_param)
         self.realtime_flag = False
 
-class LMPCRacingRepeatedLoop(base.LMPCRacing):
-    def __init__(self, num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC, matrix_R_LMPC, matrix_dR_LMPC, xdim, udim, shift, timestep, laps, time_lmpc):
-        base.LMPCRacing.__init__(self, num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC, matrix_R_LMPC, matrix_dR_LMPC, xdim, udim, shift, timestep, laps, time_lmpc)
+
+class LMPCRacing(base.LMPCRacing):
+    def __init__(self, lmpc_param):
+        base.LMPCRacing.__init__(self, lmpc_param)
 
 
-# repeated loop dynamic model
-class DynamicBicycleModelRepeatedLoop(base.DynamicBicycleModel):
+# off-board dynamic model
+class DynamicBicycleModel(base.DynamicBicycleModel):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
         base.DynamicBicycleModel.__init__(
             self, name=name, param=param)
 
 
-class NoDynamicsModelRepeatedLoop(base.NoDynamicsModel):
+class NoDynamicsModel(base.NoDynamicsModel):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
         base.NoDynamicsModel.__init__(self, name=name, param=param)
 
 
-# repeated loop simulator
-class CarRacingSimRepeatedLoop(base.CarRacingSim):
+# off-board simulator
+class CarRacingSim(base.CarRacingSim):
     def __init__(self):
         base.CarRacingSim.__init__(self)
 
@@ -52,12 +53,13 @@ class CarRacingSimRepeatedLoop(base.CarRacingSim):
         self.vehicles[vehicle.name].set_timestep(self.timestep)
 
     def sim(self, sim_time=50.0, one_lap_flag=False, one_lap_name=None):
-        if one_lap_flag ==True:
+        if one_lap_flag == True:
             current_lap = self.vehicles[one_lap_name].laps
         for i in range(0, int(sim_time / self.timestep)):
             for name in self.vehicles:
                 # update system state
-                self.vehicles[name].forward_one_step(self.vehicles[name].realtime_flag)
+                self.vehicles[name].forward_one_step(
+                    self.vehicles[name].realtime_flag)
             if (one_lap_flag == True) and (self.vehicles[one_lap_name].laps > current_lap):
                 print("lap completed")
                 break
@@ -65,17 +67,18 @@ class CarRacingSimRepeatedLoop(base.CarRacingSim):
     def plot_state(self, name):
         laps = self.vehicles[name].laps
         time = np.zeros(int(round(self.vehicles[name].time/self.timestep))+1)
-        traj = np.zeros((int(round(self.vehicles[name].time/self.timestep))+1,6))
+        traj = np.zeros(
+            (int(round(self.vehicles[name].time/self.timestep))+1, 6))
         counter = 0
-        for i in range(0,laps):
+        for i in range(0, laps):
             for j in range(0, int(round((self.vehicles[name].time_list[i][-1]-self.vehicles[name].time_list[i][0])/self.timestep))):
                 time[counter] = self.vehicles[name].time_list[i][j]
-                
-                traj[counter,:] = self.vehicles[name].xcurv_list[i][j][:]
-                counter =  counter + 1
-        for i in range(0,int(round((self.vehicles[name].traj_time[-1]-self.vehicles[name].traj_time[0])/self.timestep))+1):
+
+                traj[counter, :] = self.vehicles[name].xcurv_list[i][j][:]
+                counter = counter + 1
+        for i in range(0, int(round((self.vehicles[name].traj_time[-1]-self.vehicles[name].traj_time[0])/self.timestep))+1):
             time[counter] = self.vehicles[name].traj_time[i]
-            traj[counter,:] = self.vehicles[name].traj_xcurv[i][:]
+            traj[counter, :] = self.vehicles[name].traj_xcurv[i][:]
             counter = counter + 1
         fig, axs = plt.subplots(4)
         axs[0].plot(time, traj[:, 0], "-o", linewidth=1, markersize=1)
@@ -99,20 +102,20 @@ class CarRacingSimRepeatedLoop(base.CarRacingSim):
         for name in self.vehicles:
             self.plot_state(name)
         plt.show()
-    
-    def plot_input(self,name):
+
+    def plot_input(self, name):
         laps = self.vehicles[name].laps
         time = np.zeros(int(round(self.vehicles[name].time/self.timestep)))
-        u = np.zeros((int(round(self.vehicles[name].time/self.timestep)),2))
+        u = np.zeros((int(round(self.vehicles[name].time/self.timestep)), 2))
         counter = 0
-        for i in range(0,laps):
+        for i in range(0, laps):
             for j in range(0, int(round((self.vehicles[name].time_list[i][-1]-self.vehicles[name].time_list[i][0])/self.timestep))):
                 time[counter] = self.vehicles[name].time_list[i][j]
-                u[counter,:] = self.vehicles[name].u_list[i][j][:]
-                counter =  counter + 1
-        for i in range(0,int(round((self.vehicles[name].traj_time[-1]-self.vehicles[name].traj_time[0])/self.timestep))):
+                u[counter, :] = self.vehicles[name].u_list[i][j][:]
+                counter = counter + 1
+        for i in range(0, int(round((self.vehicles[name].traj_time[-1]-self.vehicles[name].traj_time[0])/self.timestep))):
             time[counter] = self.vehicles[name].traj_time[i]
-            u[counter,:] = self.vehicles[name].traj_u[i][:]
+            u[counter, :] = self.vehicles[name].traj_u[i][:]
             counter = counter + 1
         fig, axs = plt.subplots(2)
         axs[0].plot(time, u[:, 0], "-o", linewidth=1, markersize=1)
@@ -151,19 +154,20 @@ class CarRacingSimRepeatedLoop(base.CarRacingSim):
         # plot trajectories
         for name in self.vehicles:
             laps = self.vehicles[name].laps
-            trajglob = np.zeros((int(round(self.vehicles[name].time/self.timestep))+1,6))
+            trajglob = np.zeros(
+                (int(round(self.vehicles[name].time/self.timestep))+1, 6))
             counter = 0
-            for i in range(0,laps):
+            for i in range(0, laps):
                 for j in range(0, int(round((self.vehicles[name].time_list[i][-1]-self.vehicles[name].time_list[i][0])/self.timestep))):
-                    trajglob[counter,:] = self.vehicles[name].xglob_list[i][j][:]
-                    counter =  counter + 1
-            for i in range(0,int(round((self.vehicles[name].traj_time[-1]-self.vehicles[name].traj_time[0])/self.timestep))+1):
-                trajglob[counter,:] = self.vehicles[name].traj_xglob[i][:]
+                    trajglob[counter, :] = self.vehicles[name].xglob_list[i][j][:]
+                    counter = counter + 1
+            for i in range(0, int(round((self.vehicles[name].traj_time[-1]-self.vehicles[name].traj_time[0])/self.timestep))+1):
+                trajglob[counter, :] = self.vehicles[name].traj_xglob[i][:]
                 counter = counter + 1
             ax.plot(trajglob[:, 4], trajglob[:, 5])
         plt.show()
 
-    def animate(self, filename="untitled", only_last_lap = False):
+    def animate(self, filename="untitled", only_last_lap=False):
         fig, ax = plt.subplots()
         # plotting racing track
         num_sampling_per_meter = 100
@@ -202,21 +206,25 @@ class CarRacingSimRepeatedLoop(base.CarRacingSim):
             patches_vehicles[name] = patches_vehicle
             if only_last_lap:
                 lap_number = self.vehicles[name].laps
-                trajglob = np.zeros(( int(round((self.vehicles[name].time_list[lap_number-1][-1]-self.vehicles[name].time_list[lap_number-1][0])/self.vehicles[name].timestep))+1 ,6))
+                trajglob = np.zeros((int(round(
+                    (self.vehicles[name].time_list[lap_number-1][-1]-self.vehicles[name].time_list[lap_number-1][0])/self.vehicles[name].timestep))+1, 6))
                 counter = 0
                 for j in range(int(round((self.vehicles[name].time_list[lap_number-1][-1]-self.vehicles[name].time_list[lap_number-1][0])/self.vehicles[name].timestep))+1):
-                    trajglob[counter,:] = self.vehicles[name].xglob_list[lap_number-1][j][:]
+                    trajglob[counter,
+                             :] = self.vehicles[name].xglob_list[lap_number-1][j][:]
                     counter = counter + 1
             else:
                 laps = self.vehicles[name].laps
-                trajglob = np.zeros((int(round(self.vehicles[name].time/self.timestep))+1,6))
+                trajglob = np.zeros(
+                    (int(round(self.vehicles[name].time/self.timestep))+1, 6))
                 counter = 0
-                for i in range(0,laps):
+                for i in range(0, laps):
                     for j in range(0, int(round((self.vehicles[name].time_list[i][-1]-self.vehicles[name].time_list[i][0])/self.timestep))):
-                        trajglob[counter,:] = self.vehicles[name].xglob_list[i][j][:]
-                        counter =  counter + 1
-                for i in range(0,int(round((self.vehicles[name].traj_time[-1]-self.vehicles[name].traj_time[0])/self.timestep))+1):
-                    trajglob[counter,:] = self.vehicles[name].traj_xglob[i][:]
+                        trajglob[counter,
+                                 :] = self.vehicles[name].xglob_list[i][j][:]
+                        counter = counter + 1
+                for i in range(0, int(round((self.vehicles[name].traj_time[-1]-self.vehicles[name].traj_time[0])/self.timestep))+1):
+                    trajglob[counter, :] = self.vehicles[name].traj_xglob[i][:]
                     counter = counter + 1
             trajglobs[name] = trajglob
 
@@ -243,4 +251,5 @@ class CarRacingSimRepeatedLoop(base.CarRacingSim):
 
         media = anim.FuncAnimation(fig, update, frames=np.arange(
             0, trajglob.shape[0]), interval=100)
-        media.save("media/animation/" + filename +".gif", dpi=80, writer="imagemagick")
+        media.save("media/animation/" + filename +
+                   ".gif", dpi=80, writer="imagemagick")

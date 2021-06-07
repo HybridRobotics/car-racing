@@ -2,20 +2,19 @@ import matplotlib.pyplot as plt
 import pickle
 import sympy as sp
 import numpy as np
-from sim import repeated_loop
-#import sim.repeated_loop
-#import utils.racing_env, utils.base, utils.lmpc_helper
+from sim import offboard
 from utils import racing_env, base, lmpc_helper
 
 
 def lmpc_racing(args):
     track_layout = args["track_layout"]
-    track_spec = np.genfromtxt("data/track_layout/"+track_layout+".csv" ,delimiter=",")
+    track_spec = np.genfromtxt(
+        "data/track_layout/"+track_layout+".csv", delimiter=",")
     lap_number = args["lap_number"]
     if args["simulation"]:
-        track_width = 0.5 
+        track_width = 0.5
         track = racing_env.ClosedTrack(track_spec, track_width)
-        ego = repeated_loop.DynamicBicycleModelRepeatedLoop(
+        ego = offboard.DynamicBicycleModel(
             name="ego", param=base.CarParam(edgecolor="black"))
         timestep = 1.0/10.0
         ego.set_timestep(timestep)
@@ -25,7 +24,7 @@ def lmpc_racing(args):
         udim = 2
         # run the pid controller for the first lap to collect data
         time_pid = 50.0
-        pid_controller = repeated_loop.PIDTrackingRepeatedLoop(vt=vt, eyt = 0.0)
+        pid_controller = offboard.PIDTracking(vt=vt, eyt=0.0)
         pid_controller.set_timestep(timestep)
         ego.set_ctrl_policy(pid_controller)
         pid_controller.set_track(track)
@@ -40,8 +39,9 @@ def lmpc_racing(args):
             "data/sys/LTI/matrix_B.csv", delimiter=",")
         matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
         matrix_R = np.diag([0.1, 0.1])
-        mpc_lti_controller = repeated_loop.MPCTrackingRepeatedLoop(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=vt, eyt = -0.0)
+        mpc_lti_param = base.MPCTrackingParam(
+            matrix_A, matrix_B, matrix_Q, matrix_R, vt=vt, eyt=0.0)
+        mpc_lti_controller = offboard.MPCTracking(mpc_lti_param)
         mpc_lti_controller.set_timestep(timestep)
         mpc_lti_controller.set_track(track)
         # lmpc controller
@@ -58,13 +58,15 @@ def lmpc_racing(args):
         matrix_R_LMPC = 1 * np.diag([1.0, 1.0])
         # Input rate cost u
         matrix_dR_LMPC = 5 * np.diag([1.0, 1.0])
-        lmpc_controller = repeated_loop.LMPCRacingRepeatedLoop(num_ss_points, num_ss_it, N, matrix_Qslack,
-                                                               matrix_Q_LMPC, matrix_R_LMPC, matrix_dR_LMPC, xdim, udim, shift, timestep, lap_number, time_lmpc)
+        lmpc_param = base.LMPCRacingParam(num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC,
+                                          matrix_R_LMPC, matrix_dR_LMPC, shift, timestep, lap_number, time_lmpc)
+        lmpc_controller = offboard.LMPCRacing(lmpc_param)
         lmpc_controller.set_track(track)
+        lmpc_controller.set_timestep(timestep)
         lmpc_controller.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
             N, xdim, udim, points_lmpc, num_ss_points, lap_number)
         # define a simulator
-        simulator = repeated_loop.CarRacingSimRepeatedLoop()
+        simulator = offboard.CarRacingSim()
         simulator.set_timestep(timestep)
         simulator.set_track(track)
         simulator.add_vehicle(ego)
@@ -72,21 +74,29 @@ def lmpc_racing(args):
         for iter in range(lap_number):
             # for the first lap, run the pid controller to collect data
             if iter == 0:
-                simulator.sim(sim_time=time_pid, one_lap_flag=True, one_lap_name="ego")
+                simulator.sim(sim_time=time_pid,
+                              one_lap_flag=True, one_lap_name="ego")
             elif iter == 1:
                 # for the second lap, run the mpc-lti controller to collect data
                 ego.set_ctrl_policy(mpc_lti_controller)
-                simulator.sim(sim_time=time_mpc_lti, one_lap_flag=True, one_lap_name="ego")
+                simulator.sim(sim_time=time_mpc_lti,
+                              one_lap_flag=True, one_lap_name="ego")
             elif iter == 2:
-                lmpc_controller.add_trajectory(ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, 0)
-                lmpc_controller.add_trajectory(ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, 1)               
+                lmpc_controller.add_trajectory(
+                    ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, 0)
+                lmpc_controller.add_trajectory(
+                    ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, 1)
                 # change the controller to lmpc controller
                 ego.set_ctrl_policy(lmpc_controller)
-                simulator.sim(sim_time=time_lmpc, one_lap_flag=True, one_lap_name="ego")
-                ego.ctrl_policy.add_trajectory(ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, 2)
+                simulator.sim(sim_time=time_lmpc,
+                              one_lap_flag=True, one_lap_name="ego")
+                ego.ctrl_policy.add_trajectory(
+                    ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, 2)
             else:
-                simulator.sim(sim_time=time_lmpc, one_lap_flag=True, one_lap_name="ego")
-                ego.ctrl_policy.add_trajectory(ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, iter)
+                simulator.sim(sim_time=time_lmpc,
+                              one_lap_flag=True, one_lap_name="ego")
+                ego.ctrl_policy.add_trajectory(
+                    ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, iter)
         for i in range(0, lmpc_controller.iter):
             print("lap time at iteration", i, "is",
                   lmpc_controller.Qfun[0, i]*timestep, "s")
@@ -101,7 +111,7 @@ def lmpc_racing(args):
         simulator.plot_input("ego")
     if args["animation"]:
         # currently, only animate the last lap of simulation
-        simulator.animate(filename="lmpc_racing", only_last_lap = True)
+        simulator.animate(filename="lmpc_racing", only_last_lap=True)
 
 
 if __name__ == "__main__":

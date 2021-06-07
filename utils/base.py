@@ -34,7 +34,7 @@ class ControlBase:
         self.u_list = []
         self.laps = 0
         self.track = None
-    
+
     def set_track(self, track):
         self.track = track
         self.lap_length = track.lap_length
@@ -62,15 +62,16 @@ class ControlBase:
 
     def get_input(self):
         return self.u
-    
+
     def update_memory(self, current_lap):
         xcurv = copy.deepcopy(self.x)
         xglob = copy.deepcopy(self.xglob)
         time = copy.deepcopy(self.time)
-        if xcurv[4]>self.lap_length*(current_lap+1):
+
+        if xcurv[4] > self.lap_length*(current_lap+1):
             self.traj_xglob.append(xglob)
             self.traj_time.append(time)
-            xcurv[4] = xcurv[4]- current_lap*self.lap_length
+            xcurv[4] = xcurv[4] - current_lap*self.lap_length
             self.traj_xcurv.append(xcurv)
             self.traj_u.append(self.u)
             self.xglob_list.append(self.traj_xglob)
@@ -85,12 +86,12 @@ class ControlBase:
             self.traj_u = []
             self.traj_time = []
             self.traj_xglob.append(xglob)
-            self.traj_time.append(self.time)
+            self.traj_time.append(time)
             self.traj_xcurv.append(x)
         else:
-            xcurv[4] = xcurv[4] -current_lap*self.lap_length
+            xcurv[4] = xcurv[4] - current_lap*self.lap_length
             self.traj_xglob.append(xglob)
-            self.traj_time.append(self.time)
+            self.traj_time.append(time)
             self.traj_xcurv.append(xcurv)
             self.traj_u.append(self.u)
 
@@ -102,88 +103,111 @@ class PIDTracking(ControlBase):
         self.set_target_deviation(eyt)
 
     def calc_input(self):
-        xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(self.xdim, 1)
+        xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]
+                           ).reshape(self.xdim, 1)
         self.u = ctrl.pid(self.x, xtarget, self.udim)
         self.time += self.timestep
 
 
-class MPCTracking(ControlBase):
+class MPCTrackingParam:
     def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
-        ControlBase.__init__(self)
-        self.set_target_speed(vt)
-        self.set_target_deviation(eyt)
-        self.num_of_horizon = 10
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
         self.matrix_Q = matrix_Q
         self.matrix_R = matrix_R
+        self.vt = vt
+        self.eyt = eyt
+        self.num_of_horizon = 10
+
+
+class MPCTracking(ControlBase):
+    def __init__(self, mpc_lti_param):
+        ControlBase.__init__(self)
+        self.set_target_speed(mpc_lti_param.vt)
+        self.set_target_deviation(mpc_lti_param.eyt)
+        self.mpc_lti_param = mpc_lti_param
 
     def calc_input(self):
-        xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(self.xdim, 1)
-        self.u = ctrl.mpc(self.x, xtarget, self.udim, self.num_of_horizon,
-                            self.matrix_A, self.matrix_B, self.matrix_Q, self.matrix_R)
+        xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]
+                           ).reshape(self.xdim, 1)
+        self.u = ctrl.mpc(self.x, xtarget, self.udim, self.mpc_lti_param)
         self.time += self.timestep
 
 
-class MPCCBFRacing(ControlBase):
+class MPCCBFRacingParam:
     def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
-        ControlBase.__init__(self)
-        self.set_target_speed(vt)
-        self.set_target_deviation(eyt)
-        self.num_of_horizon = 10
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
         self.matrix_Q = matrix_Q
         self.matrix_R = matrix_R
+        self.vt = vt
+        self.eyt = eyt
+        self.num_of_horizon = 10
         self.alpha = 0.6
+
+
+class MPCCBFRacing(ControlBase):
+    def __init__(self, mpc_cbf_param):
+        ControlBase.__init__(self)
+        self.set_target_speed(mpc_cbf_param.vt)
+        self.set_target_deviation(mpc_cbf_param.eyt)
         self.realtime_flag = None
+        self.mpc_cbf_param = mpc_cbf_param
 
     def calc_input(self):
-        xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(self.xdim, 1)
+        xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]
+                           ).reshape(self.xdim, 1)
         # determine if it is a real-time simulator
         if self.realtime_flag == False:
-            self.u = ctrl.mpccbf(self.x, xtarget, self.udim, self.num_of_horizon, self.matrix_A, self.matrix_B, self.matrix_Q, self.matrix_R,
-                               self.racing_sim.vehicles, self.agent_name, self.racing_sim.track.lap_length, self.time, self.timestep, self.alpha, self.realtime_flag)
+            self.u = ctrl.mpccbf(self.x, xtarget, self.udim, self.racing_sim.vehicles, self.agent_name,
+                                 self.racing_sim.track.lap_length, self.time, self.timestep, self.realtime_flag, self.mpc_cbf_param)
         elif self.realtime_flag == True:
-             self.u = ctrl.mpccbf(self.x, xtarget, self.udim, self.num_of_horizon, self.matrix_A, self.matrix_B, self.matrix_Q, self.matrix_R,
-                               self.vehicles, self.agent_name, self.lap_length, self.time, self.timestep, self.alpha, self.realtime_flag)
+            self.u = ctrl.mpccbf(self.x, xtarget, self.udim, self.vehicles, self.agent_name,
+                                 self.lap_length, self.time, self.timestep, self.realtime_flag, self.mpc_cbf_param)
         else:
             pass
         self.time += self.timestep
 
 
-class LMPCRacing(ControlBase):
-    def __init__(self, num_ss_points, num_ss_iter, N, matrix_Qslack, matrix_Q_LMPC, matrix_R_LMPC, matrix_dR_LMPC, xdim, udim, shift, timestep, lap_number, time_lmpc):
-        ControlBase.__init__(self)
+class LMPCRacingParam:
+    def __init__(self, num_ss_points, num_ss_iter, num_of_horizon, matrix_Qslack, matrix_Q, matrix_R, matrix_dR, shift, timestep, lap_number, time_lmpc):
         self.num_ss_points = num_ss_points
         self.num_ss_iter = num_ss_iter
-        self.N = N
+        self.num_of_horizon = num_of_horizon
+        self.matrix_R = matrix_R
+        self.matrix_Q = matrix_Q
+        self.matrix_dR = matrix_dR
         self.matrix_Qslack = matrix_Qslack
-        self.matrix_Q_LMPC = matrix_Q_LMPC
-        self.matrix_R_LMPC = matrix_R_LMPC
-        self.matrix_dR_LMPC = matrix_dR_LMPC
-        self.xdim = xdim
-        self.udim = udim
         self.shift = shift
         self.timestep = timestep
         self.lap_number = lap_number
+        self.time_lmpc = time_lmpc
+
+
+class LMPCRacing(ControlBase):
+    def __init__(self, lmpc_param):
+        ControlBase.__init__(self)
+        self.lmpc_param = lmpc_param
         self.x_pred = None
         self.u_pred = None
         self.lin_points = None
         self.lin_input = None
         self.ss_point_selected_tot = None
         self.Qfun_selected_tot = None
-        num_points = int(time_lmpc/timestep) + 1
+        num_points = int(lmpc_param.time_lmpc/lmpc_param.timestep) + 1
         # Time at which each j-th iteration is completed
-        self.time_ss = 10000 * np.ones(lap_number).astype(int)
+        self.time_ss = 10000 * np.ones(lmpc_param.lap_number).astype(int)
         self.ss_xcurv = 10000 * \
-            np.ones((num_points, xdim, lap_number))  # Sampled Safe SS
+            np.ones((num_points, self.xdim, lmpc_param.lap_number)
+                    )  # Sampled Safe SS
         # Input associated with the points in SS
-        self.u_ss = 10000 * np.ones((num_points, udim, lap_number))
+        self.u_ss = 10000 * \
+            np.ones((num_points, self.udim, lmpc_param.lap_number))
         # Qfun: cost-to-go from each point in SS
-        self.Qfun = 0 * np.ones((num_points, lap_number))
+        self.Qfun = 0 * np.ones((num_points, lmpc_param.lap_number))
         # SS in global (X-Y) used for plotting
-        self.ss_glob = 10000 * np.ones((num_points, xdim, lap_number))
+        self.ss_glob = 10000 * \
+            np.ones((num_points, self.xdim, lmpc_param.lap_number))
         # Initialize the controller iteration
         self.iter = 0
         self.time_in_iter = 0
@@ -200,7 +224,7 @@ class LMPCRacing(ControlBase):
         else:
             u_old = copy.deepcopy(self.u_pred[0, :])
         self.u_pred, self.x_pred, self.ss_point_selected_tot, self.Qfun_selected_tot, self.lin_points, self.lin_input = ctrl.lmpc(
-            x, matrix_Atv, matrix_Btv, matrix_Ctv, self.matrix_R_LMPC, self.matrix_Q_LMPC, self.matrix_dR_LMPC, self.matrix_Qslack, self.xdim, self.udim, self.N, self.num_ss_iter, self.ss_xcurv, self.Qfun, self.iter, self.num_ss_points, self.shift, self.lap_length, self.lap_width, u_old)
+            x, matrix_Atv, matrix_Btv, matrix_Ctv, self.xdim, self.udim, self.ss_xcurv, self.Qfun, self.iter, self.lap_length, self.lap_width, u_old, self.lmpc_param)
         self.u = self.u_pred[0, :]
         iter = self.iter
         self.openloop_prediction_lmpc.predicted_xcurv[:, :, self.time_in_iter,
@@ -218,7 +242,7 @@ class LMPCRacing(ControlBase):
     def estimate_ABC(self):
         lin_points = self.lin_points
         lin_input = self.lin_input
-        N = self.N
+        num_of_horizon = self.lmpc_param.num_of_horizon
         xdim = self.xdim
         udim = self.udim
         ss_xcurv = self.ss_xcurv
@@ -235,9 +259,9 @@ class LMPCRacing(ControlBase):
         lap_used_for_linearization = 2  # 2
         used_iter = range(iter-lap_used_for_linearization, iter)
         max_num_point = 40
-        for i in range(0, N):
+        for i in range(0, num_of_horizon):
             Ai, Bi, Ci, index_selected = lmpc_helper.regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_ss, time_ss,
-                                                                                    max_num_point, qp, xdim, udim, matrix, point_and_tangent, timestep, i)
+                                                                                  max_num_point, qp, xdim, udim, matrix, point_and_tangent, timestep, i)
             Atv.append(Ai)
             Btv.append(Bi)
             Ctv.append(Ci)
@@ -255,22 +279,26 @@ class LMPCRacing(ControlBase):
 
     def add_trajectory(self, time_list, timestep, xcurv_list, xglob_list, u_list, lap_number):
         iter = self.iter
-        end_iter = int(round((time_list[lap_number][-1] - time_list[lap_number][0])/timestep))
+        end_iter = int(
+            round((time_list[lap_number][-1] - time_list[lap_number][0])/timestep))
         time_list = np.stack(time_list[lap_number], axis=0)
         self.time_ss[iter] = end_iter
         xcurv_list = np.stack(xcurv_list[lap_number], axis=0)
-        self.ss_xcurv[0:(end_iter + 1),:, iter] = xcurv_list[0:(end_iter+1),:]
-        xglob_list = np.stack(xglob_list[lap_number], axis = 0)
-        self.ss_glob[0:(end_iter + 1),:, iter] = xglob_list[0:(end_iter+1),:]
-        u_list = np.stack(u_list[lap_number],axis = 0)
+        self.ss_xcurv[0:(end_iter + 1), :,
+                      iter] = xcurv_list[0:(end_iter+1), :]
+        xglob_list = np.stack(xglob_list[lap_number], axis=0)
+        self.ss_glob[0:(end_iter + 1), :, iter] = xglob_list[0:(end_iter+1), :]
+        u_list = np.stack(u_list[lap_number], axis=0)
         self.u_ss[0:end_iter, :, iter] = u_list[0:end_iter, :]
-        self.Qfun[0:(end_iter + 1), iter] = lmpc_helper.compute_cost(xcurv_list[0:(end_iter + 1), :],u_list[0:(end_iter), :], self.lap_length)
+        self.Qfun[0:(end_iter + 1), iter] = lmpc_helper.compute_cost(
+            xcurv_list[0:(end_iter + 1), :], u_list[0:(end_iter), :], self.lap_length)
         for i in np.arange(0, self.Qfun.shape[0]):
             if self.Qfun[i, iter] == 0:
                 self.Qfun[i, iter] = self.Qfun[i - 1, iter] - 1
         if self.iter == 0:
-            self.lin_points = self.ss_xcurv[1:self.N + 2, :, iter]
-            self.lin_input = self.u_ss[1:self.N + 1, :, iter]
+            self.lin_points = self.ss_xcurv[1:
+                                            self.lmpc_param.num_of_horizon + 2, :, iter]
+            self.lin_input = self.u_ss[1:self.lmpc_param.num_of_horizon + 1, :, iter]
         self.iter = self.iter + 1
         self.time_in_iter = 0
 
@@ -303,7 +331,7 @@ class CarParam:
 
 
 class ModelBase:
-    def __init__(self, name=None, param=None, no_dynamics = False):
+    def __init__(self, name=None, param=None, no_dynamics=False):
         self.name = name
         self.param = param
         self.no_dynamics = False
@@ -368,13 +396,13 @@ class ModelBase:
             self.calc_ctrl_input()
             self.forward_dynamics(realtime_flag)
             self.ctrl_policy.set_state(self.xcurv, self.xglob)
-            self.update_memory()         
+            self.update_memory()
         elif realtime_flag == True:
             self.forward_dynamics(realtime_flag)
 
     def update_memory(self):
         xcurv = copy.deepcopy(self.xcurv)
-        if xcurv[4]>self.lap_length:
+        if xcurv[4] > self.lap_length:
             self.traj_xglob.append(self.xglob)
             self.traj_time.append(self.time)
             self.traj_xcurv.append(xcurv)
@@ -384,7 +412,7 @@ class ModelBase:
             self.xcurv_list.append(self.traj_xcurv)
             self.u_list.append(self.traj_u)
             self.xcurv[4] = self.xcurv[4] - self.lap_length
-            self.laps = self.laps + 1           
+            self.laps = self.laps + 1
             self.traj_xglob = []
             self.traj_xcurv = []
             self.traj_u = []
@@ -397,7 +425,7 @@ class ModelBase:
             self.traj_time.append(self.time)
             self.traj_xcurv.append(self.xcurv)
             self.traj_u.append(self.u)
-        
+
 
 class NoDynamicsModel(ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
@@ -464,7 +492,7 @@ class DynamicBicycleModel(ModelBase):
         xcurv_next = np.zeros(self.xdim)
         xglob_next = self.xglob
         xcurv_next = self.xcurv
-        vehicle_param = CarParam()        
+        vehicle_param = CarParam()
         # Initialize counter
         i = 0
         while (i + 1) * delta_t <= self.timestep:
@@ -472,14 +500,15 @@ class DynamicBicycleModel(ModelBase):
             if realtime_flag == False:
                 curv = self.track.get_curvature(s)
             else:
-                curv = racing_env.get_curvature(self.lap_length, self.point_and_tangent,s)
+                curv = racing_env.get_curvature(
+                    self.lap_length, self.point_and_tangent, s)
             # for realtime simulation, if no controller is set up, the model won't update
             if self.u is None:
                 pass
             else:
                 xglob_next, xcurv_next = vehicle_dynamics.vehicle_dynamics(
                     vehicle_param.dynamics_param, curv, xglob_next, xcurv_next, delta_t, self.u)
-            
+
             if s < 0:
                 pass
                 # Don't need this checker as curvature can be calculated even s < 0
@@ -497,9 +526,9 @@ class DynamicBicycleModel(ModelBase):
             # for realtime simulation, if no controller is set up, no update for state
             pass
         else:
-            xcurv_next[0] = xcurv_next[0] + 0.1 * noise_vx
-            xcurv_next[1] = xcurv_next[1] + 0.1 * noise_vy
-            xcurv_next[2] = xcurv_next[2] + 0.1 * noise_wz
+            xcurv_next[0] = xcurv_next[0] + 0.5 * noise_vx
+            xcurv_next[1] = xcurv_next[1] + 0.5 * noise_vy
+            xcurv_next[2] = xcurv_next[2] + 0.5 * noise_wz
         self.xcurv = xcurv_next
         self.xglob = xglob_next
         self.time += self.timestep

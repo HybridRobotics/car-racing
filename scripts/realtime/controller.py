@@ -4,7 +4,7 @@ import numpy as np
 import time
 import datetime
 from car_racing.msg import VehicleControl, VehicleState
-from utils import racing_env, lmpc_helper
+from utils import racing_env, lmpc_helper, base
 from sim import realtime
 
 
@@ -13,27 +13,29 @@ def set_controller(args):
     ctrl_policy = args["ctrl_policy"]
     node_name = 'controller_' + veh_name
     rospy.init_node(node_name, anonymous=True)
-    loop_rate = 20
+    loop_rate = 10
     timestep = 1 / loop_rate
     matrix_A = np.genfromtxt('data/sys/LTI/matrix_A.csv', delimiter=",")
     matrix_B = np.genfromtxt('data/sys/LTI/matrix_B.csv', delimiter=",")
     matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
     matrix_R = np.diag([0.1, 0.1])
+    mpc_lti_param = base.MPCTrackingParam(
+        matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
     if ctrl_policy == "mpc-lti":
-        ctrl = realtime.MPCTrackingRealtime(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
+        ctrl = realtime.MPCTracking(mpc_lti_param)
         ctrl.set_subscriber_track()
     elif ctrl_policy == "pid":
-        ctrl = realtime.PIDTrackingRealtime(vt=0.8)
+        ctrl = realtime.PIDTracking(vt=0.8)
         ctrl.set_subscriber_track()
     elif ctrl_policy == "mpc-cbf":
-        ctrl = realtime.MPCCBFRacingRealtime(
+        mpc_cbf_param = base.MPCCBFRacingParam(
             matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
+        ctrl = realtime.MPCCBFRacing(mpc_cbf_param)
         ctrl.agent_name = veh_name
         ctrl.set_subscriber_track()
         ctrl.set_subscriber_veh()
     elif ctrl_policy == "lmpc":
-        laps_number = 50
+        laps_number = 100
         N = 12
         xdim = 6
         udim = 2
@@ -50,27 +52,23 @@ def set_controller(args):
         matrix_R_LMPC = 1 * np.diag([1.0, 1.0])
         # Input rate cost u
         matrix_dR_LMPC = 5 * np.diag([1.0, 1.0])
-        lmpc_ctrl = realtime.LMPCRacingRealtime(num_ss_points, num_ss_it, N, matrix_Qslack,
-                                                matrix_Q_LMPC, matrix_R_LMPC, matrix_dR_LMPC, xdim, udim, shift, timestep, laps_number, time_lmpc)
+        lmpc_param = base.LMPCRacingParam(num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC,
+                                          matrix_R_LMPC, matrix_dR_LMPC, shift, timestep, laps_number, time_lmpc)
+
+        lmpc_ctrl = realtime.LMPCRacing(lmpc_param)
         lmpc_ctrl.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
             N, xdim, udim, points_lmpc, num_ss_points, laps_number)
         lmpc_ctrl.set_subscriber_track()
         lmpc_ctrl.set_timestep(timestep)
         lmpc_ctrl.u = np.zeros(2)
-
-        time_pid = 50.0
-        pid_ctrl = realtime.PIDTrackingRealtime(vt=0.8)
+        pid_ctrl = realtime.PIDTracking(vt=0.8)
         pid_ctrl.set_subscriber_track()
         pid_ctrl.set_timestep(timestep)
         pid_ctrl.u = np.zeros(2)
-
-        time_mpc_lti = 50.0
-        mpc_lti_ctrl = realtime.MPCTrackingRealtime(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
+        mpc_lti_ctrl = realtime.MPCTracking(mpc_lti_param)
         mpc_lti_ctrl.set_subscriber_track()
         mpc_lti_ctrl.set_timestep(timestep)
         mpc_lti_ctrl.u = np.zeros(2)
-
         veh_input_topic = veh_name + '/input'
         pid_ctrl.__pub_input = rospy.Publisher(
             veh_input_topic, VehicleControl, queue_size=10)
@@ -78,13 +76,11 @@ def set_controller(args):
             veh_input_topic, VehicleControl, queue_size=10)
         lmpc_ctrl.__pub_input = rospy.Publisher(
             veh_input_topic, VehicleControl, queue_size=10)
-
         current_lap = 0
     else:
         pass
     if ctrl_policy == "lmpc":
         pid_ctrl.set_subscriber_state(veh_name)
-        time.sleep(0.05)
         lap_start_timer = datetime.datetime.now()
     else:
         ctrl.set_subscriber_optimal_traj()
@@ -101,7 +97,7 @@ def set_controller(args):
 
     while not rospy.is_shutdown():
         current_time = datetime.datetime.now()
-        if (current_time-start_timer).total_seconds() > (tmp+1)*(1/loop_rate):
+        if (current_time-start_timer).total_seconds() >= (tmp+1)*(1/loop_rate):
             if ctrl_policy == "lmpc":
                 # for lmpc, for the first lap, the ego vehicle will use pid to track the center line and store the data
                 if current_lap == 0:
@@ -109,17 +105,20 @@ def set_controller(args):
                     pid_ctrl.calc_input()
                     u = pid_ctrl.get_input()
                     pid_ctrl.__pub_input.publish(VehicleControl(u[1], u[0]))
+                    time.sleep(0.05)
                     pid_ctrl.update_memory(current_lap)
                     if pid_ctrl.x[4] >= (current_lap+1)*pid_ctrl.lap_length:
                         lmpc_ctrl.add_trajectory(
                             pid_ctrl.time_list, pid_ctrl.timestep, pid_ctrl.xcurv_list, pid_ctrl.xglob_list, pid_ctrl.u_list, 0)
                         end_timer = datetime.datetime.now()
-                        delta_time = (end_timer - lap_start_timer).total_seconds()
-                        print("lap:", current_lap+1,",lap time: {}".format(delta_time))
-                        
+                        delta_time = (
+                            end_timer - lap_start_timer).total_seconds()
+                        print("lap:", current_lap+1,
+                              ",lap time: {}".format(delta_time))
+
                         lap_start_timer = datetime.datetime.now()
                         mpc_lti_ctrl.set_subscriber_state(veh_name)
-                        time.sleep(0.05)
+                        #time.sleep(0.01)
                         current_lap = current_lap + 1
                     else:
                         pass
@@ -128,16 +127,19 @@ def set_controller(args):
                     u = mpc_lti_ctrl.get_input()
                     mpc_lti_ctrl.__pub_input.publish(
                         VehicleControl(u[1], u[0]))
+                    time.sleep(0.05)
                     mpc_lti_ctrl.update_memory(current_lap)
                     if mpc_lti_ctrl.x[4] >= (current_lap+1)*mpc_lti_ctrl.lap_length:
                         lmpc_ctrl.add_trajectory(mpc_lti_ctrl.time_list, mpc_lti_ctrl.timestep,
                                                  mpc_lti_ctrl.xcurv_list, mpc_lti_ctrl.xglob_list, mpc_lti_ctrl.u_list, 0)
                         end_timer = datetime.datetime.now()
-                        delta_time = (end_timer - lap_start_timer).total_seconds()
-                        print("lap:", current_lap+1,",lap time: {}".format(delta_time))
+                        delta_time = (
+                            end_timer - lap_start_timer).total_seconds()
+                        print("lap:", current_lap+1,
+                              ",lap time: {}".format(delta_time))
                         lap_start_timer = datetime.datetime.now()
                         lmpc_ctrl.set_subscriber_state(veh_name)
-                        time.sleep(0.05)
+                        #time.sleep(0.01)
                         print("start lmpc")
                         current_lap = current_lap + 1
                     else:
@@ -146,13 +148,16 @@ def set_controller(args):
                     lmpc_ctrl.calc_input()
                     u = lmpc_ctrl.get_input()
                     lmpc_ctrl.__pub_input.publish(VehicleControl(u[1], u[0]))
+                    time.sleep(0.02)
                     lmpc_ctrl.update_memory(current_lap)
                     if lmpc_ctrl.x[4] >= (current_lap+1)*lmpc_ctrl.lap_length:
                         lmpc_ctrl.add_trajectory(lmpc_ctrl.time_list, lmpc_ctrl.timestep,
                                                  lmpc_ctrl.xcurv_list, lmpc_ctrl.xglob_list, lmpc_ctrl.u_list, current_lap-2)
                         end_timer = datetime.datetime.now()
-                        delta_time = (end_timer - lap_start_timer).total_seconds()
-                        print("lap:", current_lap+1,",lap time: {}".format(delta_time))
+                        delta_time = (
+                            end_timer - lap_start_timer).total_seconds()
+                        print("lap:", current_lap+1,
+                              ",lap time: {}".format(delta_time))
                         lap_start_timer = datetime.datetime.now()
                         current_lap = current_lap + 1
                     else:

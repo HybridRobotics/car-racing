@@ -14,7 +14,7 @@ from car_racing.srv import AddNewVehicle
 def start_visualization():
     rospy.init_node("visualization", anonymous=True)
     fig = plt.figure(figsize=(6, 6))
-    vis = realtime.VisualizationRealtime()
+    vis = realtime.Visualization()
     vis.fig = fig
     vis.set_subscriber_track()
     ax = plt.gca()

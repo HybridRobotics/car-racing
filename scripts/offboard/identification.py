@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-import repeated_loop, base, racing_env, system_id
+from sim import offboard
+from utils import base, racing_env, system_id
 
 
 def linear_time_invariant():
@@ -21,15 +22,15 @@ def linear_time_invariant():
     track_width = 1.0
     track = racing_env.ClosedTrack(track_spec, track_width)
     # setup ego car
-    ego = repeated_loop.DynamicBicycleModelRepeatedLoop(
+    ego = offboard.DynamicBicycleModel(
         name="ego", param=base.CarParam(edgecolor="black"))
     ego.set_state_curvilinear(np.array([0.3, 0, 0, 0, 0, 0]))
     ego.set_state_global(np.array([0.3, 0, 0, 0, 0, 0]))
-    ego.set_ctrl_policy(repeated_loop.PIDTrackingRepeatedLoop(vt=0.5))
+    ego.set_ctrl_policy(offboard.PIDTracking(vt=0.5))
     ego.ctrl_policy.set_timestep(0.1)
     ego.set_track(track)
     # setup simulation
-    simulator = repeated_loop.CarRacingSimRepeatedLoop()
+    simulator = offboard.CarRacingSim()
     simulator.set_timestep(0.1)
     simulator.set_track(track)
     simulator.add_vehicle(ego)

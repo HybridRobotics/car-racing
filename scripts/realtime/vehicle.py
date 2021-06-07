@@ -48,7 +48,7 @@ def set_vehicle(args):
     # call ros service to add vehicle in simulator and visualization node
     add_vehicle_client_simulator(veh_name, veh_color)
     add_vehicle_client_visualization(veh_name, veh_color)
-    veh = realtime.DynamicBicycleModelRealtime(
+    veh = realtime.DynamicBicycleModel(
         name=veh_name, param=base.CarParam())
     veh.set_subscriber_track()
     veh.set_subscriber_input(veh_name)
