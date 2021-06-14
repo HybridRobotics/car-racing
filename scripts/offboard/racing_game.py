@@ -11,14 +11,18 @@ def lmpc_racing(args):
     track_spec = np.genfromtxt(
         "data/track_layout/"+track_layout+".csv", delimiter=",")
     lap_number = args["lap_number"]
+    opti_traj_xcurv = np.genfromtxt(
+        "data/optimal_traj/xcurv_"+track_layout+".csv", delimiter=",")
+    opti_traj_xglob = np.genfromtxt(
+        "data/optimal_traj/xglob_"+track_layout+".csv", delimiter=",")
     if args["simulation"]:
-        track_width = 0.5
+        track_width = 0.8
         track = racing_env.ClosedTrack(track_spec, track_width)
         ego = offboard.DynamicBicycleModel(
             name="ego", param=base.CarParam(edgecolor="black"))
         timestep = 1.0/10.0
         ego.set_timestep(timestep)
-        vt = 0.8
+        vt = 0.7
         N = 12
         xdim = 6
         udim = 2
@@ -37,13 +41,26 @@ def lmpc_racing(args):
             "data/sys/LTI/matrix_A.csv", delimiter=",")
         matrix_B = np.genfromtxt(
             "data/sys/LTI/matrix_B.csv", delimiter=",")
-        matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
+        matrix_Q = np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0])
         matrix_R = np.diag([0.1, 0.1])
         mpc_lti_param = base.MPCTrackingParam(
             matrix_A, matrix_B, matrix_Q, matrix_R, vt=vt, eyt=0.0)
         mpc_lti_controller = offboard.MPCTracking(mpc_lti_param)
         mpc_lti_controller.set_timestep(timestep)
         mpc_lti_controller.set_track(track)
+        t_symbol = sp.symbols("t")
+        car1 = offboard.NoDynamicsModel(
+            name="car1", param=base.CarParam(edgecolor="orange"))
+        car1.set_track(track)
+        car1.set_state_curvilinear_func(
+            t_symbol, 0.6 * t_symbol + 3.0, -0.25 + 0.0 * t_symbol)
+
+        car2 = offboard.NoDynamicsModel(
+            name="car2", param=base.CarParam(edgecolor="orange"))
+        car2.set_track(track)
+        car2.set_state_curvilinear_func(
+            t_symbol, 0.6 * t_symbol + 13.0, 0.35 + 0.0 * t_symbol)
+
         # lmpc controller
         num_ss_it = 2
         num_ss_points = 32 + N
@@ -60,9 +77,13 @@ def lmpc_racing(args):
         matrix_dR_LMPC = 5 * np.diag([1.0, 1.0])
         lmpc_param = base.LMPCRacingParam(num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC,
                                           matrix_R_LMPC, matrix_dR_LMPC, shift, timestep, lap_number, time_lmpc)
-        lmpc_controller = offboard.LMPCRacing(lmpc_param)
+        racing_game_param = base.RacingGameParam(
+            matrix_A, matrix_B, matrix_Q, matrix_R, timestep)
+        lmpc_controller = offboard.LMPCRacingGame(
+            lmpc_param, racing_game_param)
         lmpc_controller.set_track(track)
         lmpc_controller.set_timestep(timestep)
+        lmpc_controller.set_opti_traj(opti_traj_xcurv, opti_traj_xglob)
         lmpc_controller.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
             N, xdim, udim, points_lmpc, num_ss_points, lap_number)
         # define a simulator
@@ -70,9 +91,13 @@ def lmpc_racing(args):
         simulator.set_timestep(timestep)
         simulator.set_track(track)
         simulator.add_vehicle(ego)
+        simulator.add_vehicle(car1)
+        simulator.add_vehicle(car2)
         pid_controller.set_racing_sim(simulator)
         mpc_lti_controller.set_racing_sim(simulator)
         lmpc_controller.set_racing_sim(simulator)
+        lmpc_controller.set_vehicles_track()
+
         # start simulation
         for iter in range(lap_number):
             # for the first lap, run the pid controller to collect data
@@ -103,10 +128,10 @@ def lmpc_racing(args):
         for i in range(0, lmpc_controller.iter):
             print("lap time at iteration", i, "is",
                   lmpc_controller.Qfun[0, i]*timestep, "s")
-        with open("data/simulator/lmpc_racing.obj", "wb") as handle:
+        with open("data/simulator/racing_game.obj", "wb") as handle:
             pickle.dump(simulator, handle, protocol=pickle.HIGHEST_PROTOCOL)
     else:
-        with open("data/simulator/lmpc_racing.obj", "rb") as handle:
+        with open("data/simulator/racing_game.obj", "rb") as handle:
             simulator = pickle.load(handle)
     if args["plotting"]:
         simulator.plot_simulation()
@@ -114,12 +139,7 @@ def lmpc_racing(args):
         simulator.plot_input("ego")
     if args["animation"]:
         # currently, only animate the last lap of simulation
-        simulator.animate(filename="lmpc_racing", only_last_lap=True)
-    if args["save_trajectory"]:
-        ego_xcurv = np.stack(simulator.vehicles["ego"].xcurv_list[lap_number-1],axis=0)
-        ego_xglob = np.stack(simulator.vehicles["ego"].xglob_list[lap_number-1],axis=0)
-        np.savetxt("data/optimal_traj/xcurv_"+track_layout+".csv",ego_xcurv,delimiter=',')
-        np.savetxt("data/optimal_traj/xglob_"+track_layout+".csv",ego_xglob,delimiter=',')
+        simulator.animate(filename="racing_game", only_last_lap=True)
 
 
 if __name__ == "__main__":
@@ -130,6 +150,5 @@ if __name__ == "__main__":
     parser.add_argument("--simulation", action="store_true")
     parser.add_argument("--plotting", action="store_true")
     parser.add_argument("--animation", action="store_true")
-    parser.add_argument("--save-trajectory", action="store_true")
     args = vars(parser.parse_args())
     lmpc_racing(args)

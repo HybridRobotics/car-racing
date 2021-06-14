@@ -1,10 +1,13 @@
 import datetime
 import numpy as np
 import casadi as ca
-from utils import lmpc_helper
+from utils import lmpc_helper, racing_env
 from casadi import *
 from scipy import sparse
 from scipy.sparse import vstack
+from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 
 def pid(xcurv, xtarget, udim):
@@ -258,3 +261,100 @@ def lmpc(xcurv, matrix_Atv, matrix_Btv, matrix_Ctv, xdim, udim,  ss_curv, Qfun, 
     solver_time = (end_timer - start_timer).total_seconds()
     print("solver time: {}".format(solver_time))
     return u_pred, x_pred, ss_point_selected_tot, Qfun_selected_tot, lin_points, lin_input
+
+
+def overtake(xcurv, target_traj_xcurv, udim, racing_game_param, lap_length, track, vehicles, agent_name, direction_flag, target_traj_xglob):
+    print("overtaking")
+    start_timer = datetime.datetime.now()
+    opti = ca.Opti()
+    # define variables
+    xvar = opti.variable(
+        len(xcurv), racing_game_param.num_of_horizon_ctrl + 1)
+    uvar = opti.variable(udim, racing_game_param.num_of_horizon_ctrl)
+    cost = 0
+    opti.subject_to(xvar[:, 0] == xcurv)
+    cost = 0
+    opti.subject_to(xvar[:, 0] == xcurv)
+    # dynamics + state/input constraints
+    vx = xcurv[0]
+    f_traj = interp1d(target_traj_xcurv[:, 4], target_traj_xcurv[:, 5])
+    veh_len = vehicles["ego"].param.length
+    veh_width = vehicles["ego"].param.width
+    for name in list(vehicles):
+        if name != agent_name:
+            epsi_other = vehicles[name].xcurv[3]
+            s_other = vehicles[name].xcurv[4]
+            while s_other > lap_length:
+                s_other = s_other - lap_length
+            if abs(s_other - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other + track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other - track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0]:           
+                s_veh = s_other
+                epsi_veh = epsi_other
+                ey_veh = vehicles[name].xcurv[5]
+                ey_veh_max = ey_veh + 0.5*veh_len * \
+                    np.sin(epsi_veh) + 0.5*veh_width*np.cos(epsi_veh)
+                ey_veh_min = ey_veh - 0.5*veh_len * \
+                    np.sin(epsi_veh) - 0.5*veh_width*np.cos(epsi_veh)
+                s_veh_max = s_veh + 0.5*veh_len * \
+                    np.cos(epsi_veh) + 0.5*veh_width*np.sin(epsi_veh)
+                s_veh_min = s_veh - 0.5*veh_len * \
+                    np.cos(epsi_veh) - 0.5*veh_width*np.sin(epsi_veh)
+            else:
+                pass
+    for i in range(racing_game_param.num_of_horizon_ctrl):
+        # system dynamics
+        opti.subject_to(
+            xvar[:, i + 1] == ca.mtimes(racing_game_param.matrix_A, xvar[:, i]) +
+            ca.mtimes(racing_game_param.matrix_B, uvar[:, i])
+        )
+        # min and max of delta
+        opti.subject_to(-0.5 <= uvar[0, i])
+        opti.subject_to(uvar[0, i] <= 0.5)
+        # min and max of a
+        opti.subject_to(-1.0 <= uvar[1, i])
+        opti.subject_to(uvar[1, i] <= 1.0)
+        # input cost
+        cost += ca.mtimes(uvar[:, i].T,
+                          ca.mtimes(racing_game_param.matrix_R, uvar[:, i]))
+    for i in range(racing_game_param.num_of_horizon_ctrl + 1):
+        # speed vx upper bound
+        opti.subject_to(xvar[0, i] <= 10.0)
+        opti.subject_to(xvar[0, i] >= 0.0)
+        # min and max of ey
+        opti.subject_to(xvar[5, i] <= track.width)
+        opti.subject_to(-track.width <= xvar[5, i])
+        # state cost
+        s_tmp = vx*0.1*i+xcurv[4]
+        if s_tmp < target_traj_xcurv[0, 4]:
+            s_tmp = target_traj_xcurv[0, 4]
+        if s_tmp >= target_traj_xcurv[-1, 4]:
+            s_tmp = target_traj_xcurv[-1, 4]
+        # determine if the ego vehile and other vehicle is in the same range
+        if (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) <= s_veh_min or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) >= s_veh_max) or (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) <= s_veh_min + lap_length or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) >= s_veh_max + lap_length) or (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) + lap_length <= s_veh_min or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) + lap_length >= s_veh_max):
+            pass
+        else:
+            # overtake from left
+            if direction_flag == 1:
+                opti.subject_to(xvar[5, i] - 0.5*veh_len*np.sin(xvar[3, i]) -
+                                0.5*veh_width*np.cos(xvar[3, i]) >= 1.1*ey_veh_max)
+            if direction_flag == -1:
+                opti.subject_to(xvar[5, i] + 0.5*veh_len*np.sin(xvar[3, i]) +
+                                0.5*veh_width*np.cos(xvar[3, i]) <= 1.1*ey_veh_min)
+        xtarget = np.array([vx, 0, 0, 0, 0, f_traj(s_tmp)])
+        cost += ca.mtimes((xvar[:, i] - xtarget).T,
+                          ca.mtimes(racing_game_param.matrix_Q, xvar[:, i] - xtarget))
+    # setup solver
+    option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
+    opti.minimize(cost)
+    opti.solver("ipopt", option)
+    try:
+        sol = opti.solve()
+        x_pred = sol.value(xvar).T
+        u_pred = sol.value(uvar).T
+    except RuntimeError:
+        print("solver fail")
+        x_pred = opti.debug.value(xvar).T
+        u_pred = opti.debug.value(uvar).T
+    end_timer = datetime.datetime.now()
+    solver_time = (end_timer - start_timer).total_seconds()
+    print("solver time: {}".format(solver_time))
+    return u_pred[0, :]

@@ -3,7 +3,8 @@ import sympy as sp
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.animation as anim
-from utils import vehicle_dynamics, base
+from utils import vehicle_dynamics, base, racing_env
+from matplotlib import animation
 
 
 # off-board controller
@@ -28,6 +29,13 @@ class MPCCBFRacing(base.MPCCBFRacing):
 class LMPCRacing(base.LMPCRacing):
     def __init__(self, lmpc_param):
         base.LMPCRacing.__init__(self, lmpc_param)
+        self.realtime_flag = False
+
+
+class LMPCRacingGame(base.LMPCRacingGame):
+    def __init__(self, lmpc_param, overtake_mpc_param):
+        base.LMPCRacingGame.__init__(self, lmpc_param, overtake_mpc_param)
+        self.realt = False
 
 
 # off-board dynamic model
@@ -35,6 +43,46 @@ class DynamicBicycleModel(base.DynamicBicycleModel):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
         base.DynamicBicycleModel.__init__(
             self, name=name, param=param)
+
+     # in this estimation, the vehicles is assumed to move with input is equal to zero
+    def get_estimation(self, xglob, xcurv):
+        curv = racing_env.get_curvature(
+            self.lap_length, self.point_and_tangent, xcurv[4])
+        xcurv_est = np.zeros(6)
+        xglob_est = np.zeros(6)
+        xcurv_est[0:3] = xcurv[0:3]
+        xcurv_est[3] = xcurv[3] + self.timestep * (xcurv[2]-(xcurv[0]*np.cos(
+            xcurv[3])-xcurv[1]*np.sin(xcurv[3]))/(1-curv*xcurv[5])*curv)
+        xcurv_est[4] = xcurv[4] + self.timestep * \
+            ((xcurv[0]*np.cos(xcurv[3])-xcurv[1]
+             * np.sin(xcurv[3]))/(1-curv*xcurv[5]))
+        xcurv_est[5] = xcurv[5] + self.timestep * \
+            (xcurv[0]*np.sin(xcurv[3])+xcurv[1]*np.cos(xcurv[3]))
+        xglob_est[0:3] = xglob[0:3]
+        xglob_est[3] = xglob[3] + self.timestep * (xglob[2])
+        xglob_est[4] = xglob[4] + self.timestep * \
+            (xglob[0]*np.cos(xglob[3])-xglob[1]*np.sin(xglob[3]))
+        xglob_est[4] = xglob[4] + self.timestep * \
+            (xglob[0]*np.sin(xglob[3])+xglob[1]*np.cos(xglob[3]))
+
+        return xcurv_est, xglob_est
+
+    # get prediction for mpc-cbf controller
+    def get_trajectory_nsteps(self, n):
+        xcurv_nsteps = np.zeros((6, n))
+        xglob_nsteps = np.zeros((6, n))
+        for index in range(n):
+            if index == 0:
+                xcurv_est, xglob_est = self.get_estimation(
+                    self.xglob, self.xcurv)
+            else:
+                xcurv_est, xglob_est = self.get_estimation(
+                    xglob_nsteps[:, index-1], xcurv_nsteps[:, index-1])
+            while xcurv_est[4] > self.lap_length:
+                xcurv_est[4] = xcurv_est[4]-self.lap_length
+            xcurv_nsteps[:, index] = xcurv_est
+            xglob_nsteps[:, index] = xglob_est
+        return xcurv_nsteps, xglob_nsteps
 
 
 class NoDynamicsModel(base.NoDynamicsModel):
@@ -46,20 +94,24 @@ class NoDynamicsModel(base.NoDynamicsModel):
 class CarRacingSim(base.CarRacingSim):
     def __init__(self):
         base.CarRacingSim.__init__(self)
+        self.ax = None
+        self.fig = None
 
     def add_vehicle(self, vehicle):
         self.vehicles[vehicle.name] = vehicle
         self.vehicles[vehicle.name].set_track(self.track)
         self.vehicles[vehicle.name].set_timestep(self.timestep)
 
-    def sim(self, sim_time=50.0, one_lap_flag=False, one_lap_name=None):
+    def sim(self, sim_time=50.0, one_lap_flag=False, one_lap_name=None, animating_flag=False):
         if one_lap_flag == True:
             current_lap = self.vehicles[one_lap_name].laps
+
         for i in range(0, int(sim_time / self.timestep)):
             for name in self.vehicles:
                 # update system state
                 self.vehicles[name].forward_one_step(
                     self.vehicles[name].realtime_flag)
+
             if (one_lap_flag == True) and (self.vehicles[one_lap_name].laps > current_lap):
                 print("lap completed")
                 break
@@ -167,7 +219,7 @@ class CarRacingSim(base.CarRacingSim):
             ax.plot(trajglob[:, 4], trajglob[:, 5])
         plt.show()
 
-    def animate(self, filename="untitled", only_last_lap=False):
+    def animate(self, filename="untitled", only_last_lap=False, lap_number=None):
         fig, ax = plt.subplots()
         # plotting racing track
         num_sampling_per_meter = 100
@@ -192,6 +244,7 @@ class CarRacingSim(base.CarRacingSim):
             [[1.0, 1.0], [1.0, -1.0], [-1.0, -1.0], [-1.0, 1.0]])
         patches_vehicles = {}
         trajglobs = {}
+        local_line, = ax.plot([], [])
         for name in self.vehicles:
             patches_vehicle = patches.Polygon(
                 vertex_directions,
@@ -203,15 +256,26 @@ class CarRacingSim(base.CarRacingSim):
                 linewidth=2,
             )
             ax.add_patch(patches_vehicle)
+            ax.axis('equal')
             patches_vehicles[name] = patches_vehicle
             if only_last_lap:
-                lap_number = self.vehicles[name].laps
-                trajglob = np.zeros((int(round(
-                    (self.vehicles[name].time_list[lap_number-1][-1]-self.vehicles[name].time_list[lap_number-1][0])/self.vehicles[name].timestep))+1, 6))
+                ani_time = 600
+                #lap_number = self.vehicles["ego"].laps
+                #ani_time = int(round((self.vehicles["ego"].time_list[lap_number-1][-1]-self.vehicles["ego"].time_list[lap_number-1][0])/self.vehicles["ego"].timestep))+1
                 counter = 0
-                for j in range(int(round((self.vehicles[name].time_list[lap_number-1][-1]-self.vehicles[name].time_list[lap_number-1][0])/self.vehicles[name].timestep))+1):
-                    trajglob[counter,
-                             :] = self.vehicles[name].xglob_list[lap_number-1][j][:]
+                trajglob = np.zeros((ani_time, 6))
+                local_traj_xglob = np.zeros((ani_time, 21, 6))
+
+                for j in range(ani_time):
+                    trajglob[ani_time-1-counter,
+                             :] = self.vehicles[name].xglob_log[-1-j][:]
+                    if name == "ego":
+                        if self.vehicles[name].local_traj_list[-1-j] is None:
+                            local_traj_xglob[ani_time-1-counter, :,
+                                             :] = np.zeros((21, 6))
+                        else:
+                            local_traj_xglob[ani_time-1-counter, :,
+                                             :] = self.vehicles[name].local_traj_list[-1-j][:, :]
                     counter = counter + 1
             else:
                 laps = self.vehicles[name].laps
@@ -227,8 +291,8 @@ class CarRacingSim(base.CarRacingSim):
                     trajglob[counter, :] = self.vehicles[name].traj_xglob[i][:]
                     counter = counter + 1
             trajglobs[name] = trajglob
-
         # update vehicles for animation
+
         def update(i):
             for name in patches_vehicles:
                 x, y = trajglobs[name][i, 4], trajglobs[name][i, 5]
@@ -248,7 +312,12 @@ class CarRacingSim(base.CarRacingSim):
                     y - l * np.sin(psi) + w * np.cos(psi),
                 ]
                 patches_vehicles[name].set_xy(np.array([vertex_x, vertex_y]).T)
-
+                # plot the local planned trajectory for ego vehicle if exists
+                if local_traj_xglob[i, :, :].all == 0:
+                    pass
+                else:
+                    local_line.set_data(
+                        local_traj_xglob[i, :, 4], local_traj_xglob[i, :, 5])
         media = anim.FuncAnimation(fig, update, frames=np.arange(
             0, trajglob.shape[0]), interval=100)
         media.save("media/animation/" + filename +
