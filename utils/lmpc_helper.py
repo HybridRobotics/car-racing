@@ -230,19 +230,19 @@ class lmpc_prediction():
     """Object collecting the predictions and SS at eath time step
     """
 
-    def __init__(self, N, xdim, udim, points_lmpc, num_ss_points, laps_number):
+    def __init__(self, num_horizon=12, xdim=6, udim=2, points_lmpc=5000, num_ss_points=32 + 12, lap_number = None):
         """
         Initialization:
-            N: horizon length
+            num_horizon: horizon length
             xdim, udim: state and input dimensions
             points_lmpc: maximum simulation timesteps
             num_ss_points: number used to build safe set at each time step
         """
-        self.predicted_xcurv = np.zeros((N+1, xdim, points_lmpc, laps_number))
-        self.predicted_u = np.zeros((N, udim, points_lmpc, laps_number))
+        self.predicted_xcurv = np.zeros((num_horizon+1, xdim, points_lmpc, lap_number))
+        self.predicted_u = np.zeros((num_horizon, udim, points_lmpc, lap_number))
         self.ss_used = np.zeros(
-            (xdim, num_ss_points, points_lmpc, laps_number))
-        self.Qfun_used = np.zeros((num_ss_points, points_lmpc, laps_number))
+            (xdim, num_ss_points, points_lmpc, lap_number))
+        self.Qfun_used = np.zeros((num_ss_points, points_lmpc, lap_number))
 
 
 def compute_b(ss_xcurv, y_index, used_iter, matrix, M, index_selected, K):

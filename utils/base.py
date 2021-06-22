@@ -73,7 +73,6 @@ class ControlBase:
         xcurv = copy.deepcopy(self.x)
         xglob = copy.deepcopy(self.xglob)
         time = copy.deepcopy(self.time)
-
         if xcurv[4] > self.lap_length*(current_lap+1):
             self.traj_xglob.append(xglob)
             self.traj_time.append(time)
@@ -121,14 +120,17 @@ class PIDTracking(ControlBase):
 
 
 class MPCTrackingParam:
-    def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
+    def __init__(self, matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
+                 matrix_B=np.genfromtxt(
+                     "data/sys/LTI/matrix_B.csv", delimiter=","),
+                 matrix_Q=np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]), matrix_R=np.diag([0.1, 0.1]), vt=0.6, eyt=0.0):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
         self.matrix_Q = matrix_Q
         self.matrix_R = matrix_R
         self.vt = vt
         self.eyt = eyt
-        self.num_of_horizon = 10
+        self.num_horizon = 10
 
 
 class MPCTracking(ControlBase):
@@ -158,7 +160,7 @@ class MPCCBFRacingParam:
         self.matrix_R = matrix_R
         self.vt = vt
         self.eyt = eyt
-        self.num_of_horizon = 10
+        self.num_horizon = 10
         self.alpha = 0.6
 
 
@@ -191,10 +193,12 @@ class MPCCBFRacing(ControlBase):
 
 
 class LMPCRacingParam:
-    def __init__(self, num_ss_points, num_ss_iter, num_of_horizon, matrix_Qslack, matrix_Q, matrix_R, matrix_dR, shift, timestep, lap_number, time_lmpc):
+    def __init__(self, num_ss_points=32 + 12, num_ss_iter=2, num_horizon=12, matrix_Qslack=5*np.diag([10, 1, 1, 1, 10, 1]),
+                 matrix_Q=0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), matrix_R=1 * np.diag([1.0, 1.0]),
+                 matrix_dR=5 * np.diag([1.0, 1.0]), shift=0, timestep=None, lap_number=None, time_lmpc=None):
         self.num_ss_points = num_ss_points
         self.num_ss_iter = num_ss_iter
-        self.num_of_horizon = num_of_horizon
+        self.num_horizon = num_horizon
         self.matrix_R = matrix_R
         self.matrix_Q = matrix_Q
         self.matrix_dR = matrix_dR
@@ -268,7 +272,7 @@ class LMPCRacing(ControlBase):
     def estimate_ABC(self):
         lin_points = self.lin_points
         lin_input = self.lin_input
-        num_of_horizon = self.lmpc_param.num_of_horizon
+        num_horizon = self.lmpc_param.num_horizon
         xdim = self.xdim
         udim = self.udim
         ss_xcurv = self.ss_xcurv
@@ -285,7 +289,7 @@ class LMPCRacing(ControlBase):
         lap_used_for_linearization = 2  # 2
         used_iter = range(iter-lap_used_for_linearization, iter)
         max_num_point = 40
-        for i in range(0, num_of_horizon):
+        for i in range(0, num_horizon):
             Ai, Bi, Ci, index_selected = lmpc_helper.regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_ss, time_ss,
                                                                                   max_num_point, qp, xdim, udim, matrix, point_and_tangent, timestep, i)
             Atv.append(Ai)
@@ -323,23 +327,27 @@ class LMPCRacing(ControlBase):
                 self.Qfun[i, iter] = self.Qfun[i - 1, iter] - 1
         if self.iter == 0:
             self.lin_points = self.ss_xcurv[1:
-                                            self.lmpc_param.num_of_horizon + 2, :, iter]
-            self.lin_input = self.u_ss[1:self.lmpc_param.num_of_horizon + 1, :, iter]
+                                            self.lmpc_param.num_horizon + 2, :, iter]
+            self.lin_input = self.u_ss[1:self.lmpc_param.num_horizon + 1, :, iter]
         self.iter = self.iter + 1
         self.time_in_iter = 0
 
 
 class RacingGameParam:
-    def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, timestep, num_of_horizon_ctrl=10, num_of_horizon_planner=20, planning_prediction_factor=3.9, alpha=0.98):
+    def __init__(self, timestep=None, matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
+                 matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","), matrix_Q=np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
+                 matrix_R=np.diag([0.1, 0.1]), num_horizon_ctrl=10, num_horizon_planner=20, planning_prediction_factor=3.9, alpha=0.98):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
         self.matrix_Q = matrix_Q
         self.matrix_R = matrix_R
-        self.num_of_horizon_ctrl = num_of_horizon_ctrl
-        self.num_of_horizon_planner = num_of_horizon_planner
+        self.num_horizon_ctrl = num_horizon_ctrl
+        self.num_horizon_planner = num_horizon_planner
         self.planning_prediction_factor = planning_prediction_factor
         self.alpha = alpha
         self.timestep = timestep
+        self.bezier_order = 3
+        self.safety_factor = 1.2
 
 
 class LMPCRacingGame(ControlBase):
@@ -422,7 +430,7 @@ class LMPCRacingGame(ControlBase):
     def estimate_ABC(self):
         lin_points = self.lin_points
         lin_input = self.lin_input
-        num_of_horizon = self.lmpc_param.num_of_horizon
+        num_horizon = self.lmpc_param.num_horizon
         xdim = self.xdim
         udim = self.udim
         ss_xcurv = self.ss_xcurv
@@ -439,7 +447,7 @@ class LMPCRacingGame(ControlBase):
         lap_used_for_linearization = 2  # 2
         used_iter = range(iter-lap_used_for_linearization, iter)
         max_num_point = 40
-        for i in range(0, num_of_horizon):
+        for i in range(0, num_horizon):
             Ai, Bi, Ci, index_selected = lmpc_helper.regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_ss, time_ss,
                                                                                   max_num_point, qp, xdim, udim, matrix, point_and_tangent, timestep, i)
             Atv.append(Ai)
@@ -477,8 +485,8 @@ class LMPCRacingGame(ControlBase):
                 self.Qfun[i, iter] = self.Qfun[i - 1, iter] - 1
         if self.iter == 0:
             self.lin_points = self.ss_xcurv[1:
-                                            self.lmpc_param.num_of_horizon + 2, :, iter]
-            self.lin_input = self.u_ss[1:self.lmpc_param.num_of_horizon + 1, :, iter]
+                                            self.lmpc_param.num_horizon + 2, :, iter]
+            self.lin_input = self.u_ss[1:self.lmpc_param.num_horizon + 1, :, iter]
         self.iter = self.iter + 1
         self.time_in_iter = 0
 

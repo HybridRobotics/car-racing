@@ -29,12 +29,12 @@ def mpc(xcurv, xtarget, udim, mpc_lti_param):
     start_timer = datetime.datetime.now()
     opti = ca.Opti()
     # define variables
-    xvar = opti.variable(len(xcurv), mpc_lti_param.num_of_horizon + 1)
-    uvar = opti.variable(udim, mpc_lti_param.num_of_horizon)
+    xvar = opti.variable(len(xcurv), mpc_lti_param.num_horizon + 1)
+    uvar = opti.variable(udim, mpc_lti_param.num_horizon)
     cost = 0
     opti.subject_to(xvar[:, 0] == xcurv)
     # dynamics + state/input constraints
-    for i in range(mpc_lti_param.num_of_horizon):
+    for i in range(mpc_lti_param.num_horizon):
         # system dynamics
         opti.subject_to(
             xvar[:, i + 1] == ca.mtimes(mpc_lti_param.matrix_A, xvar[:, i]) +
@@ -49,7 +49,7 @@ def mpc(xcurv, xtarget, udim, mpc_lti_param):
         # input cost
         cost += ca.mtimes(uvar[:, i].T,
                           ca.mtimes(mpc_lti_param.matrix_R, uvar[:, i]))
-    for i in range(mpc_lti_param.num_of_horizon + 1):
+    for i in range(mpc_lti_param.num_horizon + 1):
         # speed vx upper bound
         opti.subject_to(xvar[0, i] <= 10.0)
         opti.subject_to(xvar[0, i] >= 0.0)
@@ -78,8 +78,8 @@ def mpccbf(xcurv, xtarget, udim, vehicles, agent_name, lap_length, time, timeste
     start_timer = datetime.datetime.now()
     opti = ca.Opti()
     # define variables
-    xvar = opti.variable(len(xcurv), mpc_cbf_param.num_of_horizon + 1)
-    uvar = opti.variable(udim, mpc_cbf_param.num_of_horizon)
+    xvar = opti.variable(len(xcurv), mpc_cbf_param.num_horizon + 1)
+    uvar = opti.variable(udim, mpc_cbf_param.num_horizon)
     cost = 0
     opti.subject_to(xvar[:, 0] == xcurv)
     # get other vehicles' state estimations
@@ -94,11 +94,11 @@ def mpccbf(xcurv, xtarget, udim, vehicles, agent_name, lap_length, time, timeste
             # get predictions from other vehicles
             if realtime_flag == False:
                 obs_traj, _ = vehicles[name].get_trajectory_nsteps(
-                    time, timestep, mpc_cbf_param.num_of_horizon + 1
+                    time, timestep, mpc_cbf_param.num_horizon + 1
                 )
             elif realtime_flag == True:
                 obs_traj, _ = vehicles[name].get_trajectory_nsteps(
-                    mpc_cbf_param.num_of_horizon + 1)
+                    mpc_cbf_param.num_horizon + 1)
             else:
                 pass
             # check whether the obstacle is nearby, not consider it if not
@@ -107,7 +107,7 @@ def mpccbf(xcurv, xtarget, udim, vehicles, agent_name, lap_length, time, timeste
             if (dist_ego > dist_obs - dist_margin_front) & (dist_ego < dist_obs + dist_margin_behind):
                 obs_infos[name] = obs_traj
     # slack variables for control barrier functions
-    cbf_slack = opti.variable(len(obs_infos), mpc_cbf_param.num_of_horizon + 1)
+    cbf_slack = opti.variable(len(obs_infos), mpc_cbf_param.num_horizon + 1)
     # obstacle avoidance
     safety_margin = 0.15
     degree = 6  # 2, 4, 6, 8
@@ -119,7 +119,7 @@ def mpccbf(xcurv, xtarget, udim, vehicles, agent_name, lap_length, time, timeste
         l_obs = vehicles[obs_name].param.length / 2
         w_obs = vehicles[obs_name].param.width / 2
         # calculate control barrier functions for each obstacle at timestep
-        for i in range(mpc_cbf_param.num_of_horizon):
+        for i in range(mpc_cbf_param.num_horizon):
             num_cycle_obs = int(obs_traj[4, 0] / lap_length)
             diffs = xvar[4, i] - obs_traj[4, i] - \
                 (num_cycle_ego - num_cycle_obs) * lap_length
@@ -146,7 +146,7 @@ def mpccbf(xcurv, xtarget, udim, vehicles, agent_name, lap_length, time, timeste
         opti.subject_to(cbf_slack[count, i + 1] >= 0)
         cost += 10000 * cbf_slack[count, i + 1]
     # dynamics + state/input constraints
-    for i in range(mpc_cbf_param.num_of_horizon):
+    for i in range(mpc_cbf_param.num_horizon):
         # system dynamics
         opti.subject_to(
             xvar[:, i + 1] == ca.mtimes(mpc_cbf_param.matrix_A, xvar[:, i]) +
@@ -161,7 +161,7 @@ def mpccbf(xcurv, xtarget, udim, vehicles, agent_name, lap_length, time, timeste
         # input cost
         cost += ca.mtimes(uvar[:, i].T,
                           ca.mtimes(mpc_cbf_param.matrix_R, uvar[:, i]))
-    for i in range(mpc_cbf_param.num_of_horizon + 1):
+    for i in range(mpc_cbf_param.num_horizon + 1):
         # speed vx upper bound
         opti.subject_to(xvar[0, i] <= 10.0)
         opti.subject_to(xvar[0, i] >= 0.0)
@@ -197,8 +197,8 @@ def lmpc(xcurv, matrix_Atv, matrix_Btv, matrix_Ctv, xdim, udim,  ss_curv, Qfun, 
     # initialize the problem
     opti = ca.Opti()
     # define variables
-    x = opti.variable(xdim, lmpc_param.num_of_horizon+1)
-    u = opti.variable(udim, lmpc_param.num_of_horizon)
+    x = opti.variable(xdim, lmpc_param.num_horizon+1)
+    u = opti.variable(udim, lmpc_param.num_horizon)
     lambd = opti.variable(Qfun_selected_tot.shape[0])
     slack = opti.variable(xdim)
     cost_mpc = 0
@@ -206,7 +206,7 @@ def lmpc(xcurv, matrix_Atv, matrix_Btv, matrix_Ctv, xdim, udim,  ss_curv, Qfun, 
     # add constraints and cost function
     x_track = np.array([2.0, 0, 0, 0, 0, 0]).reshape(xdim, 1)
     opti.subject_to(x[:, 0] == xcurv)
-    for i in range(lmpc_param.num_of_horizon):
+    for i in range(lmpc_param.num_horizon):
         opti.subject_to(x[:, i+1] == mtimes(matrix_Atv[i], x[:, i]) +
                         mtimes(matrix_Btv[i], u[:, i]) + matrix_Ctv[i])
         # min and max of ey
@@ -230,11 +230,11 @@ def lmpc(xcurv, matrix_Atv, matrix_Btv, matrix_Ctv, xdim, udim,  ss_curv, Qfun, 
             cost_mpc += mtimes((u[:, i]-u[:, i-1]).T,
                                mtimes(lmpc_param.matrix_dR, u[:, i]-u[:, i-1]))
     # convex hull for LMPC
-    cost_mpc += mtimes((x[:, lmpc_param.num_of_horizon]-x_track).T,
-                       mtimes(lmpc_param.matrix_Q, x[:, lmpc_param.num_of_horizon]-x_track))
+    cost_mpc += mtimes((x[:, lmpc_param.num_horizon]-x_track).T,
+                       mtimes(lmpc_param.matrix_Q, x[:, lmpc_param.num_horizon]-x_track))
     cost_learning += mtimes(slack.T, mtimes(lmpc_param.matrix_Qslack, slack))
     opti.subject_to(lambd >= np.zeros(lambd.shape[0]))
-    opti.subject_to(x[:, lmpc_param.num_of_horizon] ==
+    opti.subject_to(x[:, lmpc_param.num_horizon] ==
                     mtimes(ss_point_selected_tot, lambd))
     opti.subject_to(mtimes(np.ones((1, lambd.shape[0])), lambd) == 1)
     opti.subject_to(mtimes(np.diag([1, 1, 1, 1, 1, 1]), slack) == np.zeros(6))
@@ -269,8 +269,8 @@ def overtake(xcurv, target_traj_xcurv, udim, racing_game_param, lap_length, trac
     opti = ca.Opti()
     # define variables
     xvar = opti.variable(
-        len(xcurv), racing_game_param.num_of_horizon_ctrl + 1)
-    uvar = opti.variable(udim, racing_game_param.num_of_horizon_ctrl)
+        len(xcurv), racing_game_param.num_horizon_ctrl + 1)
+    uvar = opti.variable(udim, racing_game_param.num_horizon_ctrl)
     cost = 0
     opti.subject_to(xvar[:, 0] == xcurv)
     cost = 0
@@ -286,7 +286,7 @@ def overtake(xcurv, target_traj_xcurv, udim, racing_game_param, lap_length, trac
             s_other = vehicles[name].xcurv[4]
             while s_other > lap_length:
                 s_other = s_other - lap_length
-            if abs(s_other - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other + track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other - track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0]:           
+            if abs(s_other - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other + track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other - track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0]:
                 s_veh = s_other
                 epsi_veh = epsi_other
                 ey_veh = vehicles[name].xcurv[5]
@@ -300,7 +300,7 @@ def overtake(xcurv, target_traj_xcurv, udim, racing_game_param, lap_length, trac
                     np.cos(epsi_veh) - 0.5*veh_width*np.sin(epsi_veh)
             else:
                 pass
-    for i in range(racing_game_param.num_of_horizon_ctrl):
+    for i in range(racing_game_param.num_horizon_ctrl):
         # system dynamics
         opti.subject_to(
             xvar[:, i + 1] == ca.mtimes(racing_game_param.matrix_A, xvar[:, i]) +
@@ -315,7 +315,7 @@ def overtake(xcurv, target_traj_xcurv, udim, racing_game_param, lap_length, trac
         # input cost
         cost += ca.mtimes(uvar[:, i].T,
                           ca.mtimes(racing_game_param.matrix_R, uvar[:, i]))
-    for i in range(racing_game_param.num_of_horizon_ctrl + 1):
+    for i in range(racing_game_param.num_horizon_ctrl + 1):
         # speed vx upper bound
         opti.subject_to(xvar[0, i] <= 10.0)
         opti.subject_to(xvar[0, i] >= 0.0)
