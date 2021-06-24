@@ -42,12 +42,17 @@ def lmpc_racing(args):
             name="car1", param=base.CarParam(edgecolor="orange"))
         car1.set_track(track)
         car1.set_state_curvilinear_func(
-            t_symbol, 0.6 * t_symbol + 3.0, -0.25 + 0.0 * t_symbol)
+            t_symbol, 0.45 * t_symbol + 14.5, -0.41 + 0.0 * t_symbol)
         car2 = offboard.NoDynamicsModel(
             name="car2", param=base.CarParam(edgecolor="orange"))
         car2.set_track(track)
         car2.set_state_curvilinear_func(
-            t_symbol, 0.6 * t_symbol + 13.0, 0.35 + 0.0 * t_symbol)
+            t_symbol, 0.8 * t_symbol + 1.0, 0.3 + 0.0 * t_symbol)
+        car3 = offboard.NoDynamicsModel(
+            name="car3", param=base.CarParam(edgecolor="orange"))
+        car3.set_track(track)
+        car3.set_state_curvilinear_func(
+            t_symbol, 0.55 * t_symbol + 7.1, 0.45 + 0.0 * t_symbol)
         # lmpc controller
         time_lmpc=5000*timestep
         lmpc_param = base.LMPCRacingParam(timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc)
@@ -64,11 +69,12 @@ def lmpc_racing(args):
         simulator.add_vehicle(ego)
         simulator.add_vehicle(car1)
         simulator.add_vehicle(car2)
+        simulator.add_vehicle(car3)
+        simulator.set_opti_traj(opti_traj_xglob)
         pid_controller.set_racing_sim(simulator)
         mpc_lti_controller.set_racing_sim(simulator)
         lmpc_controller.set_racing_sim(simulator)
         lmpc_controller.set_vehicles_track()
-
         # start simulation
         for iter in range(lap_number):
             # for the first lap, run the pid controller to collect data

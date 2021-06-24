@@ -263,7 +263,7 @@ def lmpc(xcurv, matrix_Atv, matrix_Btv, matrix_Ctv, xdim, udim,  ss_curv, Qfun, 
     return u_pred, x_pred, ss_point_selected_tot, Qfun_selected_tot, lin_points, lin_input
 
 
-def overtake(xcurv, target_traj_xcurv, udim, racing_game_param, lap_length, track, vehicles, agent_name, direction_flag, target_traj_xglob):
+def overtake(xcurv, target_traj_xcurv, udim, racing_game_param, lap_length, track, vehicles, agent_name, direction_flag, target_traj_xglob, overtake_name_list):
     print("overtaking")
     start_timer = datetime.datetime.now()
     opti = ca.Opti()
@@ -280,26 +280,6 @@ def overtake(xcurv, target_traj_xcurv, udim, racing_game_param, lap_length, trac
     f_traj = interp1d(target_traj_xcurv[:, 4], target_traj_xcurv[:, 5])
     veh_len = vehicles["ego"].param.length
     veh_width = vehicles["ego"].param.width
-    for name in list(vehicles):
-        if name != agent_name:
-            epsi_other = vehicles[name].xcurv[3]
-            s_other = vehicles[name].xcurv[4]
-            while s_other > lap_length:
-                s_other = s_other - lap_length
-            if abs(s_other - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other + track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other - track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0]:
-                s_veh = s_other
-                epsi_veh = epsi_other
-                ey_veh = vehicles[name].xcurv[5]
-                ey_veh_max = ey_veh + 0.5*veh_len * \
-                    np.sin(epsi_veh) + 0.5*veh_width*np.cos(epsi_veh)
-                ey_veh_min = ey_veh - 0.5*veh_len * \
-                    np.sin(epsi_veh) - 0.5*veh_width*np.cos(epsi_veh)
-                s_veh_max = s_veh + 0.5*veh_len * \
-                    np.cos(epsi_veh) + 0.5*veh_width*np.sin(epsi_veh)
-                s_veh_min = s_veh - 0.5*veh_len * \
-                    np.cos(epsi_veh) - 0.5*veh_width*np.sin(epsi_veh)
-            else:
-                pass
     for i in range(racing_game_param.num_horizon_ctrl):
         # system dynamics
         opti.subject_to(
@@ -328,20 +308,62 @@ def overtake(xcurv, target_traj_xcurv, udim, racing_game_param, lap_length, trac
             s_tmp = target_traj_xcurv[0, 4]
         if s_tmp >= target_traj_xcurv[-1, 4]:
             s_tmp = target_traj_xcurv[-1, 4]
-        # determine if the ego vehile and other vehicle is in the same range
-        if (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) <= s_veh_min or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) >= s_veh_max) or (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) <= s_veh_min + lap_length or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) >= s_veh_max + lap_length) or (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) + lap_length <= s_veh_min or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) + lap_length >= s_veh_max):
-            pass
-        else:
-            # overtake from left
-            if direction_flag == 1:
-                opti.subject_to(xvar[5, i] - 0.5*veh_len*np.sin(xvar[3, i]) -
-                                0.5*veh_width*np.cos(xvar[3, i]) >= 1.1*ey_veh_max)
-            if direction_flag == -1:
-                opti.subject_to(xvar[5, i] + 0.5*veh_len*np.sin(xvar[3, i]) +
-                                0.5*veh_width*np.cos(xvar[3, i]) <= 1.1*ey_veh_min)
         xtarget = np.array([vx, 0, 0, 0, 0, f_traj(s_tmp)])
         cost += ca.mtimes((xvar[:, i] - xtarget).T,
                           ca.mtimes(racing_game_param.matrix_Q, xvar[:, i] - xtarget))
+    for i in range(racing_game_param.num_horizon_ctrl + 1):
+        # constraint on the left, first line is the track boundary
+        s_tmp = vx*0.1*i+xcurv[4]
+        if direction_flag == 0:
+            pass
+        else:
+            name = overtake_name_list[direction_flag-1]
+            epsi_other = vehicles[name].xcurv[3]
+            s_other = vehicles[name].xcurv[4]
+            while s_other > lap_length:
+                s_other = s_other - lap_length
+            if abs(s_other - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other + track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other - track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0]:
+                s_veh = s_other
+                epsi_veh = epsi_other
+                ey_veh = vehicles[name].xcurv[5]
+                ey_veh_max = ey_veh + 0.5*veh_len * \
+                    np.sin(epsi_veh) + 0.5*veh_width*np.cos(epsi_veh)
+                ey_veh_min = ey_veh - 0.5*veh_len * \
+                    np.sin(epsi_veh) - 0.5*veh_width*np.cos(epsi_veh)
+                s_veh_max = s_veh + 0.5*veh_len * \
+                    np.cos(epsi_veh) + 0.5*veh_width*np.sin(epsi_veh)
+                s_veh_min = s_veh - 0.5*veh_len * \
+                    np.cos(epsi_veh) - 0.5*veh_width*np.sin(epsi_veh)
+                if (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) <= s_veh_min or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) >= s_veh_max) or (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) <= s_veh_min + lap_length or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) >= s_veh_max + lap_length) or (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) + lap_length <= s_veh_min or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) + lap_length >= s_veh_max):
+                    pass
+                else:
+                    opti.subject_to(xvar[5, i] + 0.5*veh_len*np.sin(xvar[3, i]) +
+                                    0.5*veh_width*np.cos(xvar[3, i]) <= 1.1*ey_veh_min)
+        if direction_flag == np.size(overtake_name_list):
+            pass
+        else:
+            name = overtake_name_list[direction_flag]
+            epsi_other = vehicles[name].xcurv[3]
+            s_other = vehicles[name].xcurv[4]
+            while s_other > lap_length:
+                s_other = s_other - lap_length
+            if abs(s_other - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other + track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other - track.lap_length - xcurv[4]) <= racing_game_param.planning_prediction_factor*vehicles[name].xcurv[0]:
+                s_veh = s_other
+                epsi_veh = epsi_other
+                ey_veh = vehicles[name].xcurv[5]
+                ey_veh_max = ey_veh + 0.5*veh_len * \
+                    np.sin(epsi_veh) + 0.5*veh_width*np.cos(epsi_veh)
+                ey_veh_min = ey_veh - 0.5*veh_len * \
+                    np.sin(epsi_veh) - 0.5*veh_width*np.cos(epsi_veh)
+                s_veh_max = s_veh + 0.5*veh_len * \
+                    np.cos(epsi_veh) + 0.5*veh_width*np.sin(epsi_veh)
+                s_veh_min = s_veh - 0.5*veh_len * \
+                    np.cos(epsi_veh) - 0.5*veh_width*np.sin(epsi_veh)
+                if (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) <= s_veh_min or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) >= s_veh_max) or (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) <= s_veh_min + lap_length or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) >= s_veh_max + lap_length) or (s_tmp + 0.5*veh_len*np.cos(xcurv[3]) + 0.5*veh_width*np.sin(xcurv[3]) + lap_length <= s_veh_min or s_tmp - 0.5*veh_len*np.cos(xcurv[3]) - 0.5*veh_width*np.sin(xcurv[3]) + lap_length >= s_veh_max):
+                    pass
+                else:
+                    opti.subject_to(xvar[5, i] - 0.5*veh_len*np.sin(xvar[3, i]) -
+                                    0.5*veh_width*np.cos(xvar[3, i]) >= 1.2*ey_veh_max)
     # setup solver
     option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
     opti.minimize(cost)

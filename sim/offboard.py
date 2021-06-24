@@ -239,12 +239,14 @@ class CarRacingSim(base.CarRacingSim):
         ax.plot(points_center[:, 0], points_center[:, 1], "--r")
         ax.plot(points_in[:, 0], points_in[:, 1], "-b")
         ax.plot(points_out[:, 0], points_out[:, 1], "-b")
+        ax.plot(self.opti_traj_xglob[:,4], self.opti_traj_xglob[:,5],"--g")
         # plot vehicles
         vertex_directions = np.array(
             [[1.0, 1.0], [1.0, -1.0], [-1.0, -1.0], [-1.0, 1.0]])
         patches_vehicles = {}
         trajglobs = {}
         local_line, = ax.plot([], [])
+        local_spline, = ax.plot([], [])
         for name in self.vehicles:
             patches_vehicle = patches.Polygon(
                 vertex_directions,
@@ -265,6 +267,8 @@ class CarRacingSim(base.CarRacingSim):
                 counter = 0
                 trajglob = np.zeros((ani_time, 6))
                 local_traj_xglob = np.zeros((ani_time, 21, 6))
+                local_spline_xglob = np.zeros((ani_time, 21, 6))
+                overtake_name_list = []
 
                 for j in range(ani_time):
                     trajglob[ani_time-1-counter,
@@ -276,6 +280,16 @@ class CarRacingSim(base.CarRacingSim):
                         else:
                             local_traj_xglob[ani_time-1-counter, :,
                                              :] = self.vehicles[name].local_traj_list[-1-j][:, :]
+                        if self.vehicles[name].overtake_vehicle_list[-1-j] is None:
+                            overtake_name_list.insert(0,None)
+                        else:
+                            overtake_name_list.insert(0,self.vehicles[name].overtake_vehicle_list[-1-j])
+
+                        if self.vehicles[name].spline_list[-1-j] is None:
+                            local_spline_xglob[ani_time-1-counter, :, :] = np.zeros((21, 6))
+                        else:
+                            local_spline_xglob[ani_time-1-counter, :, :] = self.vehicles[name].spline_list[-1-j][:,:]
+
                     counter = counter + 1
             else:
                 laps = self.vehicles[name].laps
@@ -318,6 +332,22 @@ class CarRacingSim(base.CarRacingSim):
                 else:
                     local_line.set_data(
                         local_traj_xglob[i, :, 4], local_traj_xglob[i, :, 5])
+
+                if local_spline_xglob[i, :, :].all == 0:
+                    pass
+                else:
+                    local_spline.set_data(local_spline_xglob[i, :, 4], local_spline_xglob[i, :, 5])
+                    #print(local_spline_xglob[i, :, 4])
+                    local_spline.set_color("black")
+
+                if overtake_name_list[i] is None:
+                    patches_vehicles[name].set_edgecolor(self.vehicles[name].param.edgecolor)
+                else:
+                    for name_1 in list(overtake_name_list[i]):
+                        if name_1 == name:
+                            patches_vehicles[name].set_edgecolor("red")
+                        else:
+                            patches_vehicles[name].set_edgecolor(self.vehicles[name].param.edgecolor)
         media = anim.FuncAnimation(fig, update, frames=np.arange(
             0, trajglob.shape[0]), interval=100)
         media.save("media/animation/" + filename +

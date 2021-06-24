@@ -21,16 +21,18 @@ class OvertakePlanner:
 
     def get_overtake_flag(self, xcurv_ego):
         overtake_flag = False
+        overtake_list = {}
         for name in list(self.vehicles):
             if name != self.agent_name:
                 x_other = copy.deepcopy(self.vehicles[name].xcurv)
                 while x_other[4] > self.track.lap_length:
                     x_other[4] = x_other[4] - self.track.lap_length
-                if abs(x_other[4] - xcurv_ego[4]) <= self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0] or abs(x_other[4] + self.track.lap_length - xcurv_ego[4]) <= self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0] or abs(x_other[4] - self.track.lap_length - xcurv_ego[4]) <= self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0]:
+                if ((x_other[4] - xcurv_ego[4] <= self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0]) and (x_other[4] >= xcurv_ego[4])) or ((x_other[4]+self.track.lap_length - xcurv_ego[4] <= self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0]) and (x_other[4]+self.track.lap_length >= xcurv_ego[4])) or ((-x_other[4] + xcurv_ego[4] <= 0.2*self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0]) and (x_other[4] <= xcurv_ego[4])) or ((-x_other[4] + xcurv_ego[4] + self.track.lap_length <= 0.2*self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0]) and (x_other[4] <= xcurv_ego[4]+self.track.lap_length)):
                     overtake_flag = True
-        return overtake_flag
+                    overtake_list[name] = self.vehicles[name]
+        return overtake_flag, overtake_list
 
-    def get_local_path(self, xcurv_ego, time):
+    def get_local_path(self, xcurv_ego, time, overtake_list):
         start_timer = datetime.datetime.now()
         planning_prediction_factor = self.racing_game_param.planning_prediction_factor
         num_horizon_planner = self.racing_game_param.num_horizon_planner
@@ -42,215 +44,326 @@ class OvertakePlanner:
         bezier_order = self.racing_game_param.bezier_order
         safety_factor = self.racing_game_param.safety_factor
         obs_traj_list = []
+        veh_length = vehicles["ego"].param.length
+        veh_width = vehicles["ego"].param.width
         # the maximum and minimum ey's value of the obstacle's predicted trajectory
-        max_ey_obs = None
-        min_ey_obs = None
-        num_veh = 0
-        # save the obstacle's planned trajectory
-        overtaken_name = None
-        for name in list(vehicles):
-            if name != agent_name:
-                s_other = copy.deepcopy(vehicles[name].xcurv[4])
-                while s_other > track.lap_length:
-                    s_other = s_other - track.lap_length
-                if abs(s_other - xcurv_ego[4]) <= planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other + track.lap_length - xcurv_ego[4]) <= planning_prediction_factor*vehicles[name].xcurv[0] or abs(s_other - track.lap_length - xcurv_ego[4]) <= planning_prediction_factor*vehicles[name].xcurv[0]:
-                    s_veh = s_other
-                    ey_veh = vehicles[name].xcurv[5]
-                    if vehicles[name].no_dynamics:
-                        obs_traj, _ = vehicles[name].get_trajectory_nsteps(
-                            time, self.racing_game_param.timestep, num_horizon_planner+1)
-                    else:
-                        obs_traj, _ = vehicles[name].get_trajectory_nsteps(
-                            num_horizon_planner+1)
-                    obs_traj = obs_traj.T
-                    obs_traj_list.append(obs_traj)
-                    num_veh = num_veh + 1
-                    if min_ey_obs is None:
-                        min_ey_obs = obs_traj[0, 5]
-                    if max_ey_obs is None:
-                        max_ey_obs = obs_traj[0, 5]
-                    for index in range(np.size(obs_traj, 0)):
-                        if obs_traj[index, 5] <= min_ey_obs:
-                            min_ey_obs = obs_traj[index, 5]
-                        if obs_traj[index, 5] >= max_ey_obs:
-                            max_ey_obs = obs_traj[index, 5]
+        num_veh = len(overtake_list)
+        num = 0
+        veh_name_list = []
+        # in this list, the vehicle with biggest ey (left side) will be the first
+        for name in list(overtake_list):
+            if num == 0:
+                veh_name_list.append(name)
+            else:
+                if overtake_list[name].xcurv[5] >= overtake_list[veh_name_list[0]].xcurv[5]:
+                    veh_name_list.insert(0, name)
+                elif overtake_list[name].xcurv[5] <= overtake_list[veh_name_list[0]].xcurv[5]:
+                    veh_name_list.append(name)
+            num += 1
+        veh_info_list = np.zeros((num_veh, 3))
+        min_s_obs = None
+        max_s_obs = None
+        min_v_obs = None
+        max_v_obs = None
+        for index in range(num_veh):
+            name = veh_name_list[index]
+            s_veh = copy.deepcopy(vehicles[name].xcurv[4])
+            while s_veh > track.lap_length:
+                s_veh = s_veh - track.lap_length
+            if vehicles[name].no_dynamics:
+                obs_traj, _ = vehicles[name].get_trajectory_nsteps(
+                    time, self.racing_game_param.timestep, num_horizon_planner+1)
+            else:
+                obs_traj, _ = vehicles[name].get_trajectory_nsteps(
+                    num_horizon_planner+1)
+            obs_traj = obs_traj.T
+            # find the minimum and maximum deviation for this obstacle
+            max_ey_obs = None
+            min_ey_obs = None
+            if min_ey_obs is None:
+                min_ey_obs = obs_traj[0, 5]
+            if max_ey_obs is None:
+                max_ey_obs = obs_traj[0, 5]
+            for i in range(np.size(obs_traj, 0)):
+                if obs_traj[i, 5] <= min_ey_obs:
+                    min_ey_obs = obs_traj[i, 5]
+                if obs_traj[i, 5] >= max_ey_obs:
+                    max_ey_obs = obs_traj[i, 5]
+            # find the minimum and maximum traveling distance from all obstacles
+            if min_s_obs is None:
+                min_s_obs = s_veh
+            else:
+                # determine if the obstacles are at different sides of start line
+                if min_s_obs <= track.lap_length/3 and s_veh >= 2*track.lap_length/3:
+                    min_s_obs = s_veh
+                elif min_s_obs >= 2*track.lap_length/3 and s_veh <= track.lap_length/3:
+                    pass
+                elif s_veh <= min_s_obs:
+                    min_s_obs = s_veh
                 else:
                     pass
+            if max_s_obs is None:
+                max_s_obs = s_veh
+            else:
+                if max_s_obs >= 2*track.lap_length/3 and s_veh <= track.lap_length/3:
+                    max_s_obs = s_veh
+                elif max_s_obs <= track.lap_length/3 and s_veh >= 2*track.lap_length/3:
+                    pass
+                elif s_veh >= max_s_obs:
+                    max_s_obs = s_veh
+                else:
+                    pass
+            # find the minimum and maximum velocity from all obstacles
+            if min_v_obs is None:
+                min_v_obs = vehicles[name].xcurv[0]
+            else:
+                if vehicles[name].xcurv[0] <= min_v_obs:
+                    min_v_obs = vehicles[name].xcurv[0]
+                else:
+                    pass
+            if max_v_obs is None:
+                max_v_obs = vehicles[name].xcurv[0]
+            else:
+                if vehicles[name].xcurv[0] >= max_v_obs:
+                    max_v_obs = vehicles[name].xcurv[0]
+                else:
+                    pass
+            veh_info_list[index, 0] = s_veh
+            veh_info_list[index, 1] = max_ey_obs
+            veh_info_list[index, 2] = min_ey_obs
         func_optimal_ey = interp1d(
             optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 5])
-        # points for cubic Bezier curves, _l or _r indicates the point is on left or right, seperately
-        s0 = s_veh - planning_prediction_factor*obs_traj[0, 0]
-        # calculate the ey of first point, when the ego vehicle has just crossed the start line, s0 could be negative
-        if s0 < 0:
-            ey0 = func_optimal_ey(s0+track.lap_length)
-        elif s0 < optimal_traj_xcurv[0, 4]:
-            ey0 = optimal_traj_xcurv[0, 5]
-        else:
-            ey0 = func_optimal_ey(s0)
-        # second point
-        s1_l = s_veh - (planning_prediction_factor/bezier_order)*obs_traj[0, 0]
-        ey1_l = track.width
-        s1_r = s_veh - (planning_prediction_factor/bezier_order)*obs_traj[0, 0]
-        ey1_r = -track.width
-        # third point
-        s2_l = s_veh + (planning_prediction_factor/bezier_order)*obs_traj[0, 0]
-        ey2_l = track.width
-        s2_r = s_veh + (planning_prediction_factor/bezier_order)*obs_traj[0, 0]
-        ey2_r = -track.width
-        # fourth point, it might be greater than lap length
-        s3 = s_veh + planning_prediction_factor*obs_traj[0, 0]
-        while s3 > track.lap_length:
-            s3 = s3-track.lap_length
-        if s3 <= optimal_traj_xcurv[0, 4]:
-            s3 = optimal_traj_xcurv[0, 4]
-        ey3 = func_optimal_ey(s3)
-        s3 = s_veh + planning_prediction_factor*obs_traj[0, 0]
-        # initialize two optimization problem
-        opti_l = ca.Opti()
-        eyvar_l = opti_l.variable(num_horizon_planner+1)
-        opti_r = ca.Opti()
-        eyvar_r = opti_r.variable(num_horizon_planner+1)
-        cost_l = 0
-        cost_r = 0
-        bezier_xcurv_l = np.zeros((num_horizon_planner+1, 2))
-        bezier_xcurv_r = np.zeros((num_horizon_planner+1, 2))
-        bezier_xglob_l = np.zeros((num_horizon_planner+1, 2))
-        bezier_xglob_r = np.zeros((num_horizon_planner+1, 2))
-        for i in range(num_horizon_planner+1):
-            t = i*(1.0/num_horizon_planner)
-            bezier_xcurv_l[i, 0] = func_bezier_s(t, s0, s1_l, s2_l, s3)
-            bezier_xcurv_l[i, 1] = func_bezier_ey(t, ey0, ey1_l, ey2_l, ey3)
-            bezier_xcurv_r[i, 0] = func_bezier_s(t, s0, s1_r, s2_r, s3)
-            bezier_xcurv_r[i, 1] = func_bezier_ey(t, ey0, ey1_r, ey2_r, ey3)
-        func_bezier_l_ey = interp1d(bezier_xcurv_l[:, 0], bezier_xcurv_l[:, 1])
-        func_bezier_r_ey = interp1d(bezier_xcurv_r[:, 0], bezier_xcurv_r[:, 1])
-        # get the front and rear range of the obstacle vehicle
-        vehicle_range_f = obs_traj[-1, 4]+safety_factor*vehicles["ego"].param.length
-        vehicle_range_r = obs_traj[0, 4]-safety_factor*vehicles["ego"].param.length
-        while vehicle_range_f > track.lap_length:
-            vehicle_range_f = vehicle_range_f - track.lap_length
-        while vehicle_range_r > track.lap_length:
-            vehicle_range_r = vehicle_range_r - track.lap_length
-        # construct the optimization problem
-        for i in range(num_horizon_planner+1):
+        bezier_control_point = np.zeros(
+            (num_veh+1, bezier_order+1, 2))  # for each point (s, ey)
+        # construct reference Bezier curve
+        for index in range(num_veh + 1):
+            # s0
+            bezier_control_point[index, 0, 0] = min_s_obs - \
+                planning_prediction_factor*max_v_obs
+            # s3
+            bezier_control_point[index, 3, 0] = max_s_obs + \
+                planning_prediction_factor*max_v_obs
+            # when the s3 is ahead start line, s0 is behind start line
+            if bezier_control_point[index, 0, 0] > bezier_control_point[index, 3, 0]:
+                # s1
+                bezier_control_point[index, 1, 0] = (
+                    bezier_control_point[index, 3, 0]+track.lap_length-bezier_control_point[index, 0, 0])/3.0 + bezier_control_point[index, 0, 0]
+                # s2
+                bezier_control_point[index, 2, 0] = 2.0*(bezier_control_point[index, 3, 0]+track.lap_length -
+                                                         bezier_control_point[index, 0, 0])/3.0 + bezier_control_point[index, 0, 0]
+                # new s3 value, add lap length
+                bezier_control_point[index, 3,
+                                     0] = bezier_control_point[index, 3, 0] + track.lap_length
+            # when s0 and s3 is in the same side of start line
+            else:
+                # s1
+                bezier_control_point[index, 1, 0] = (
+                    bezier_control_point[index, 3, 0]-bezier_control_point[index, 0, 0])/3.0 + bezier_control_point[index, 0, 0]
+                # s2
+                bezier_control_point[index, 2, 0] = 2.0*(bezier_control_point[index, 3, 0] -
+                                                         bezier_control_point[index, 0, 0])/3.0 + bezier_control_point[index, 0, 0]
+            # ey0
+            if bezier_control_point[index, 0, 0] < 0:
+                bezier_control_point[index, 0, 1] = func_optimal_ey(
+                    bezier_control_point[index, 0, 0]+track.lap_length)
+            elif bezier_control_point[index, 0, 0] < optimal_traj_xcurv[0, 4]:
+                bezier_control_point[index, 0, 1] = optimal_traj_xcurv[0, 5]
+            else:
+                bezier_control_point[index, 0, 1] = func_optimal_ey(
+                    bezier_control_point[index, 0, 0])
+            # ey1 and ey2
+            # the first curve
+            if index == 0:
+                bezier_control_point[index, 1, 1] = track.width
+                bezier_control_point[index, 2, 1] = track.width
+            # the last curve
+            elif index == num_veh:
+                bezier_control_point[index, 1, 1] = -track.width
+                bezier_control_point[index, 2, 1] = -track.width
+            else:
+                bezier_control_point[index, 1,
+                                     1] = veh_info_list[index, 1] + 0.5*veh_width
+                bezier_control_point[index, 2,
+                                     1] = veh_info_list[index, 1] + 0.5*veh_width
+            # ey3
+            if bezier_control_point[index, 3, 0] >= track.lap_length:
+                if bezier_control_point[index, 3, 0] - track.lap_length <= optimal_traj_xcurv[0, 4]:
+                    bezier_control_point[index, 3,
+                                         1] = optimal_traj_xcurv[0, 5]
+                else:
+                    bezier_control_point[index, 3, 1] = func_optimal_ey(
+                        bezier_control_point[index, 3, 0] - track.lap_length)
+            else:
+                if bezier_control_point[index, 3, 0] <= optimal_traj_xcurv[0, 4]:
+                    bezier_control_point[index, 3,
+                                         1] = optimal_traj_xcurv[0, 5]
+                else:
+                    bezier_control_point[index, 3, 1] = func_optimal_ey(
+                        bezier_control_point[index, 3, 0])
+        # initialize optimization problems
+        opti_list = []
+        opti_var_list = []
+        cost_list = []
+        bezier_xcurv_list = np.zeros((num_veh+1, num_horizon_planner+1, 2))
+        bezier_func_list = []
+        vehicle_range_f_list = np.zeros((num_veh, 1))
+        vehicle_range_r_list = np.zeros((num_veh, 1))
+        for index in range(num_veh+1):
+            opti_list.append(ca.Opti())
+            opti_var_list.append(
+                opti_list[index].variable(num_horizon_planner+1))
+            cost_list.append(0)
+        for index in range(num_horizon_planner+1):
+            t = index*(1.0/num_horizon_planner)
+            for j in range(num_veh+1):
+                bezier_xcurv_list[j, index, 0] = func_bezier_s(
+                    t, bezier_control_point[j, 0, 0], bezier_control_point[j, 1, 0], bezier_control_point[j, 2, 0], bezier_control_point[j, 3, 0])
+                bezier_xcurv_list[j, index, 1] = func_bezier_ey(
+                    t, bezier_control_point[j, 0, 1], bezier_control_point[j, 1, 1], bezier_control_point[j, 2, 1], bezier_control_point[j, 3, 1])
+        for index in range(num_veh+1):
+            bezier_func_list.append(
+                interp1d(bezier_xcurv_list[index, :, 0], bezier_xcurv_list[index, :, 1]))
+        for index in range(num_veh):
+            vehicle_range_f_list[index, 0] = veh_info_list[index,
+                                                           0] + 1.2*safety_factor*veh_length
+            vehicle_range_r_list[index, 0] = veh_info_list[index,
+                                                           0] - 1.2*safety_factor*veh_length
+            while vehicle_range_f_list[index, 0] > track.lap_length:
+                vehicle_range_f_list[index,
+                                     0] = vehicle_range_f_list[index, 0] - track.lap_length
+            while vehicle_range_r_list[index, 0] > track.lap_length:
+                vehicle_range_r_list[index,
+                                     0] = vehicle_range_r_list[index, 0] - track.lap_length
+        # construct the optimization problem, calculate cost
+        for i in range(num_horizon_planner + 1):
             s_ego = copy.deepcopy(xcurv_ego[4])
-            # if the leading vehicle has crossed the start line, the ego vehilce is behind the start line
-            if s_ego >= s_veh and s_veh <= track.lap_length/3 and s_ego >= 2*track.lap_length/3:
-                s_veh = s_veh + track.lap_length
-            # if the ego vehicle has crossed the start line, the other vehicle is behind the start line
-            if s_ego <= s_veh and s_ego <= track.lap_length/3 and s_veh >= 2*track.lap_length/3:
+            if s_ego <= min_s_obs and s_ego <= track.lap_length/3 and min_s_obs >= 2*track.lap_length/3:
                 s_ego = s_ego + track.lap_length
-            # traveling distance for the ith point
-            s_tmp = s_ego+(s_veh+planning_prediction_factor *
-                           obs_traj[0, 0]-s_ego)*i/num_horizon_planner
-            if bezier_xcurv_l[0, 0] < 0:
-                if s_tmp - track.lap_length <= bezier_xcurv_l[-1, 0] and s_tmp - track.lap_length >= bezier_xcurv_l[0, 0]:
+            s_tmp = s_ego + (max_s_obs + planning_prediction_factor *
+                             max_v_obs - s_ego)*i/num_horizon_planner
+            for index in range(num_veh+1):
+                s_now = copy.deepcopy(s_tmp)
+                while s_now >= track.lap_length:
+                    s_now = s_now - track.lap_length
+                if s_now <= optimal_traj_xcurv[0, 4]:
+                    s_now = optimal_traj_xcurv[0, 4]
+                cost_list[index] += (1-alpha)*((opti_var_list[index]
+                                                [i] - func_optimal_ey(s_now))**2)
+            if bezier_xcurv_list[0, 0, 0] < 0:
+                if s_tmp - track.lap_length <= bezier_xcurv_list[0, -1, 0] and s_tmp - track.lap_length >= bezier_xcurv_list[0, 0, 0]:
                     s_tmp = s_tmp-track.lap_length
-            if s_tmp > bezier_xcurv_l[-1, 0]:
-                s_tmp = bezier_xcurv_l[-1, 0]
-            if s_tmp < bezier_xcurv_l[0, 0]:
-                s_tmp = bezier_xcurv_l[0, 0]
-            cost_l += alpha * \
-                ((eyvar_l[i]-func_bezier_l_ey(s_tmp))**2)
-            cost_r += alpha * \
-                ((eyvar_r[i]-func_bezier_r_ey(s_tmp))**2)
-            # add constraint to make the trajectory avoid obstacle
-            s_l = s_ego+(s_veh+planning_prediction_factor *
-                         obs_traj[0, 0]-s_ego)*i/num_horizon_planner
-            s_r = s_ego+(s_veh+planning_prediction_factor *
-                         obs_traj[0, 0]-s_ego)*i/num_horizon_planner
-            if (s_l < vehicle_range_r) or (s_l > vehicle_range_f):
-                pass
-            else:
-                if i == 0 and xcurv_ego[5] <= (max_ey_obs+safety_factor*vehicles[agent_name].param.width):
+            if s_tmp > bezier_xcurv_list[0, -1, 0]:
+                s_tmp = bezier_xcurv_list[0, -1, 0]
+            if s_tmp < bezier_xcurv_list[0, 0, 0]:
+                s_tmp = bezier_xcurv_list[0, 0, 0]
+            for index in range(num_veh+1):
+                cost_list[index] += alpha * \
+                    ((opti_var_list[index][i] -
+                     bezier_func_list[index](s_tmp))**2)
+                if i >= 1:
+                    cost_list[index] += 100 * \
+                        ((opti_var_list[index][i] -
+                         opti_var_list[index][i-1])**2)
+                else:
+                    pass
+        # construct the optimization problem, add constraint
+        for i in range(num_horizon_planner + 1):
+            s_ego = copy.deepcopy(xcurv_ego[4])
+            if s_ego <= min_s_obs and s_ego <= track.lap_length/3 and min_s_obs >= 2*track.lap_length/3:
+                s_ego = s_ego + track.lap_length
+            s_tmp = s_ego + (max_s_obs + planning_prediction_factor *
+                             max_v_obs - s_ego)*i/num_horizon_planner
+            for index in range(num_veh+1):
+                if i == 0:
+                    opti_list[index].subject_to(
+                        opti_var_list[index][0] == xcurv_ego[5])
+                if i == num_horizon_planner:
+                    opti_list[index].subject_to(
+                        opti_var_list[index][num_horizon_planner] == bezier_control_point[index, 3, 1])
+                opti_list[index].subject_to(
+                    opti_var_list[index][i] <= track.width)
+                opti_list[index].subject_to(
+                    opti_var_list[index][i] >= -track.width)
+                # constraint on the left, first line is the track boundary
+                if index == 0:
                     pass
                 else:
-                    opti_l.subject_to(eyvar_l[i] > (
-                        max_ey_obs+safety_factor*vehicles[agent_name].param.width))
-            if (s_r < vehicle_range_r) or (s_r > vehicle_range_f):
-                pass
-            else:
-                if i == 0 and xcurv_ego[5] >= (min_ey_obs-safety_factor*vehicles[agent_name].param.width):
+                    if (s_tmp < vehicle_range_r_list[index-1, 0]) or (s_tmp > vehicle_range_f_list[index-1, 0]):
+                        pass
+                    else:
+                        if i == 0 and xcurv_ego[5] >= (veh_info_list[index-1, 2]-safety_factor*veh_width):
+                            pass
+                        else:
+                            opti_list[index].subject_to(opti_var_list[index][i] < (
+                                veh_info_list[index-1, 2]-safety_factor*veh_width))
+                # constraint on the right, last line is the track boundary
+                if index == num_veh:
                     pass
                 else:
-                    opti_r.subject_to(eyvar_r[i] <= (
-                        min_ey_obs-safety_factor*vehicles[agent_name].param.width))
-            while s_l >= track.lap_length:
-                s_l = s_l - track.lap_length
-            while s_r >= track.lap_length:
-                s_r = s_r - track.lap_length
-            if s_l <= optimal_traj_xcurv[0, 4]:
-                s_l = optimal_traj_xcurv[0, 4]
-            if s_r <= optimal_traj_xcurv[0, 4]:
-                s_r = optimal_traj_xcurv[0, 4]
-            # deviation from optimal trajectory
-            cost_l += (1-alpha)*((eyvar_l[i] - func_optimal_ey(s_l))**2)
-            cost_r += (1-alpha)*((eyvar_r[i] - func_optimal_ey(s_r))**2)
-            # change rate
-            if i >= 1:
-                cost_l += 100*((eyvar_l[i] - eyvar_l[i-1])**2)
-                cost_r += 100*((eyvar_r[i] - eyvar_r[i-1])**2)
-            else:
-                pass
-            # add constraint to make the trajectory at inside of track
-            opti_l.subject_to(eyvar_l[i] <= track.width)
-            opti_l.subject_to(eyvar_l[i] >= -track.width)
-            opti_r.subject_to(eyvar_r[i] >= -track.width)
-            opti_r.subject_to(eyvar_r[i] <= track.width)
-        opti_l.subject_to(eyvar_l[0] == xcurv_ego[5])
-        opti_l.subject_to(eyvar_l[num_horizon_planner] == ey3)
-        opti_r.subject_to(eyvar_r[0] == xcurv_ego[5])
-        opti_r.subject_to(eyvar_r[num_horizon_planner] == ey3)
+                    if (s_tmp < vehicle_range_r_list[index, 0]) or (s_tmp > vehicle_range_f_list[index, 0]):
+                        pass
+                    else:
+                        if i == 0 and xcurv_ego[5] <= (veh_info_list[index, 1]+safety_factor*veh_width):
+                            pass
+                        else:
+                            opti_list[index].subject_to(opti_var_list[index][i] > (
+                                veh_info_list[index, 1]+safety_factor*veh_width))
         option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
-        opti_l.minimize(cost_l)
-        opti_l.solver("ipopt", option)
-        opti_r.minimize(cost_r)
-        opti_r.solver("ipopt", option)
-        # calculate two optimal trajectories
-        try:
-            sol_l = opti_l.solve()
-            cost_l = sol_l.value(cost_l)
-            ey_pred_l = sol_l.value(eyvar_l)
-        except RuntimeError:
-            cost_l = 1000000
-        try:
-            sol_r = opti_r.solve()
-            cost_r = sol_r.value(cost_r)
-            ey_pred_r = sol_r.value(eyvar_r)
-        except RuntimeError:
-            cost_r = 1000000
+        solution_ey = np.zeros((num_horizon_planner+1, num_veh+1))
+        for index in range(num_veh+1):
+            opti_list[index].minimize(cost_list[index])
+            opti_list[index].solver("ipopt", option)
+            try:
+                sol = opti_list[index].solve()
+                solution_ey[:, index] = sol.value(opti_var_list[index])
+                cost_list[index] = sol.value(cost_list[index])
+            except RuntimeError:
+                cost_list[index] = float('inf')
         direction_flag = None
-        if cost_l < cost_r:
-            ey_pred = ey_pred_l
-            print("left")
-            direction_flag = 1
-        else:
-            ey_pred = ey_pred_r
-            print("right")
-            direction_flag = -1
-        target_traj = np.zeros((num_horizon_planner+1, 6))
-        for i in range(num_horizon_planner+1):
+        min_cost = None
+        best_ey = None
+        for index in range(num_veh+1):
+            if min_cost is None:
+                min_cost = cost_list[index]
+                best_ey = solution_ey[:, index]
+                direction_flag = index
+            else:
+                if cost_list[index] > min_cost:
+                    pass
+                else:
+                    min_cost = cost_list[index]
+                    best_ey = solution_ey[:, index]
+                    direction_flag = index
+        target_traj_xcurv = np.zeros((num_horizon_planner+1, 6))
+        target_traj_xglob = np.zeros((num_horizon_planner+1, 6))
+        bezier_xglob = np.zeros((num_horizon_planner+1, 6))
+        for index in range(num_horizon_planner+1):
             t = i*(1.0/num_horizon_planner)
-            target_traj[i, 4] = s_ego + \
-                (s_veh+planning_prediction_factor *
-                 obs_traj[0, 0]-s_ego)*i/num_horizon_planner
-            target_traj[i, 5] = ey_pred[i]
+            if max_s_obs <= track.lap_length/3 and s_ego >= 2*track.lap_length/3:
+                target_traj_xcurv[index, 4] = s_ego + (max_s_obs + track.lap_length +
+                                                       planning_prediction_factor*max_v_obs - s_ego)*index/num_horizon_planner
+            else:
+                target_traj_xcurv[index, 4] = s_ego + (
+                    max_s_obs + planning_prediction_factor*max_v_obs - s_ego)*index/num_horizon_planner
+            target_traj_xcurv[index, 5] = best_ey[index]
         end_timer = datetime.datetime.now()
         solver_time = (end_timer - start_timer).total_seconds()
         print("local planner solver time: {}".format(solver_time))
-        target_traj_xglob = np.zeros((num_horizon_planner+1, 6))
         for index in range(num_horizon_planner+1):
-            s_i = copy.deepcopy(target_traj[index, 4])
+            s_i = copy.deepcopy(target_traj_xcurv[index, 4])
             while s_i > track.lap_length:
                 s_i = s_i - track.lap_length
             target_traj_xglob[index, 4], target_traj_xglob[index, 5] = racing_env.get_global_position(
-                track.lap_length, track.width, track.point_and_tangent, s_i, target_traj[index, 5])
-        #debug_plot(track, vehicles,target_traj_xglob)
-        return target_traj, target_traj_xglob, direction_flag
+                track.lap_length, track.width, track.point_and_tangent, s_i, target_traj_xcurv[index, 5])
+            bezier_xglob[index, 4], bezier_xglob[index, 5] = racing_env.get_global_position(
+                track.lap_length, track.width, track.point_and_tangent, bezier_xcurv_list[direction_flag, index, 0], bezier_xcurv_list[direction_flag, index, 1])
+        #debug_plot(track, vehicles, target_traj_xglob)
+        return target_traj_xcurv, target_traj_xglob, direction_flag, veh_name_list, bezier_xglob
 
 
 def func_bezier_s(t, s0, s1, s2, s3):
-    func_bezier_s = s0*((1-t)**3) + 3*s1*t*((1-t)**2)+3*s2*(t**2)*(1-t)+s3*(t**3)
+    func_bezier_s = s0*((1-t)**3) + 3*s1*t*((1-t)**2) + \
+        3*s2*(t**2)*(1-t)+s3*(t**3)
     return func_bezier_s
 
 
@@ -283,10 +396,13 @@ def debug_plot(track, vehicles, target_traj_xglob):
     ax.add_patch(patches.Rectangle((x_ego, y_ego),
                  dx_ego, dy_ego, alpha_ego, color='red'))
     for name in list(vehicles):
-        x_car, y_car, dx_car, dy_car, alpha_car = get_vehicle_in_rectangle(
-            vehicles[name].xglob, vehicles[name].param)
-        ax.add_patch(patches.Rectangle((x_car, y_car),
-                                       dx_car, dy_car, alpha_car, color='blue'))
+        if name == "ego":
+            pass
+        else:
+            x_car, y_car, dx_car, dy_car, alpha_car = get_vehicle_in_rectangle(
+                vehicles[name].xglob, vehicles[name].param)
+            ax.add_patch(patches.Rectangle((x_car, y_car),
+                                           dx_car, dy_car, alpha_car, color='blue'))
     ax.plot(target_traj_xglob[:, 4], target_traj_xglob[:, 5])
     ax.axis('equal')
     plt.show()

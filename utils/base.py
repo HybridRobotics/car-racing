@@ -21,13 +21,11 @@ class ControlBase:
         self.xglob = None
         self.u = None
         self.realtime_flag = False
-
         self.traj_time = []
         self.traj_time.append(self.time)
         self.traj_xcurv = []
         self.traj_xglob = []
         self.traj_u = []
-
         self.time_list = []
         self.xglob_list = []
         self.xcurv_list = []
@@ -116,6 +114,8 @@ class PIDTracking(ControlBase):
         else:
             vehicles = self.vehicles
         vehicles["ego"].local_traj_list.append(None)
+        vehicles["ego"].overtake_vehicle_list.append(None)
+        vehicles["ego"].spline_list.append(None)
         self.time += self.timestep
 
 
@@ -149,6 +149,8 @@ class MPCTracking(ControlBase):
         else:
             vehicles = self.vehicles
         vehicles["ego"].local_traj_list.append(None)
+        vehicles["ego"].overtake_vehicle_list.append(None)
+        vehicles["ego"].spline_list.append(None)
         self.time += self.timestep
 
 
@@ -189,6 +191,8 @@ class MPCCBFRacing(ControlBase):
         else:
             vehicles = self.vehicles
         vehicles["ego"].local_traj_list.append(None)
+        vehicles["ego"].overtake_vehicle_list.append(None)
+        vehicles["ego"].spline_list.append(None)
         self.time += self.timestep
 
 
@@ -256,6 +260,8 @@ class LMPCRacing(ControlBase):
         else:
             vehicles = self.vehicles
         vehicles["ego"].local_traj_list.append(None)
+        vehicles["ego"].overtake_vehicle_list.append(None)
+        vehicles["ego"].spline_list.append(None)
         iter = self.iter
         self.openloop_prediction_lmpc.predicted_xcurv[:, :, self.time_in_iter,
                                                       iter] = self.x_pred
@@ -286,7 +292,7 @@ class LMPCRacing(ControlBase):
         Btv = []
         Ctv = []
         index_used_list = []
-        lap_used_for_linearization = 2  # 2
+        lap_used_for_linearization = 2
         used_iter = range(iter-lap_used_for_linearization, iter)
         max_num_point = 40
         for i in range(0, num_horizon):
@@ -335,7 +341,7 @@ class LMPCRacing(ControlBase):
 
 class RacingGameParam:
     def __init__(self, timestep=None, matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
-                 matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","), matrix_Q=np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
+                 matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","), matrix_Q=np.diag([10.0, 0.0, 0.0, 5.0, 0.0, 50.0]),
                  matrix_R=np.diag([0.1, 0.1]), num_horizon_ctrl=10, num_horizon_planner=20, planning_prediction_factor=3.9, alpha=0.98):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -347,7 +353,7 @@ class RacingGameParam:
         self.alpha = alpha
         self.timestep = timestep
         self.bezier_order = 3
-        self.safety_factor = 1.2
+        self.safety_factor = 1.5
 
 
 class LMPCRacingGame(ControlBase):
@@ -401,7 +407,8 @@ class LMPCRacingGame(ControlBase):
             u_old = np.zeros((1, 2))
         else:
             u_old = copy.deepcopy(self.u_pred[0, :])
-        overtake_flag = self.overtake_planner.get_overtake_flag(x)
+        overtake_flag, overtake_list = self.overtake_planner.get_overtake_flag(
+            x)
         if overtake_flag == False:
             self.u_pred, self.x_pred, self.ss_point_selected_tot, self.Qfun_selected_tot, self.lin_points, self.lin_input = ctrl.lmpc(
                 x, matrix_Atv, matrix_Btv, matrix_Ctv, self.xdim, self.udim, self.ss_xcurv, self.Qfun, self.iter, self.lap_length, self.lap_width, u_old, self.lmpc_param)
@@ -418,13 +425,20 @@ class LMPCRacingGame(ControlBase):
             self.add_point(self.x, self.u, self.time_in_iter)
             self.time_in_iter = self.time_in_iter + 1
             self.overtake_planner.vehicles["ego"].local_traj_list.append(None)
+            self.overtake_planner.vehicles["ego"].overtake_vehicle_list.append(
+                None)
+            self.overtake_planner.vehicles["ego"].spline_list.append(None)
         else:
-            overtake_traj_xcurv, overtake_traj_xglob, direction_flag = self.overtake_planner.get_local_path(
-                x, self.time)
+            overtake_traj_xcurv, overtake_traj_xglob, direction_flag, overtake_name_list, bezier_xglob = self.overtake_planner.get_local_path(
+                x, self.time, overtake_list)
             self.overtake_planner.vehicles["ego"].local_traj_list.append(
                 overtake_traj_xglob)
+            self.overtake_planner.vehicles["ego"].overtake_vehicle_list.append(
+                overtake_list)
+            self.overtake_planner.vehicles["ego"].spline_list.append(
+                bezier_xglob)
             self.u = ctrl.overtake(
-                x, overtake_traj_xcurv, self.udim, self.racing_game_param, self.lap_length, self.track, self.overtake_planner.vehicles, self.agent_name, direction_flag, overtake_traj_xglob)
+                x, overtake_traj_xcurv, self.udim, self.racing_game_param, self.lap_length, self.track, self.overtake_planner.vehicles, self.agent_name, direction_flag, overtake_traj_xglob, overtake_name_list)
         self.time += self.timestep
 
     def estimate_ABC(self):
@@ -545,8 +559,9 @@ class ModelBase:
         self.laps = 0
         self.realtime_flag = False
         self.xglob_log = []
-
         self.local_traj_list = []
+        self.overtake_vehicle_list = []
+        self.spline_list = []
 
     def set_timestep(self, dt):
         self.timestep = dt
@@ -676,7 +691,6 @@ class DynamicBicycleModel(ModelBase):
     def forward_dynamics(self, realtime_flag):
         # This function computes the system evolution. Note that the discretization is delta_t and therefore is needed that
         # dt <= delta_t and ( dt / delta_t) = integer value
-
         # Discretization Parameters
         delta_t = 0.001
         xglob_next = np.zeros(self.xdim)
@@ -699,12 +713,6 @@ class DynamicBicycleModel(ModelBase):
             else:
                 xglob_next, xcurv_next = vehicle_dynamics.vehicle_dynamics(
                     vehicle_param.dynamics_param, curv, xglob_next, xcurv_next, delta_t, self.u)
-
-            if s < 0:
-                pass
-                # Don't need this checker as curvature can be calculated even s < 0
-                # print("Start Point: ", self.x, " Input: ", self.ctrl_policy.u)
-                # print("x_next: ", x_next)
             # Increment counter
             i = i + 1
         # Noises
@@ -736,3 +744,6 @@ class CarRacingSim:
 
     def set_track(self, track):
         self.track = track
+
+    def set_opti_traj(self, opti_traj_xglob):
+        self.opti_traj_xglob = opti_traj_xglob
