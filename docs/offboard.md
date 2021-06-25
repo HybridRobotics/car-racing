@@ -26,10 +26,10 @@ This allows to test algorithm for tracking. The choices of `--ctrl-policy` could
 ```
 python scripts/offboard/racing.py --track-layout l_shape --simulation --plotting --animation
 ```
-This allows to test algorithm for racing. `--track-layout` could be `l_shape`, `goggle` and `ellipse`. `--simulation` is no longer required once you have generated .obj file for simulation data. `--plotting`, `animation` are currently purely optional.
+This allows to test algorithm for racing. `--track-layout` could be `l_shape`, `goggle` and `ellipse`. `--simulation` is no longer required once you have generated .obj file for simulation data. `--plotting`, `--animation` are currently purely optional.
 
 ###### LMPC Racing
 ```
 python scripts/offboard/lmpc_racing.py --track-layout l_shape --lap-number 8 --simulation --plotting --animation
 ```
-This allows to test algorithm for learning based mpc. `--lap-number` indicates the total numbers of the lap. `--track-layout` could be `l_shape`, `goggle` and `ellipse`. `--simulation`, `--track-layout` and `--lap-number` are no longer required once you have generated .obj file for simulation data. `--plotting`, `animation` are currently purely optional. `--plotting` optition will show you the trajectory, state and input of the ego vehicle. `--animation` will save the animation of the ego vehicle's lap.
+This allows to test algorithm for learning based mpc. `--lap-number` indicates the total numbers of the lap. `--track-layout` could be `l_shape`, `goggle` and `ellipse`. `--simulation`, `--track-layout` and `--lap-number` are no longer required once you have generated .obj file for simulation data. `--plotting`, `--animation` are currently purely optional. `--plotting` optition will show you the trajectory, state and input of the ego vehicle. `--animation` will save the animation of the ego vehicle's lap.
