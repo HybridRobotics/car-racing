@@ -109,13 +109,14 @@ class PIDTracking(ControlBase):
         xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]
                            ).reshape(self.xdim, 1)
         self.u = ctrl.pid(self.x, xtarget, self.udim)
-        if self.realtime_flag == False:
-            vehicles = self.racing_sim.vehicles
-        else:
-            vehicles = self.vehicles
-        vehicles["ego"].local_traj_list.append(None)
-        vehicles["ego"].overtake_vehicle_list.append(None)
-        vehicles["ego"].spline_list.append(None)
+        if self.agent_name == "ego":
+            if self.realtime_flag == False:
+                vehicles = self.racing_sim.vehicles
+            else:
+                vehicles = self.vehicles
+            vehicles["ego"].local_traj_list.append(None)
+            vehicles["ego"].overtake_vehicle_list.append(None)
+            vehicles["ego"].spline_list.append(None)
         self.time += self.timestep
 
 
@@ -144,13 +145,14 @@ class MPCTracking(ControlBase):
         xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]
                            ).reshape(self.xdim, 1)
         self.u = ctrl.mpc(self.x, xtarget, self.udim, self.mpc_lti_param)
-        if self.realtime_flag == False:
-            vehicles = self.racing_sim.vehicles
-        else:
-            vehicles = self.vehicles
-        vehicles["ego"].local_traj_list.append(None)
-        vehicles["ego"].overtake_vehicle_list.append(None)
-        vehicles["ego"].spline_list.append(None)
+        if self.agent_name == "ego":
+            if self.realtime_flag == False:
+                vehicles = self.racing_sim.vehicles
+            else:
+                vehicles = self.vehicles
+            vehicles["ego"].local_traj_list.append(None)
+            vehicles["ego"].overtake_vehicle_list.append(None)
+            vehicles["ego"].spline_list.append(None)
         self.time += self.timestep
 
 
@@ -186,13 +188,14 @@ class MPCCBFRacing(ControlBase):
                                  self.lap_length, self.time, self.timestep, self.realtime_flag, self.mpc_cbf_param)
         else:
             pass
-        if self.realtime_flag == False:
-            vehicles = self.racing_sim.vehicles
-        else:
-            vehicles = self.vehicles
-        vehicles["ego"].local_traj_list.append(None)
-        vehicles["ego"].overtake_vehicle_list.append(None)
-        vehicles["ego"].spline_list.append(None)
+        if self.agent_name == "ego":
+            if self.realtime_flag == False:
+                vehicles = self.racing_sim.vehicles
+            else:
+                vehicles = self.vehicles
+            vehicles["ego"].local_traj_list.append(None)
+            vehicles["ego"].overtake_vehicle_list.append(None)
+            vehicles["ego"].spline_list.append(None)
         self.time += self.timestep
 
 
@@ -342,7 +345,7 @@ class LMPCRacing(ControlBase):
 class RacingGameParam:
     def __init__(self, timestep=None, matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
                  matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","), matrix_Q=np.diag([10.0, 0.0, 0.0, 5.0, 0.0, 50.0]),
-                 matrix_R=np.diag([0.1, 0.1]), num_horizon_ctrl=10, num_horizon_planner=20, planning_prediction_factor=3.9, alpha=0.98):
+                 matrix_R=np.diag([0.1, 0.1]), num_horizon_ctrl=10, num_horizon_planner=20, planning_prediction_factor=1.5, alpha=0.98):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
         self.matrix_Q = matrix_Q
@@ -580,6 +583,8 @@ class ModelBase:
     def set_track(self, track):
         self.track = track
         self.lap_length = track.lap_length
+        self.point_and_tangent = track.point_and_tangent
+        self.lap_width = track.width
 
     def set_ctrl_policy(self, ctrl_policy):
         self.ctrl_policy = ctrl_policy

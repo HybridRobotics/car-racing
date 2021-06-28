@@ -27,7 +27,8 @@ class OvertakePlanner:
                 x_other = copy.deepcopy(self.vehicles[name].xcurv)
                 while x_other[4] > self.track.lap_length:
                     x_other[4] = x_other[4] - self.track.lap_length
-                if ((x_other[4] - xcurv_ego[4] <= self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0]) and (x_other[4] >= xcurv_ego[4])) or ((x_other[4]+self.track.lap_length - xcurv_ego[4] <= self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0]) and (x_other[4]+self.track.lap_length >= xcurv_ego[4])) or ((-x_other[4] + xcurv_ego[4] <= 0.2*self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0]) and (x_other[4] <= xcurv_ego[4])) or ((-x_other[4] + xcurv_ego[4] + self.track.lap_length <= 0.2*self.racing_game_param.planning_prediction_factor*self.vehicles[name].xcurv[0]) and (x_other[4] <= xcurv_ego[4]+self.track.lap_length)):
+                delta_v = abs(xcurv_ego[0] - self.vehicles[name].xcurv[0])
+                if ((x_other[4] - xcurv_ego[4] <= self.racing_game_param.safety_factor*self.vehicles[name].param.length + self.racing_game_param.planning_prediction_factor*delta_v) and (x_other[4] >= xcurv_ego[4])) or ((x_other[4]+self.track.lap_length - xcurv_ego[4] <= self.racing_game_param.safety_factor*self.vehicles[name].param.length+self.racing_game_param.planning_prediction_factor*delta_v) and (x_other[4]+self.track.lap_length >= xcurv_ego[4])) or ((-x_other[4] + xcurv_ego[4] <= self.racing_game_param.safety_factor*self.vehicles[name].param.length+self.racing_game_param.planning_prediction_factor*delta_v) and (x_other[4] <= xcurv_ego[4])) or ((-x_other[4] + xcurv_ego[4] + self.track.lap_length <= self.racing_game_param.safety_factor*self.vehicles[name].param.length+self.racing_game_param.planning_prediction_factor*delta_v) and (x_other[4] <= xcurv_ego[4]+self.track.lap_length)):
                     overtake_flag = True
                     overtake_list[name] = self.vehicles[name]
         return overtake_flag, overtake_list
@@ -54,17 +55,20 @@ class OvertakePlanner:
         for name in list(overtake_list):
             if num == 0:
                 veh_name_list.append(name)
-            else:
-                if overtake_list[name].xcurv[5] >= overtake_list[veh_name_list[0]].xcurv[5]:
-                    veh_name_list.insert(0, name)
-                elif overtake_list[name].xcurv[5] <= overtake_list[veh_name_list[0]].xcurv[5]:
-                    veh_name_list.append(name)
+            elif overtake_list[name].xcurv[5] >= overtake_list[veh_name_list[0]].xcurv[5]:
+                veh_name_list.insert(0, name)
+            elif overtake_list[name].xcurv[5] <= overtake_list[veh_name_list[0]].xcurv[5]:
+                veh_name_list.append(name)
             num += 1
         veh_info_list = np.zeros((num_veh, 3))
         min_s_obs = None
         max_s_obs = None
         min_v_obs = None
         max_v_obs = None
+
+        max_delta_v_obs = None
+        min_delta_v_obs = None
+
         for index in range(num_veh):
             name = veh_name_list[index]
             s_veh = copy.deepcopy(vehicles[name].xcurv[4])
@@ -92,42 +96,55 @@ class OvertakePlanner:
             # find the minimum and maximum traveling distance from all obstacles
             if min_s_obs is None:
                 min_s_obs = s_veh
+            # determine if the obstacles are at different sides of start line
+            elif min_s_obs <= track.lap_length/3 and s_veh >= 2*track.lap_length/3:
+                min_s_obs = s_veh
+            elif min_s_obs >= 2*track.lap_length/3 and s_veh <= track.lap_length/3:
+                pass
+            elif s_veh <= min_s_obs:
+                min_s_obs = s_veh
             else:
-                # determine if the obstacles are at different sides of start line
-                if min_s_obs <= track.lap_length/3 and s_veh >= 2*track.lap_length/3:
-                    min_s_obs = s_veh
-                elif min_s_obs >= 2*track.lap_length/3 and s_veh <= track.lap_length/3:
-                    pass
-                elif s_veh <= min_s_obs:
-                    min_s_obs = s_veh
-                else:
-                    pass
+                pass
             if max_s_obs is None:
                 max_s_obs = s_veh
+            elif max_s_obs >= 2*track.lap_length/3 and s_veh <= track.lap_length/3:
+                max_s_obs = s_veh
+            elif max_s_obs <= track.lap_length/3 and s_veh >= 2*track.lap_length/3:
+                pass
+            elif s_veh >= max_s_obs:
+                max_s_obs = s_veh
             else:
-                if max_s_obs >= 2*track.lap_length/3 and s_veh <= track.lap_length/3:
-                    max_s_obs = s_veh
-                elif max_s_obs <= track.lap_length/3 and s_veh >= 2*track.lap_length/3:
-                    pass
-                elif s_veh >= max_s_obs:
-                    max_s_obs = s_veh
-                else:
-                    pass
+                pass
             # find the minimum and maximum velocity from all obstacles
             if min_v_obs is None:
                 min_v_obs = vehicles[name].xcurv[0]
-            else:
-                if vehicles[name].xcurv[0] <= min_v_obs:
+            elif vehicles[name].xcurv[0] <= min_v_obs:
                     min_v_obs = vehicles[name].xcurv[0]
-                else:
-                    pass
+            else:
+                pass
+
+            if min_delta_v_obs is None:
+                min_delta_v_obs = abs(xcurv_ego[0] - vehicles[name].xcurv[0])
+            elif abs(xcurv_ego[0] - vehicles[name].xcurv[0]) <= min_delta_v_obs:
+                min_delta_v_obs = abs(
+                    xcurv_ego[0] - vehicles[name].xcurv[0])
+            else:
+                pass
+
+            if max_delta_v_obs is None:
+                max_delta_v_obs = abs(xcurv_ego[0] - vehicles[name].xcurv[0])
+            elif abs(xcurv_ego[0] - vehicles[name].xcurv[0]) >= max_delta_v_obs:
+                max_delta_v_obs = abs(
+                    xcurv_ego[0] - vehicles[name].xcurv[0])
+            else:
+                pass
+
             if max_v_obs is None:
                 max_v_obs = vehicles[name].xcurv[0]
+            elif vehicles[name].xcurv[0] >= max_v_obs:
+                max_v_obs = vehicles[name].xcurv[0]
             else:
-                if vehicles[name].xcurv[0] >= max_v_obs:
-                    max_v_obs = vehicles[name].xcurv[0]
-                else:
-                    pass
+                pass
             veh_info_list[index, 0] = s_veh
             veh_info_list[index, 1] = max_ey_obs
             veh_info_list[index, 2] = min_ey_obs
@@ -139,10 +156,10 @@ class OvertakePlanner:
         for index in range(num_veh + 1):
             # s0
             bezier_control_point[index, 0, 0] = min_s_obs - \
-                planning_prediction_factor*max_v_obs
+                planning_prediction_factor*max_delta_v_obs - safety_factor*veh_length
             # s3
             bezier_control_point[index, 3, 0] = max_s_obs + \
-                planning_prediction_factor*max_v_obs
+                planning_prediction_factor*max_delta_v_obs + safety_factor*veh_length
             # when the s3 is ahead start line, s0 is behind start line
             if bezier_control_point[index, 0, 0] > bezier_control_point[index, 3, 0]:
                 # s1
@@ -239,8 +256,8 @@ class OvertakePlanner:
             s_ego = copy.deepcopy(xcurv_ego[4])
             if s_ego <= min_s_obs and s_ego <= track.lap_length/3 and min_s_obs >= 2*track.lap_length/3:
                 s_ego = s_ego + track.lap_length
-            s_tmp = s_ego + (max_s_obs + planning_prediction_factor *
-                             max_v_obs - s_ego)*i/num_horizon_planner
+            s_tmp = s_ego + (max_s_obs + safety_factor*veh_length + planning_prediction_factor *
+                             max_delta_v_obs - s_ego)*i/num_horizon_planner
             for index in range(num_veh+1):
                 s_now = copy.deepcopy(s_tmp)
                 while s_now >= track.lap_length:
@@ -271,7 +288,7 @@ class OvertakePlanner:
             s_ego = copy.deepcopy(xcurv_ego[4])
             if s_ego <= min_s_obs and s_ego <= track.lap_length/3 and min_s_obs >= 2*track.lap_length/3:
                 s_ego = s_ego + track.lap_length
-            s_tmp = s_ego + (max_s_obs + planning_prediction_factor *
+            s_tmp = s_ego + (max_s_obs + safety_factor*veh_length + planning_prediction_factor *
                              max_v_obs - s_ego)*i/num_horizon_planner
             for index in range(num_veh+1):
                 if i == 0:
@@ -340,11 +357,11 @@ class OvertakePlanner:
         for index in range(num_horizon_planner+1):
             t = i*(1.0/num_horizon_planner)
             if max_s_obs <= track.lap_length/3 and s_ego >= 2*track.lap_length/3:
-                target_traj_xcurv[index, 4] = s_ego + (max_s_obs + track.lap_length +
-                                                       planning_prediction_factor*max_v_obs - s_ego)*index/num_horizon_planner
+                target_traj_xcurv[index, 4] = s_ego + (max_s_obs + track.lap_length + safety_factor*veh_length +
+                                                       planning_prediction_factor*max_delta_v_obs - s_ego)*index/num_horizon_planner
             else:
                 target_traj_xcurv[index, 4] = s_ego + (
-                    max_s_obs + planning_prediction_factor*max_v_obs - s_ego)*index/num_horizon_planner
+                    max_s_obs + safety_factor*veh_length + planning_prediction_factor*max_delta_v_obs - s_ego)*index/num_horizon_planner
             target_traj_xcurv[index, 5] = best_ey[index]
         end_timer = datetime.datetime.now()
         solver_time = (end_timer - start_timer).total_seconds()
