@@ -55,7 +55,7 @@ def set_controller(args):
         lmpc_param = base.LMPCRacingParam(num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC,
                                           matrix_R_LMPC, matrix_dR_LMPC, shift, timestep, laps_number, time_lmpc)
 
-        lmpc_ctrl = realtime.LMPCRacing(lmpc_param)
+        lmpc_ctrl = realtime.LMPCRacingGame(lmpc_param)
         lmpc_ctrl.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
             N, xdim, udim, points_lmpc, num_ss_points, laps_number)
         lmpc_ctrl.set_subscriber_track()
@@ -70,6 +70,7 @@ def set_controller(args):
         mpc_lti_ctrl.set_timestep(timestep)
         mpc_lti_ctrl.u = np.zeros(2)
         veh_input_topic = veh_name + '/input'
+        lmpc_ctrl.set_vehicles_track()
         pid_ctrl.__pub_input = rospy.Publisher(
             veh_input_topic, VehicleControl, queue_size=10)
         mpc_lti_ctrl.__pub_input = rospy.Publisher(

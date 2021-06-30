@@ -26,15 +26,9 @@ class MPCCBFRacing(base.MPCCBFRacing):
         self.realtime_flag = False
 
 
-class LMPCRacing(base.LMPCRacing):
-    def __init__(self, lmpc_param):
-        base.LMPCRacing.__init__(self, lmpc_param)
-        self.realtime_flag = False
-
-
 class LMPCRacingGame(base.LMPCRacingGame):
-    def __init__(self, lmpc_param, overtake_mpc_param):
-        base.LMPCRacingGame.__init__(self, lmpc_param, overtake_mpc_param)
+    def __init__(self, lmpc_param, racing_game_param = None):
+        base.LMPCRacingGame.__init__(self, lmpc_param, racing_game_param = racing_game_param)
         self.realt = False
 
 
@@ -102,8 +96,8 @@ class CarRacingSim(base.CarRacingSim):
         self.vehicles[vehicle.name].set_track(self.track)
         self.vehicles[vehicle.name].set_timestep(self.timestep)
 
-    def sim(self, sim_time=50.0, one_lap_flag=False, one_lap_name=None, animating_flag=False):
-        if one_lap_flag == True:
+    def sim(self, sim_time=50.0, one_lap=False, one_lap_name=None, animating_flag=False):
+        if one_lap == True:
             current_lap = self.vehicles[one_lap_name].laps
 
         for i in range(0, int(sim_time / self.timestep)):
@@ -112,7 +106,7 @@ class CarRacingSim(base.CarRacingSim):
                 self.vehicles[name].forward_one_step(
                     self.vehicles[name].realtime_flag)
 
-            if (one_lap_flag == True) and (self.vehicles[one_lap_name].laps > current_lap):
+            if (one_lap == True) and (self.vehicles[one_lap_name].laps > current_lap):
                 print("lap completed")
                 break
 
@@ -265,7 +259,7 @@ class CarRacingSim(base.CarRacingSim):
             ax.axis('equal')
             patches_vehicles[name] = patches_vehicle
             if only_last_lap:
-                ani_time = 600
+                ani_time = 400
                 #lap_number = self.vehicles["ego"].laps
                 #ani_time = int(round((self.vehicles["ego"].time_list[lap_number-1][-1]-self.vehicles["ego"].time_list[lap_number-1][0])/self.vehicles["ego"].timestep))+1
                 counter = 0

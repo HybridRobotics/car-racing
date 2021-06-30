@@ -10,7 +10,7 @@ def tracking(args):
     track_spec = np.genfromtxt(
         "data/track_layout/"+track_layout+".csv", delimiter=",")
     if args["simulation"]:
-        track_width = 1.0
+        track_width = 0.8
         track = racing_env.ClosedTrack(track_spec, track_width)
         # setup ego car
         ego = offboard.DynamicBicycleModel(
@@ -32,13 +32,15 @@ def tracking(args):
         else:
             raise NotImplementedError
         ego.ctrl_policy.set_timestep(0.1)
+        ego.ctrl_policy.set_track(track)
         ego.set_track(track)
         # setup simulation
         simulator = offboard.CarRacingSim()
         simulator.set_timestep(0.1)
         simulator.set_track(track)
         simulator.add_vehicle(ego)
-        simulator.sim(sim_time=50.0)
+        ego.ctrl_policy.set_racing_sim(simulator)
+        simulator.sim(sim_time=90.0)
         with open("data/simulator/tracking.obj", "wb") as handle:
             pickle.dump(simulator, handle, protocol=pickle.HIGHEST_PROTOCOL)
     else:
@@ -49,7 +51,7 @@ def tracking(args):
         simulator.plot_state("ego")
         simulator.plot_input("ego")
     if args["animation"]:
-        simulator.animate(filename="tracking")
+        simulator.animate(filename="tracking", only_last_lap=True)
 
 
 if __name__ == "__main__":

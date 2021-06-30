@@ -371,9 +371,9 @@ class MPCTracking(base.MPCTracking, ControlBase):
         ControlBase.__init__(self)
 
 
-class LMPCRacing(base.LMPCRacing, ControlBase):
-    def __init__(self, lmpc_param):
-        base.LMPCRacing.__init__(self, lmpc_param)
+class LMPCRacingGame(base.LMPCRacingGame, ControlBase):
+    def __init__(self, lmpc_param, racing_game_param = None):
+        base.LMPCRacing.__init__(self, lmpc_param, racing_game_param = racing_game_param)
         ControlBase.__init__(self)
 
 

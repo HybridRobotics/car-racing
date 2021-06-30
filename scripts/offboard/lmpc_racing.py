@@ -18,13 +18,13 @@ def lmpc_racing(args):
             name="ego", param=base.CarParam(edgecolor="black"))
         timestep = 1.0/10.0
         ego.set_timestep(timestep)
-        vt = 0.8
+        vt = 1.2
         N = 12
         xdim = 6
         udim = 2
         # run the pid controller for the first lap to collect data
-        time_pid = 50.0
-        pid_controller = offboard.PIDTracking(vt=vt, eyt=0.0)
+        time_pid = 90.0
+        pid_controller = offboard.PIDTracking(vt=vt, eyt=0.1)
         pid_controller.set_timestep(timestep)
         ego.set_ctrl_policy(pid_controller)
         pid_controller.set_track(track)
@@ -32,7 +32,7 @@ def lmpc_racing(args):
         ego.set_state_global(np.zeros((6,)))
         ego.set_track(track)
         # run mpc-lti controller for the second lap to collect data
-        time_mpc_lti = 50.0
+        time_mpc_lti = 90.0
         matrix_A = np.genfromtxt(
             "data/sys/LTI/matrix_A.csv", delimiter=",")
         matrix_B = np.genfromtxt(
@@ -40,7 +40,7 @@ def lmpc_racing(args):
         matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
         matrix_R = np.diag([0.1, 0.1])
         mpc_lti_param = base.MPCTrackingParam(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=vt, eyt=0.0)
+            matrix_A, matrix_B, matrix_Q, matrix_R, vt=vt, eyt= 0.1)
         mpc_lti_controller = offboard.MPCTracking(mpc_lti_param)
         mpc_lti_controller.set_timestep(timestep)
         mpc_lti_controller.set_track(track)
@@ -48,23 +48,22 @@ def lmpc_racing(args):
         num_ss_it = 2
         num_ss_points = 32 + N
         shift = 0
-        points_lmpc = 5000
-        time_lmpc = points_lmpc * timestep
+        time_lmpc = 10000 * timestep
         # Cost on the slack variable for the terminal constraint
-        matrix_Qslack = 5*np.diag([10, 1, 1, 1, 10, 1])
+        matrix_Qslack = 5*np.diag([10, 0, 0, 1, 10, 0])
         # State cost x = [vx, vy, wz, epsi, s, ey]
         matrix_Q_LMPC = 0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         # Input cost u = [delta, a]
-        matrix_R_LMPC = 1 * np.diag([1.0, 1.0])
+        matrix_R_LMPC = 1 * np.diag([1.0, 0.25])
         # Input rate cost u
-        matrix_dR_LMPC = 5 * np.diag([1.0, 1.0])
-        lmpc_param = base.LMPCRacingParam(num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC,
-                                          matrix_R_LMPC, matrix_dR_LMPC, shift, timestep, lap_number, time_lmpc)
-        lmpc_controller = offboard.LMPCRacing(lmpc_param)
+        matrix_dR_LMPC = 5 * np.diag([0.8, 0.0])
+        lmpc_param = base.LMPCRacingParam(num_ss_points=num_ss_points,num_ss_iter= num_ss_it, num_horizon=N, matrix_Qslack=matrix_Qslack, matrix_Q=matrix_Q_LMPC,
+                                          matrix_R=matrix_R_LMPC, matrix_dR=matrix_dR_LMPC, shift=shift,timestep= timestep, lap_number=lap_number, time_lmpc=time_lmpc)
+        lmpc_controller = offboard.LMPCRacingGame(lmpc_param)
         lmpc_controller.set_track(track)
         lmpc_controller.set_timestep(timestep)
         lmpc_controller.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
-            N, xdim, udim, points_lmpc, num_ss_points, lap_number)
+            N, xdim, udim, int(round(time_lmpc/timestep)), num_ss_points, lap_number)
         # define a simulator
         simulator = offboard.CarRacingSim()
         simulator.set_timestep(timestep)
@@ -73,6 +72,7 @@ def lmpc_racing(args):
         pid_controller.set_racing_sim(simulator)
         mpc_lti_controller.set_racing_sim(simulator)
         lmpc_controller.set_racing_sim(simulator)
+        lmpc_controller.set_vehicles_track()
         # start simulation
         for iter in range(lap_number):
             # for the first lap, run the pid controller to collect data
