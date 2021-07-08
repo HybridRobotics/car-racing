@@ -4,7 +4,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib import animation
 import time
-from car_racing.msg import VehicleControl, VehicleState, VehicleList, NumVehicle, TrackInfo, OptimalTraj
+from car_racing.msg import (
+    VehicleControl,
+    VehicleState,
+    VehicleList,
+    NumVehicle,
+    TrackInfo,
+    OptimalTraj,
+)
 from utils import vehicle_dynamics, base, ctrl, racing_env
 import copy
 
@@ -32,22 +39,20 @@ class ModelBase:
     # track call back function, get track information
     def __track_cb(self, msg):
         size1 = msg.size
-        size0 = int(np.size(msg.point_and_tangent)/size1)
+        size0 = int(np.size(msg.point_and_tangent) / size1)
         self.point_and_tangent = np.zeros((size0, size1))
         tmp = 0
         # get matrix from 1D array
         for index_1 in range(size1):
             for index_0 in range(size0):
-                self.point_and_tangent[index_0,
-                                       index_1] = msg.point_and_tangent[tmp]
+                self.point_and_tangent[index_0, index_1] = msg.point_and_tangent[tmp]
                 tmp = tmp + 1
         self.lap_length = msg.length
         self.lap_width = msg.width
         self.track_layout = msg.track_layout
 
     def set_subscriber_track(self):
-        self.__sub_track = rospy.Subscriber(
-            'track_info', TrackInfo, self.__track_cb)
+        self.__sub_track = rospy.Subscriber("track_info", TrackInfo, self.__track_cb)
         # wait for the track info
         if self.lap_length == None:
             time.sleep(0.2)
@@ -62,15 +67,13 @@ class ModelBase:
         self.u[0] = msg.delta
 
     def set_subscriber_input(self, veh_name):
-        tmp = veh_name+'/input'
-        self.__sub_input = rospy.Subscriber(
-            tmp, VehicleControl, self.__input_cb)
+        tmp = veh_name + "/input"
+        self.__sub_input = rospy.Subscriber(tmp, VehicleControl, self.__input_cb)
 
 
 class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
-        base.DynamicBicycleModel.__init__(
-            self, name=name, param=param)
+        base.DynamicBicycleModel.__init__(self, name=name, param=param)
         ModelBase.__init__(self)
 
     # vehicle state call back function, get the vehicle's state
@@ -91,32 +94,34 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
 
     # get vehicle's input from controller
     def set_subscriber_ctrl(self, veh_name):
-        tmp = 'simulator/'+veh_name + '/state'
-        self.__sub_state = rospy.Subscriber(
-            tmp, VehicleState, self.__state_cb)
+        tmp = "simulator/" + veh_name + "/state"
+        self.__sub_state = rospy.Subscriber(tmp, VehicleState, self.__state_cb)
 
     # get vehicle's state from simulator
     def set_subscriber_sim(self, veh_name):
-        tmp = veh_name + '/state'
-        self.__sub_state = rospy.Subscriber(
-            tmp, VehicleState, self.__state_cb)
+        tmp = veh_name + "/state"
+        self.__sub_state = rospy.Subscriber(tmp, VehicleState, self.__state_cb)
 
     # initialization function for animation
     def init(self):
         self.ax.add_patch(self.patch)
-        return self.patch,
+        return (self.patch,)
 
     # update function for animation, the rectangle's parameters are updated through call back function
     def update(self, i):
-        return self.patch,
+        return (self.patch,)
 
     # update the vehicle's state in visualizaiton node
     def __state_cb_visual(self, msg):
         # check if the information of the vehicle is update
-        if (self.xglob[4] == msg.state_glob.x) and (self.xglob[5] == msg.state_glob.y) and (self.xglob[3] == msg.state_glob.psi):
+        if (
+            (self.xglob[4] == msg.state_glob.x)
+            and (self.xglob[5] == msg.state_glob.y)
+            and (self.xglob[3] == msg.state_glob.psi)
+        ):
             self.patch.set_width(0)
             self.patch.set_height(0)
-            rospy.logerr('No update information for %s', msg.name)
+            rospy.logerr("No update information for %s", msg.name)
         else:
             self.xglob[0] = msg.state_glob.vx
             self.xglob[1] = msg.state_glob.vy
@@ -125,17 +130,21 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
             self.xglob[4] = msg.state_glob.x
             self.xglob[5] = msg.state_glob.y
             # update the rectangle information of animation
-            x_car, y_car, width_car, height_car, angle_car = self.get_vehicle_in_rectangle(
-                self.xglob, self.param)
+            (
+                x_car,
+                y_car,
+                width_car,
+                height_car,
+                angle_car,
+            ) = self.get_vehicle_in_rectangle(self.xglob, self.param)
             self.patch.set_xy([x_car, y_car])
             self.patch.angle = angle_car
             self.patch.set_width(width_car)
             self.patch.set_height(height_car)
 
     def set_subscriber_visual(self, veh_name):
-        tmp = 'simulator/'+veh_name + '/state'
-        self.__sub_state = rospy.Subscriber(
-            tmp, VehicleState, self.__state_cb_visual)
+        tmp = "simulator/" + veh_name + "/state"
+        self.__sub_state = rospy.Subscriber(tmp, VehicleState, self.__state_cb_visual)
 
     # show the vehicle with a rectangle
     def get_vehicle_in_rectangle(self, vehicle_state_glob, veh_param):
@@ -145,35 +154,56 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
         car_dy = 0.5 * car_width
         car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
         car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
-        car_frame = np.vstack(
-            (np.array(car_xs_origin), np.array(car_ys_origin)))
+        car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
         x = vehicle_state_glob[4]
         y = vehicle_state_glob[5]
-        R = np.matrix([[np.cos(vehicle_state_glob[3]), -np.sin(vehicle_state_glob[3])],
-                      [np.sin(vehicle_state_glob[3]), np.cos(vehicle_state_glob[3])]])
+        R = np.matrix(
+            [
+                [
+                    np.cos(vehicle_state_glob[3]),
+                    -np.sin(vehicle_state_glob[3]),
+                ],
+                [np.sin(vehicle_state_glob[3]), np.cos(vehicle_state_glob[3])],
+            ]
+        )
         rotated_car_frame = R * car_frame
-        return x+rotated_car_frame[0, 2], y+rotated_car_frame[1, 2], 2*car_dx, 2*car_dy, vehicle_state_glob[3]*180/3.14
+        return (
+            x + rotated_car_frame[0, 2],
+            y + rotated_car_frame[1, 2],
+            2 * car_dx,
+            2 * car_dy,
+            vehicle_state_glob[3] * 180 / 3.14,
+        )
 
     # in this estimation, the vehicles is assumed to move with input is equal to zero
     def get_estimation(self, xglob, xcurv):
         curv = racing_env.get_curvature(
-            self.lap_length, self.point_and_tangent, xcurv[4])
+            self.lap_length, self.point_and_tangent, xcurv[4]
+        )
         xcurv_est = np.zeros(6)
         xglob_est = np.zeros(6)
         xcurv_est[0:3] = xcurv[0:3]
-        xcurv_est[3] = xcurv[3] + self.timestep * (xcurv[2]-(xcurv[0]*np.cos(
-            xcurv[3])-xcurv[1]*np.sin(xcurv[3]))/(1-curv*xcurv[5])*curv)
-        xcurv_est[4] = xcurv[4] + self.timestep * \
-            ((xcurv[0]*np.cos(xcurv[3])-xcurv[1]
-             * np.sin(xcurv[3]))/(1-curv*xcurv[5]))
-        xcurv_est[5] = xcurv[5] + self.timestep * \
-            (xcurv[0]*np.sin(xcurv[3])+xcurv[1]*np.cos(xcurv[3]))
+        xcurv_est[3] = xcurv[3] + self.timestep * (
+            xcurv[2]
+            - (xcurv[0] * np.cos(xcurv[3]) - xcurv[1] * np.sin(xcurv[3]))
+            / (1 - curv * xcurv[5])
+            * curv
+        )
+        xcurv_est[4] = xcurv[4] + self.timestep * (
+            (xcurv[0] * np.cos(xcurv[3]) - xcurv[1] * np.sin(xcurv[3]))
+            / (1 - curv * xcurv[5])
+        )
+        xcurv_est[5] = xcurv[5] + self.timestep * (
+            xcurv[0] * np.sin(xcurv[3]) + xcurv[1] * np.cos(xcurv[3])
+        )
         xglob_est[0:3] = xglob[0:3]
         xglob_est[3] = xglob[3] + self.timestep * (xglob[2])
-        xglob_est[4] = xglob[4] + self.timestep * \
-            (xglob[0]*np.cos(xglob[3])-xglob[1]*np.sin(xglob[3]))
-        xglob_est[4] = xglob[4] + self.timestep * \
-            (xglob[0]*np.sin(xglob[3])+xglob[1]*np.cos(xglob[3]))
+        xglob_est[4] = xglob[4] + self.timestep * (
+            xglob[0] * np.cos(xglob[3]) - xglob[1] * np.sin(xglob[3])
+        )
+        xglob_est[4] = xglob[4] + self.timestep * (
+            xglob[0] * np.sin(xglob[3]) + xglob[1] * np.cos(xglob[3])
+        )
 
         return xcurv_est, xglob_est
 
@@ -183,11 +213,11 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
         xglob_nsteps = np.zeros((6, n))
         for index in range(n):
             if index == 0:
-                xcurv_est, xglob_est = self.get_estimation(
-                    self.xglob, self.xcurv)
+                xcurv_est, xglob_est = self.get_estimation(self.xglob, self.xcurv)
             else:
                 xcurv_est, xglob_est = self.get_estimation(
-                    xglob_nsteps[:, index-1], xcurv_nsteps[:, index-1])
+                    xglob_nsteps[:, index - 1], xcurv_nsteps[:, index - 1]
+                )
             xcurv_nsteps[:, index] = xcurv_est
             xglob_nsteps[:, index] = xglob_est
         return xcurv_nsteps, xglob_nsteps
@@ -216,21 +246,19 @@ class ControlBase:
 
     def __track_cb(self, msg):
         size1 = msg.size
-        size0 = int(np.size(msg.point_and_tangent)/size1)
+        size0 = int(np.size(msg.point_and_tangent) / size1)
         self.point_and_tangent = np.zeros((size0, size1))
         tmp = 0
         for index_1 in range(size1):
             for index_0 in range(size0):
-                self.point_and_tangent[index_0,
-                                       index_1] = msg.point_and_tangent[tmp]
+                self.point_and_tangent[index_0, index_1] = msg.point_and_tangent[tmp]
                 tmp = tmp + 1
         self.lap_length = msg.length
         self.lap_width = msg.width
         self.track_layout = msg.track_layout
 
     def set_subscriber_track(self):
-        self.__sub_track = rospy.Subscriber(
-            'track_info', TrackInfo, self.__track_cb)
+        self.__sub_track = rospy.Subscriber("track_info", TrackInfo, self.__track_cb)
         if self.lap_length == None:
             time.sleep(0.1)
         else:
@@ -248,7 +276,8 @@ class ControlBase:
 
     def set_subscriber_optimal_traj(self):
         self.__sub_optimal_traj = rospy.Subscriber(
-            'optimal_traj', OptimalTraj, self.__optimal_traj_cb)
+            "optimal_traj", OptimalTraj, self.__optimal_traj_cb
+        )
         if self.opti_traj_xcurv == None:
             time.sleep(0.1)
         else:
@@ -256,21 +285,19 @@ class ControlBase:
 
     def __track_cb(self, msg):
         size1 = msg.size
-        size0 = int(np.size(msg.point_and_tangent)/size1)
+        size0 = int(np.size(msg.point_and_tangent) / size1)
         self.point_and_tangent = np.zeros((size0, size1))
         tmp = 0
         for index_1 in range(size1):
             for index_0 in range(size0):
-                self.point_and_tangent[index_0,
-                                       index_1] = msg.point_and_tangent[tmp]
+                self.point_and_tangent[index_0, index_1] = msg.point_and_tangent[tmp]
                 tmp = tmp + 1
         self.lap_length = msg.length
         self.lap_width = msg.width
         self.track_layout = msg.track_layout
 
     def set_subscriber_track(self):
-        self.__sub_track = rospy.Subscriber(
-            'track_info', TrackInfo, self.__track_cb)
+        self.__sub_track = rospy.Subscriber("track_info", TrackInfo, self.__track_cb)
         if self.lap_length == None:
             time.sleep(0.1)
         else:
@@ -288,7 +315,8 @@ class ControlBase:
 
     def set_subscriber_optimal_traj(self):
         self.__sub_optimal_traj = rospy.Subscriber(
-            'optimal_traj', OptimalTraj, self.__optimal_traj_cb)
+            "optimal_traj", OptimalTraj, self.__optimal_traj_cb
+        )
         if self.opti_traj_xcurv == None:
             time.sleep(0.1)
         else:
@@ -296,20 +324,18 @@ class ControlBase:
 
     def __track_cb(self, msg):
         size1 = msg.size
-        size0 = int(np.size(msg.point_and_tangent)/size1)
+        size0 = int(np.size(msg.point_and_tangent) / size1)
         self.point_and_tangent = np.zeros((size0, size1))
         tmp = 0
         for index_1 in range(size1):
             for index_0 in range(size0):
-                self.point_and_tangent[index_0,
-                                       index_1] = msg.point_and_tangent[tmp]
+                self.point_and_tangent[index_0, index_1] = msg.point_and_tangent[tmp]
                 tmp = tmp + 1
         self.lap_length = msg.length
         self.lap_width = msg.width
 
     def set_subscriber_track(self):
-        self.__sub_track = rospy.Subscriber(
-            'track_info', TrackInfo, self.__track_cb)
+        self.__sub_track = rospy.Subscriber("track_info", TrackInfo, self.__track_cb)
         if self.lap_length == None:
             time.sleep(0.1)
         else:
@@ -317,8 +343,12 @@ class ControlBase:
 
     def __state_cb(self, msg):
         if self.x is None:
-            self.x = np.zeros(6,)
-            self.xglob = np.zeros(6,)
+            self.x = np.zeros(
+                6,
+            )
+            self.xglob = np.zeros(
+                6,
+            )
             self.x[0] = msg.state_curv.vx
             self.x[1] = msg.state_curv.vy
             self.x[2] = msg.state_curv.wz
@@ -353,9 +383,8 @@ class ControlBase:
             self.xglob[5] = msg.state_glob.y
 
     def set_subscriber_state(self, veh_name):
-        tmp = 'simulator/'+veh_name+'/state'
-        self.__sub_state = rospy.Subscriber(
-            tmp, VehicleState, self.__state_cb)
+        tmp = "simulator/" + veh_name + "/state"
+        self.__sub_state = rospy.Subscriber(tmp, VehicleState, self.__state_cb)
 
 
 class PIDTracking(base.PIDTracking, ControlBase):
@@ -366,21 +395,19 @@ class PIDTracking(base.PIDTracking, ControlBase):
 
 class MPCTracking(base.MPCTracking, ControlBase):
     def __init__(self, mpc_lti_param):
-        base.MPCTracking.__init__(
-            self, mpc_lti_param)
+        base.MPCTracking.__init__(self, mpc_lti_param)
         ControlBase.__init__(self)
 
 
 class LMPCRacingGame(base.LMPCRacingGame, ControlBase):
-    def __init__(self, lmpc_param, racing_game_param = None):
-        base.LMPCRacing.__init__(self, lmpc_param, racing_game_param = racing_game_param)
+    def __init__(self, lmpc_param, racing_game_param=None):
+        base.LMPCRacing.__init__(self, lmpc_param, racing_game_param=racing_game_param)
         ControlBase.__init__(self)
 
 
 class MPCCBFRacing(base.MPCCBFRacing, ControlBase):
     def __init__(self, mpc_cbf_param):
-        base.MPCCBFRacing.__init__(
-            self, mpc_cbf_param)
+        base.MPCCBFRacing.__init__(self, mpc_cbf_param)
         ControlBase.__init__(self)
         # vehicle's list
         self.vehicles = {}
@@ -401,14 +428,16 @@ class MPCCBFRacing(base.MPCCBFRacing, ControlBase):
                 # ego vehicle
                 if name == self.agent_name:
                     self.vehicles[name] = DynamicBicycleModel(
-                        name=name, param=base.CarParam())
+                        name=name, param=base.CarParam()
+                    )
                     self.vehicles[name].name = self.agent_name
                     self.vehicles[name].xglob = np.zeros(6)
                     self.vehicles[name].xcurv = np.zeros(6)
                 # other vehicle
                 else:
                     self.vehicles[name] = DynamicBicycleModel(
-                        name=name, param=base.CarParam())
+                        name=name, param=base.CarParam()
+                    )
                     self.vehicles[name].xglob = np.zeros(6)
                     self.vehicles[name].xcurv = np.zeros(6)
                     self.vehicles[name].timestep = self.timestep
@@ -419,9 +448,12 @@ class MPCCBFRacing(base.MPCCBFRacing, ControlBase):
 
     def set_subscriber_veh(self):
         self.__sub_num_veh = rospy.Subscriber(
-            'vehicle_num', NumVehicle, self.__sub_num_veh_cb)
+            "vehicle_num", NumVehicle, self.__sub_num_veh_cb
+        )
         self.__sub_veh_list = rospy.Subscriber(
-            'vehicle_list', VehicleList, self.__sub_veh_list_cb)
+            "vehicle_list", VehicleList, self.__sub_veh_list_cb
+        )
+
 
 # real-time simulator
 
@@ -439,13 +471,15 @@ class CarRacingSim(base.CarRacingSim):
     # add new vehicle in vehicle list
     def add_vehicle(self, req):
         self.vehicles[req.name] = DynamicBicycleModel(
-            name=req.name, param=base.CarParam())
+            name=req.name, param=base.CarParam()
+        )
         self.vehicles[req.name].xglob = np.zeros(6)
         self.vehicles[req.name].xcurv = np.zeros(6)
         self.vehicles[req.name].msg_state.name = req.name
         self.vehicles[req.name].set_subscriber_sim(req.name)
         self.num_vehicle = self.num_vehicle + 1
         return 1
+
 
 # real-time visualization
 
@@ -472,21 +506,19 @@ class Visualization:
 
     def __track_cb(self, msg):
         size1 = msg.size
-        size0 = int(np.size(msg.point_and_tangent)/size1)
+        size0 = int(np.size(msg.point_and_tangent) / size1)
         self.point_and_tangent = np.zeros((size0, size1))
         tmp = 0
         for index_1 in range(size1):
             for index_0 in range(size0):
-                self.point_and_tangent[index_0,
-                                       index_1] = msg.point_and_tangent[tmp]
+                self.point_and_tangent[index_0, index_1] = msg.point_and_tangent[tmp]
                 tmp = tmp + 1
         self.lap_length = msg.length
         self.lap_width = msg.width
         self.track_layout = msg.track_layout
 
     def set_subscriber_track(self):
-        self.__sub_track = rospy.Subscriber(
-            'track_info', TrackInfo, self.__track_cb)
+        self.__sub_track = rospy.Subscriber("track_info", TrackInfo, self.__track_cb)
         if self.lap_length == None:
             time.sleep(0.1)
         else:
@@ -503,7 +535,8 @@ class Visualization:
 
     def set_subscriber_optimal_traj(self):
         self.__sub_optimal_traj = rospy.Subscriber(
-            'optimal_traj', OptimalTraj, self.__optimal_traj_cb)
+            "optimal_traj", OptimalTraj, self.__optimal_traj_cb
+        )
         if self.opti_traj_xglob == None:
             time.sleep(0.1)
         else:
@@ -514,18 +547,30 @@ class Visualization:
 
     def add_vehicle(self, req):
         self.vehicles[req.name] = DynamicBicycleModel(
-            name=req.name, param=base.CarParam())
+            name=req.name, param=base.CarParam()
+        )
         self.vehicles[req.name].ax = self.ax
         self.vehicles[req.name].xglob = np.zeros(6)
         self.vehicles[req.name].xcurv = np.zeros(6)
         self.num_vehicle = self.num_vehicle + 1
-        x_car, y_car, width_car, height_car, angle_car = self.get_vehicle_in_rectangle(
-            self.vehicles[req.name].xglob, self.vehicles[req.name].param)
+        (
+            x_car,
+            y_car,
+            width_car,
+            height_car,
+            angle_car,
+        ) = self.get_vehicle_in_rectangle(
+            self.vehicles[req.name].xglob, self.vehicles[req.name].param
+        )
         self.vehicles[req.name].patch = patches.Rectangle(
-            (x_car, y_car), width_car, height_car, angle_car, color=req.color)
+            (x_car, y_car), width_car, height_car, angle_car, color=req.color
+        )
         self.vehicles[req.name].set_subscriber_visual(req.name)
         self.vehicles[req.name].ani = animation.FuncAnimation(
-            self.fig, self.vehicles[req.name].update, init_func=self.vehicles[req.name].init)
+            self.fig,
+            self.vehicles[req.name].update,
+            init_func=self.vehicles[req.name].init,
+        )
         return 1
 
     def init(self):
@@ -536,18 +581,32 @@ class Visualization:
 
     def plot_track(self, ax):
         num_sampling_per_meter = 100
-        num_track_points = int(
-            np.floor(num_sampling_per_meter * self.lap_length))
+        num_track_points = int(np.floor(num_sampling_per_meter * self.lap_length))
         points_out = np.zeros((num_track_points, 2))
         points_center = np.zeros((num_track_points, 2))
         points_in = np.zeros((num_track_points, 2))
         for i in range(0, num_track_points):
-            points_out[i, :] = racing_env.get_global_position(self.lap_length, self.lap_width, self.point_and_tangent,
-                                                              i / float(num_sampling_per_meter), self.lap_width)
-            points_center[i, :] = racing_env.get_global_position(self.lap_length, self.lap_width, self.point_and_tangent,
-                                                                 i / float(num_sampling_per_meter), 0.0)
-            points_in[i, :] = racing_env.get_global_position(self.lap_length, self.lap_width, self.point_and_tangent,
-                                                             i / float(num_sampling_per_meter), -self.lap_width)
+            points_out[i, :] = racing_env.get_global_position(
+                self.lap_length,
+                self.lap_width,
+                self.point_and_tangent,
+                i / float(num_sampling_per_meter),
+                self.lap_width,
+            )
+            points_center[i, :] = racing_env.get_global_position(
+                self.lap_length,
+                self.lap_width,
+                self.point_and_tangent,
+                i / float(num_sampling_per_meter),
+                0.0,
+            )
+            points_in[i, :] = racing_env.get_global_position(
+                self.lap_length,
+                self.lap_width,
+                self.point_and_tangent,
+                i / float(num_sampling_per_meter),
+                -self.lap_width,
+            )
         ax.plot(points_center[:, 0], points_center[:, 1], "--r")
         ax.plot(points_in[:, 0], points_in[:, 1], "-b")
         ax.plot(points_out[:, 0], points_out[:, 1], "-b")
@@ -559,11 +618,23 @@ class Visualization:
         car_dy = 0.5 * car_width
         car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
         car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
-        car_frame = np.vstack(
-            (np.array(car_xs_origin), np.array(car_ys_origin)))
+        car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
         x = vehicle_state_glob[4]
         y = vehicle_state_glob[5]
-        R = np.matrix([[np.cos(vehicle_state_glob[3]), -np.sin(vehicle_state_glob[3])],
-                      [np.sin(vehicle_state_glob[3]), np.cos(vehicle_state_glob[3])]])
+        R = np.matrix(
+            [
+                [
+                    np.cos(vehicle_state_glob[3]),
+                    -np.sin(vehicle_state_glob[3]),
+                ],
+                [np.sin(vehicle_state_glob[3]), np.cos(vehicle_state_glob[3])],
+            ]
+        )
         rotated_car_frame = R * car_frame
-        return x+rotated_car_frame[0, 2], y+rotated_car_frame[1, 2], 2*car_dx, 2*car_dy, vehicle_state_glob[3]*180/3.14
+        return (
+            x + rotated_car_frame[0, 2],
+            y + rotated_car_frame[1, 2],
+            2 * car_dx,
+            2 * car_dy,
+            vehicle_state_glob[3] * 180 / 3.14,
+        )

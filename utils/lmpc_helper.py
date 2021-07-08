@@ -13,7 +13,7 @@ def compute_cost(xcurv, u, lap_length):
     # Now compute the cost moving backwards in a Dynamic Programming (DP) fashion.
     # We start from the last element of the vector x and we sum the running cost
     for i in range(0, xcurv.shape[0]):
-        if (i == 0):  # Note that for i = 0 --> pick the latest element of the vector x
+        if i == 0:  # Note that for i = 0 --> pick the latest element of the vector x
             cost[xcurv.shape[0] - 1 - i] = 0
         elif xcurv[xcurv.shape[0] - 1 - i, 4] < lap_length:
             cost[xcurv.shape[0] - 1 - i] = cost[xcurv.shape[0] - 1 - i + 1] + 1
@@ -22,7 +22,22 @@ def compute_cost(xcurv, u, lap_length):
     return cost
 
 
-def regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_ss, time_ss, max_num_point, qp, n, d, matrix, point_and_tangent, dt, i):
+def regression_and_linearization(
+    lin_points,
+    lin_input,
+    used_iter,
+    ss_xcurv,
+    u_ss,
+    time_ss,
+    max_num_point,
+    qp,
+    n,
+    d,
+    matrix,
+    point_and_tangent,
+    dt,
+    i,
+):
     x0 = lin_points[i, :]
     Ai = np.zeros((n, n))
     Bi = np.zeros((n, d))
@@ -33,49 +48,87 @@ def regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_s
     state_features = [0, 1, 2]
     consider_input = True
     if consider_input == True:
-        scaling = np.array([[0.1, 0.0, 0.0, 0.0, 0.0],
-                            [0.0, 1.0, 0.0, 0.0, 0.0],
-                            [0.0, 0.0, 1.0, 0.0, 0.0],
-                            [0.0, 0.0, 0.0, 1.0, 0.0],
-                            [0.0, 0.0, 0.0, 0.0, 1.0]])
+        scaling = np.array(
+            [
+                [0.1, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 1.0],
+            ]
+        )
         x_lin = np.hstack((lin_points[i, state_features], lin_input[i, :]))
     else:
-        scaling = np.array([[1.0, 0.0, 0.0],
-                            [0.0, 1.0, 0.0],
-                            [0.0, 0.0, 1.0]])
+        scaling = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
         x_lin = lin_points[i, state_features]
     index_selected = []
     K = []
     for i in used_iter:
-        index_selected_i, K_i = compute_index(h, ss_xcurv, u_ss, time_ss, i, x_lin, state_features, scaling, max_num_point,
-                                              consider_input)
+        index_selected_i, K_i = compute_index(
+            h,
+            ss_xcurv,
+            u_ss,
+            time_ss,
+            i,
+            x_lin,
+            state_features,
+            scaling,
+            max_num_point,
+            consider_input,
+        )
         index_selected.append(index_selected_i)
         K.append(K_i)
     # =========================
     # ====== Identify vx ======
     input_features = [1]
-    Q_vx, M_vx = compute_Q_M(ss_xcurv, u_ss, index_selected,
-                             state_features, input_features, used_iter, np, matrix, lamb, K)
+    Q_vx, M_vx = compute_Q_M(
+        ss_xcurv,
+        u_ss,
+        index_selected,
+        state_features,
+        input_features,
+        used_iter,
+        np,
+        matrix,
+        lamb,
+        K,
+    )
     y_index = 0
-    b = compute_b(ss_xcurv, y_index, used_iter,
-                  matrix, M_vx, index_selected, K)
-    Ai[y_index, state_features], Bi[y_index, input_features], Ci[y_index] = lmpc_loc_lin_reg(Q_vx, b, state_features,
-                                                                                             input_features, qp)
+    b = compute_b(ss_xcurv, y_index, used_iter, matrix, M_vx, index_selected, K)
+    (
+        Ai[y_index, state_features],
+        Bi[y_index, input_features],
+        Ci[y_index],
+    ) = lmpc_loc_lin_reg(Q_vx, b, state_features, input_features, qp)
     # =======================================
     # ====== Identify Lateral Dynamics ======
     input_features = [0]
-    Q_lat, M_lat = compute_Q_M(ss_xcurv, u_ss, index_selected,
-                               state_features, input_features, used_iter, np, matrix, lamb, K)
+    Q_lat, M_lat = compute_Q_M(
+        ss_xcurv,
+        u_ss,
+        index_selected,
+        state_features,
+        input_features,
+        used_iter,
+        np,
+        matrix,
+        lamb,
+        K,
+    )
     y_index = 1  # vy
-    b = compute_b(ss_xcurv, y_index, used_iter,
-                  matrix, M_lat, index_selected, K)
-    Ai[y_index, state_features], Bi[y_index, input_features], Ci[y_index] = lmpc_loc_lin_reg(Q_lat, b, state_features,
-                                                                                             input_features, qp)
+    b = compute_b(ss_xcurv, y_index, used_iter, matrix, M_lat, index_selected, K)
+    (
+        Ai[y_index, state_features],
+        Bi[y_index, input_features],
+        Ci[y_index],
+    ) = lmpc_loc_lin_reg(Q_lat, b, state_features, input_features, qp)
     y_index = 2  # wz
-    b = compute_b(ss_xcurv, y_index, used_iter,
-                  matrix, M_lat, index_selected, K)
-    Ai[y_index, state_features], Bi[y_index, input_features], Ci[y_index] = lmpc_loc_lin_reg(Q_lat, b, state_features,
-                                                                                             input_features, qp)
+    b = compute_b(ss_xcurv, y_index, used_iter, matrix, M_lat, index_selected, K)
+    (
+        Ai[y_index, state_features],
+        Bi[y_index, input_features],
+        Ci[y_index],
+    ) = lmpc_loc_lin_reg(Q_lat, b, state_features, input_features, qp)
     # ===========================
     # ===== Linearization =======
     vx = x0[0]
@@ -88,7 +141,10 @@ def regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_s
         print("s is negative, here the state: \n", lin_points)
     startTimer = datetime.datetime.now()  # Start timer for LMPC iteration
     cur = racing_env.get_curvature(
-        point_and_tangent[-1, 3]+point_and_tangent[-1, 4], point_and_tangent, s)
+        point_and_tangent[-1, 3] + point_and_tangent[-1, 4],
+        point_and_tangent,
+        s,
+    )
     den = 1 - cur * ey
     # ===========================
     # ===== Linearize epsi ======
@@ -98,11 +154,13 @@ def regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_s
     depsi_wz = dt
     depsi_epsi = 1 - dt * (-vx * np.sin(epsi) - vy * np.cos(epsi)) / den * cur
     depsi_s = 0  # Because cur = constant
-    depsi_ey = dt * (vx * np.cos(epsi) - vy * np.sin(epsi)) / \
-        (den ** 2) * cur * (-cur)
+    depsi_ey = dt * (vx * np.cos(epsi) - vy * np.sin(epsi)) / (den ** 2) * cur * (-cur)
     Ai[3, :] = [depsi_vx, depsi_vy, depsi_wz, depsi_epsi, depsi_s, depsi_ey]
-    Ci[3] = epsi + dt * (wz - (vx * np.cos(epsi) - vy * np.sin(epsi)
-                               ) / (1 - cur * ey) * cur) - np.dot(Ai[3, :], x0)
+    Ci[3] = (
+        epsi
+        + dt * (wz - (vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - cur * ey) * cur)
+        - np.dot(Ai[3, :], x0)
+    )
     # ===========================
     # ===== Linearize s =========
     # s_{k+1} = s    + dt * ( (vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - cur * ey) )
@@ -114,8 +172,11 @@ def regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_s
     ds_s = 1
     ds_ey = -dt * (vx * np.cos(epsi) - vy * np.sin(epsi)) / (den * 2) * (-cur)
     Ai[4, :] = [ds_vx, ds_vy, ds_wz, ds_epsi, ds_s, ds_ey]
-    Ci[4] = s + dt * ((vx * np.cos(epsi) - vy * np.sin(epsi)) /
-                      (1 - cur * ey)) - np.dot(Ai[4, :], x0)
+    Ci[4] = (
+        s
+        + dt * ((vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - cur * ey))
+        - np.dot(Ai[4, :], x0)
+    )
     # ===========================
     # ===== Linearize ey ========
     # ey_{k+1} = ey + dt * (vx * np.sin(epsi) + vy * np.cos(epsi))
@@ -126,42 +187,82 @@ def regression_and_linearization(lin_points, lin_input, used_iter, ss_xcurv, u_s
     dey_s = 0
     dey_ey = 1
     Ai[5, :] = [dey_vx, dey_vy, dey_wz, dey_epsi, dey_s, dey_ey]
-    Ci[5] = ey + dt * (vx * np.sin(epsi) + vy *
-                       np.cos(epsi)) - np.dot(Ai[5, :], x0)
+    Ci[5] = ey + dt * (vx * np.sin(epsi) + vy * np.cos(epsi)) - np.dot(Ai[5, :], x0)
     deltaTimer_tv = datetime.datetime.now() - startTimer
     return Ai, Bi, Ci, index_selected
 
 
-def compute_index(h, ss_xcurv, u_ss, time_ss, iter, x0, state_features, scaling, max_num_point, consider_input):
+def compute_index(
+    h,
+    ss_xcurv,
+    u_ss,
+    time_ss,
+    iter,
+    x0,
+    state_features,
+    scaling,
+    max_num_point,
+    consider_input,
+):
     startTimer = datetime.datetime.now()  # Start timer for LMPC iteration
     # What to learn a model such that: x_{k+1} = A x_k  + B u_k + C
-    one_vec = np.ones((ss_xcurv[0:time_ss[iter], :, iter].shape[0]-1, 1))
+    one_vec = np.ones((ss_xcurv[0 : time_ss[iter], :, iter].shape[0] - 1, 1))
     x0_vec = (np.dot(np.array([x0]).T, one_vec.T)).T
     if consider_input == True:
         DataMatrix = np.hstack(
-            (ss_xcurv[0:time_ss[iter]-1, state_features, iter], u_ss[0:time_ss[iter]-1, :, iter]))
+            (
+                ss_xcurv[0 : time_ss[iter] - 1, state_features, iter],
+                u_ss[0 : time_ss[iter] - 1, :, iter],
+            )
+        )
     else:
-        DataMatrix = ss_xcurv[0:time_ss[iter]-1, state_features, iter]
+        DataMatrix = ss_xcurv[0 : time_ss[iter] - 1, state_features, iter]
     diff = np.dot((DataMatrix - x0_vec), scaling)
     norm = la.norm(diff, 1, axis=1)
     index_tot = np.squeeze(np.where(norm < h))
-    if (index_tot.shape[0] >= max_num_point):
+    if index_tot.shape[0] >= max_num_point:
         index = np.argsort(norm)[0:max_num_point]
     else:
         index = index_tot
 
-    K = (1 - (norm[index] / h)**2) * 3/4
+    K = (1 - (norm[index] / h) ** 2) * 3 / 4
     return index, K
 
 
-def compute_Q_M(ss_xcurv, u_ss, index_selected, state_features, input_features, used_iter, np, matrix, lamb, K):
+def compute_Q_M(
+    ss_xcurv,
+    u_ss,
+    index_selected,
+    state_features,
+    input_features,
+    used_iter,
+    np,
+    matrix,
+    lamb,
+    K,
+):
     counter = 0
     iter = 1
-    X0 = np.empty((0, len(state_features)+len(input_features)))
+    X0 = np.empty((0, len(state_features) + len(input_features)))
     Ktot = np.empty((0))
     for iter in used_iter:
-        X0 = np.append(X0, np.hstack((np.squeeze(ss_xcurv[np.ix_(index_selected[counter], state_features, [iter])]),
-                                      np.squeeze(u_ss[np.ix_(index_selected[counter], input_features, [iter])], axis=2))), axis=0)
+        X0 = np.append(
+            X0,
+            np.hstack(
+                (
+                    np.squeeze(
+                        ss_xcurv[
+                            np.ix_(index_selected[counter], state_features, [iter])
+                        ]
+                    ),
+                    np.squeeze(
+                        u_ss[np.ix_(index_selected[counter], input_features, [iter])],
+                        axis=2,
+                    ),
+                )
+            ),
+            axis=0,
+        )
         Ktot = np.append(Ktot, K[counter])
         counter = counter + 1
 
@@ -180,17 +281,20 @@ def select_points(ss_xcurv, Qfun, iter, x0, num_ss_points, shift):
     diff = xcurv - x0_vec
     norm = la.norm(diff, 1, axis=1)
     min_norm = np.argmin(norm)
-    if (min_norm + shift >= 0):
-        ss_points = xcurv[int(shift + min_norm):int(shift + min_norm + num_ss_points), :].T
-        sel_Qfun = Qfun[int(shift + min_norm):int(shift +
-                                                  min_norm + num_ss_points), iter]
+    if min_norm + shift >= 0:
+        ss_points = xcurv[
+            int(shift + min_norm) : int(shift + min_norm + num_ss_points), :
+        ].T
+        sel_Qfun = Qfun[
+            int(shift + min_norm) : int(shift + min_norm + num_ss_points), iter
+        ]
     else:
-        ss_points = xcurv[int(min_norm):int(min_norm + num_ss_Points), :].T
-        sel_Qfun = Qfun[int(min_norm):int(min_norm + num_ss_Points), iter]
+        ss_points = xcurv[int(min_norm) : int(min_norm + num_ss_Points), :].T
+        sel_Qfun = Qfun[int(min_norm) : int(min_norm + num_ss_Points), iter]
     return ss_points, sel_Qfun
 
 
-class closedloop_data():
+class closedloop_data:
     """Object collecting closed loop data points
     Attributes:
         update_initial_conditions: function which updates initial conditions and clear the memory
@@ -222,15 +326,22 @@ class closedloop_data():
         """
         self.xcurv[0, :] = xcurv
         self.xglob[0, :] = xglob
-        self.xcurv[1:, :] = 0*self.xcurv[1:, :]
-        self.xglob[1:, :] = 0*self.xglob[1:, :]
+        self.xcurv[1:, :] = 0 * self.xcurv[1:, :]
+        self.xglob[1:, :] = 0 * self.xglob[1:, :]
 
 
-class lmpc_prediction():
-    """Object collecting the predictions and SS at eath time step
-    """
+class lmpc_prediction:
+    """Object collecting the predictions and SS at eath time step"""
 
-    def __init__(self, num_horizon=12, xdim=6, udim=2, points_lmpc=5000, num_ss_points=32 + 12, lap_number = None):
+    def __init__(
+        self,
+        num_horizon=12,
+        xdim=6,
+        udim=2,
+        points_lmpc=5000,
+        num_ss_points=32 + 12,
+        lap_number=None,
+    ):
         """
         Initialization:
             num_horizon: horizon length
@@ -238,10 +349,11 @@ class lmpc_prediction():
             points_lmpc: maximum simulation timesteps
             num_ss_points: number used to build safe set at each time step
         """
-        self.predicted_xcurv = np.zeros((num_horizon+1, xdim, points_lmpc, lap_number))
+        self.predicted_xcurv = np.zeros(
+            (num_horizon + 1, xdim, points_lmpc, lap_number)
+        )
         self.predicted_u = np.zeros((num_horizon, udim, points_lmpc, lap_number))
-        self.ss_used = np.zeros(
-            (xdim, num_ss_points, points_lmpc, lap_number))
+        self.ss_used = np.zeros((xdim, num_ss_points, points_lmpc, lap_number))
         self.Qfun_used = np.zeros((num_ss_points, points_lmpc, lap_number))
 
 
@@ -250,8 +362,12 @@ def compute_b(ss_xcurv, y_index, used_iter, matrix, M, index_selected, K):
     y = np.empty((0))
     Ktot = np.empty((0))
     for iter in used_iter:
-        y = np.append(y, np.squeeze(
-            ss_xcurv[np.ix_(index_selected[counter] + 1, [y_index], [iter])]))
+        y = np.append(
+            y,
+            np.squeeze(
+                ss_xcurv[np.ix_(index_selected[counter] + 1, [y_index], [iter])]
+            ),
+        )
         Ktot = np.append(Ktot, K[counter])
         counter = counter + 1
     b = matrix(-np.dot(np.dot(M.T, np.diag(Ktot)), y))
@@ -262,8 +378,8 @@ def lmpc_loc_lin_reg(Q, b, state_features, input_features, qp):
     startTimer = datetime.datetime.now()  # Start timer for LMPC iteration
     res_cons = qp(Q, b)  # This is ordered as [A B C]
     deltaTimer_tv = datetime.datetime.now() - startTimer
-    result = np.squeeze(np.array(res_cons['x']))
-    A = result[0:len(state_features)]
-    B = result[len(state_features):(len(state_features)+len(input_features))]
+    result = np.squeeze(np.array(res_cons["x"]))
+    A = result[0 : len(state_features)]
+    B = result[len(state_features) : (len(state_features) + len(input_features))]
     C = result[-1]
     return A, B, C

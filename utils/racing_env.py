@@ -16,8 +16,10 @@ def get_global_position(lap_length, width, point_and_tangent, s, ey):
 
     # Compute the segment in which system is evolving
     index = np.all(
-        [[s >= point_and_tangent[:, 3]], [
-            s < point_and_tangent[:, 3] + point_and_tangent[:, 4] + s_tolerance]],
+        [
+            [s >= point_and_tangent[:, 3]],
+            [s < point_and_tangent[:, 3] + point_and_tangent[:, 4] + s_tolerance],
+        ],
         axis=0,
     )
     i = np.asscalar(np.where(np.squeeze(index))[0][0])
@@ -35,10 +37,16 @@ def get_global_position(lap_length, width, point_and_tangent, s, ey):
         reltaL = s - point_and_tangent[i, 3]
 
         # Do the linear combination
-        x = (1 - reltaL / deltaL) * xs + reltaL / \
-            deltaL * xf + ey * np.cos(psi + np.pi / 2)
-        y = (1 - reltaL / deltaL) * ys + reltaL / \
-            deltaL * yf + ey * np.sin(psi + np.pi / 2)
+        x = (
+            (1 - reltaL / deltaL) * xs
+            + reltaL / deltaL * xf
+            + ey * np.cos(psi + np.pi / 2)
+        )
+        y = (
+            (1 - reltaL / deltaL) * ys
+            + reltaL / deltaL * yf
+            + ey * np.sin(psi + np.pi / 2)
+        )
     else:
         r = 1 / point_and_tangent[i, 5]  # Extract curvature
         # Extract angle of the tangent at the initial point (i-1)
@@ -55,8 +63,7 @@ def get_global_position(lap_length, width, point_and_tangent, s, ey):
         CenterY = point_and_tangent[i - 1, 1] + np.abs(r) * np.sin(
             ang + direction * np.pi / 2
         )  # y coordinate center of circle
-        spanAng = (s - point_and_tangent[i, 3]
-                   ) / (np.pi * np.abs(r)) * np.pi
+        spanAng = (s - point_and_tangent[i, 3]) / (np.pi * np.abs(r)) * np.pi
         angleNormal = wrap((direction * np.pi / 2 + ang))
         angle = -(np.pi - np.abs(angleNormal)) * (sign(angleNormal))
 
@@ -79,8 +86,10 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
         s = s + lap_length
 
     index = np.all(
-        [[s >= point_and_tangent[:, 3]], [
-            s < point_and_tangent[:, 3] + point_and_tangent[:, 4] + s_tolerance]],
+        [
+            [s >= point_and_tangent[:, 3]],
+            [s < point_and_tangent[:, 3] + point_and_tangent[:, 4] + s_tolerance],
+        ],
         axis=0,
     )
     i = np.asscalar(np.where(np.squeeze(index))[0][0])
@@ -98,10 +107,16 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
         reltaL = s - point_and_tangent[i, 3]
 
         # Do the linear combination
-        x = (1 - reltaL / deltaL) * xs + reltaL / \
-            deltaL * xf + ey * np.cos(psi + np.pi / 2)
-        y = (1 - reltaL / deltaL) * ys + reltaL / \
-            deltaL * yf + ey * np.sin(psi + np.pi / 2)
+        x = (
+            (1 - reltaL / deltaL) * xs
+            + reltaL / deltaL * xf
+            + ey * np.cos(psi + np.pi / 2)
+        )
+        y = (
+            (1 - reltaL / deltaL) * ys
+            + reltaL / deltaL * yf
+            + ey * np.sin(psi + np.pi / 2)
+        )
     else:
         r = 1 / point_and_tangent[i, 5]  # Extract curvature
         # Extract angle of the tangent at the initial point (i-1)
@@ -119,8 +134,7 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
             ang + direction * np.pi / 2
         )  # y coordinate center of circle
 
-        spanAng = (s - point_and_tangent[i, 3]
-                   ) / (np.pi * np.abs(r)) * np.pi
+        spanAng = (s - point_and_tangent[i, 3]) / (np.pi * np.abs(r)) * np.pi
 
         angleNormal = wrap((direction * np.pi / 2 + ang))
         angle = -(np.pi - np.abs(angleNormal)) * (sign(angleNormal))
@@ -167,8 +181,7 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
                 CompletedFlag = 1
             else:
                 if (
-                    np.abs(computeAngle(
-                        [x, y], [xs, ys], [xf, yf])) <= np.pi / 2
+                    np.abs(computeAngle([x, y], [xs, ys], [xf, yf])) <= np.pi / 2
                     and np.abs(computeAngle([x, y], [xf, yf], [xs, ys])) <= np.pi / 2
                 ):
                     v1 = np.array([x, y]) - np.array([xs, ys])
@@ -255,8 +268,10 @@ def get_curvature(lap_length, point_and_tangent, s):
     # Given s \in [0, lap_length] compute the curvature
     # Compute the segment in which system is evolving
     index = np.all(
-        [[s >= point_and_tangent[:, 3]], [
-            s <= point_and_tangent[:, 3] + point_and_tangent[:, 4]]],
+        [
+            [s >= point_and_tangent[:, 3]],
+            [s <= point_and_tangent[:, 3] + point_and_tangent[:, 4]],
+        ],
         axis=0,
     )
     i = int(np.where(np.squeeze(index))[0])
@@ -308,6 +323,7 @@ class ClosedTrack:
         get_orientation: get (psi) from (s, ey)
         get_local_position: get (s, ey, epsi, CompletedFlag) from (X, Y, psi)
     """
+
     def __init__(self, spec, width):
         """Initialization
         spec: geometry of the track
@@ -339,14 +355,23 @@ class ClosedTrack:
                     x = point_and_tangent[i - 1, 0] + l * np.cos(ang)
                     # y coordinate of the last point of the segment
                     y = point_and_tangent[i - 1, 1] + l * np.sin(ang)
-                psi = ang  # Angle of the tangent vector at the last point of the segment
+                psi = (
+                    ang  # Angle of the tangent vector at the last point of the segment
+                )
 
                 if i == 0:
-                    newline = np.array(
-                        [x, y, psi, point_and_tangent[i, 3], l, 0])
+                    newline = np.array([x, y, psi, point_and_tangent[i, 3], l, 0])
                 else:
                     newline = np.array(
-                        [x, y, psi, point_and_tangent[i - 1, 3] + point_and_tangent[i - 1, 4], l, 0])
+                        [
+                            x,
+                            y,
+                            psi,
+                            point_and_tangent[i - 1, 3] + point_and_tangent[i - 1, 4],
+                            l,
+                            0,
+                        ]
+                    )
 
                 point_and_tangent[i, :] = newline  # Write the new info
             else:
@@ -362,11 +387,9 @@ class ClosedTrack:
                     ang = 0  # Angle of the tangent vector at the
                     # starting point of the segment
                     # x coordinate center of circle
-                    CenterX = 0 + np.abs(r) * \
-                        np.cos(ang + direction * np.pi / 2)
+                    CenterX = 0 + np.abs(r) * np.cos(ang + direction * np.pi / 2)
                     # y coordinate center of circle
-                    CenterY = 0 + np.abs(r) * \
-                        np.sin(ang + direction * np.pi / 2)
+                    CenterY = 0 + np.abs(r) * np.sin(ang + direction * np.pi / 2)
                 else:
                     # Angle of the tangent vector at the
                     ang = point_and_tangent[i - 1, 2]
@@ -392,11 +415,18 @@ class ClosedTrack:
                 )  # y coordinate of the last point of the segment
 
                 if i == 0:
-                    newline = np.array(
-                        [x, y, psi, point_and_tangent[i, 3], l, 1 / r])
+                    newline = np.array([x, y, psi, point_and_tangent[i, 3], l, 1 / r])
                 else:
                     newline = np.array(
-                        [x, y, psi, point_and_tangent[i - 1, 3] + point_and_tangent[i - 1, 4], l, 1 / r])
+                        [
+                            x,
+                            y,
+                            psi,
+                            point_and_tangent[i - 1, 3] + point_and_tangent[i - 1, 4],
+                            l,
+                            1 / r,
+                        ]
+                    )
 
                 point_and_tangent[i, :] = newline  # Write the new info
             # plt.plot(x, y, 'or')
@@ -412,7 +442,15 @@ class ClosedTrack:
         l = np.sqrt((xf - xs) ** 2 + (yf - ys) ** 2)
 
         newline = np.array(
-            [xf, yf, psif, point_and_tangent[-2, 3] + point_and_tangent[-2, 4], l, 0])
+            [
+                xf,
+                yf,
+                psif,
+                point_and_tangent[-2, 3] + point_and_tangent[-2, 4],
+                l,
+                0,
+            ]
+        )
         point_and_tangent[-1, :] = newline
 
         self.point_and_tangent = point_and_tangent
@@ -420,17 +458,20 @@ class ClosedTrack:
 
     def get_global_position(self, s, ey):
         x, y = get_global_position(
-            self.lap_length, self.width, self.point_and_tangent, s, ey)
+            self.lap_length, self.width, self.point_and_tangent, s, ey
+        )
         return x, y
 
     def get_orientation(self, s, ey):
-        psi = get_orientation(self.lap_length, self.width,
-                              self.point_and_tangent, s, ey)
+        psi = get_orientation(
+            self.lap_length, self.width, self.point_and_tangent, s, ey
+        )
         return psi
 
     def get_local_position(self, x, y, psi):
         s, ey, epsi, CompletedFlag = get_local_position(
-            self.lap_length, self.width, self.point_and_tangent, x, y, psi)
+            self.lap_length, self.width, self.point_and_tangent, x, y, psi
+        )
         return s, ey, epsi, CompletedFlag
 
     def get_curvature(self, s):

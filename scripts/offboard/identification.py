@@ -23,7 +23,8 @@ def linear_time_invariant():
     track = racing_env.ClosedTrack(track_spec, track_width)
     # setup ego car
     ego = offboard.DynamicBicycleModel(
-        name="ego", param=base.CarParam(edgecolor="black"))
+        name="ego", param=base.CarParam(edgecolor="black")
+    )
     ego.set_state_curvilinear(np.array([0.3, 0, 0, 0, 0, 0]))
     ego.set_state_global(np.array([0.3, 0, 0, 0, 0, 0]))
     ego.set_ctrl_policy(offboard.PIDTracking(vt=0.5))
@@ -39,8 +40,7 @@ def linear_time_invariant():
     xdata = np.stack(simulator.vehicles["ego"].closedloop_xcurv, axis=0)
     udata = np.stack(simulator.vehicles["ego"].closedloop_u, axis=0)
     lamb = 1e-9
-    matrix_A, matrix_B, error = system_id.linear_regression(
-        xdata, udata, lamb)
+    matrix_A, matrix_B, error = system_id.linear_regression(xdata, udata, lamb)
     np.savetxt("data/track_layout/ellipse.csv", track_spec, delimiter=",")
     np.savetxt("data/sys/LTI/matrix_A.csv", matrix_A, delimiter=",")
     np.savetxt("data/sys/LTI/matrix_B.csv", matrix_B, delimiter=",")

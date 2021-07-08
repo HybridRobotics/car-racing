@@ -9,14 +9,16 @@ from utils import racing_env, base, lmpc_helper
 def lmpc_racing(args):
     track_layout = args["track_layout"]
     track_spec = np.genfromtxt(
-        "data/track_layout/"+track_layout+".csv", delimiter=",")
+        "data/track_layout/" + track_layout + ".csv", delimiter=","
+    )
     lap_number = args["lap_number"]
     if args["simulation"]:
         track_width = 0.8
         track = racing_env.ClosedTrack(track_spec, track_width)
         ego = offboard.DynamicBicycleModel(
-            name="ego", param=base.CarParam(edgecolor="black"))
-        timestep = 1.0/10.0
+            name="ego", param=base.CarParam(edgecolor="black")
+        )
+        timestep = 1.0 / 10.0
         ego.set_timestep(timestep)
         vt = 1.2
         N = 12
@@ -33,14 +35,13 @@ def lmpc_racing(args):
         ego.set_track(track)
         # run mpc-lti controller for the second lap to collect data
         time_mpc_lti = 90.0
-        matrix_A = np.genfromtxt(
-            "data/sys/LTI/matrix_A.csv", delimiter=",")
-        matrix_B = np.genfromtxt(
-            "data/sys/LTI/matrix_B.csv", delimiter=",")
+        matrix_A = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=",")
+        matrix_B = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=",")
         matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
         matrix_R = np.diag([0.1, 0.1])
         mpc_lti_param = base.MPCTrackingParam(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=vt, eyt= 0.1)
+            matrix_A, matrix_B, matrix_Q, matrix_R, vt=vt, eyt=0.1
+        )
         mpc_lti_controller = offboard.MPCTracking(mpc_lti_param)
         mpc_lti_controller.set_timestep(timestep)
         mpc_lti_controller.set_track(track)
@@ -50,20 +51,37 @@ def lmpc_racing(args):
         shift = 0
         time_lmpc = 10000 * timestep
         # Cost on the slack variable for the terminal constraint
-        matrix_Qslack = 5*np.diag([10, 0, 0, 1, 10, 0])
+        matrix_Qslack = 5 * np.diag([10, 0, 0, 1, 10, 0])
         # State cost x = [vx, vy, wz, epsi, s, ey]
         matrix_Q_LMPC = 0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         # Input cost u = [delta, a]
         matrix_R_LMPC = 1 * np.diag([1.0, 0.25])
         # Input rate cost u
         matrix_dR_LMPC = 5 * np.diag([0.8, 0.0])
-        lmpc_param = base.LMPCRacingParam(num_ss_points=num_ss_points,num_ss_iter= num_ss_it, num_horizon=N, matrix_Qslack=matrix_Qslack, matrix_Q=matrix_Q_LMPC,
-                                          matrix_R=matrix_R_LMPC, matrix_dR=matrix_dR_LMPC, shift=shift,timestep= timestep, lap_number=lap_number, time_lmpc=time_lmpc)
+        lmpc_param = base.LMPCRacingParam(
+            num_ss_points=num_ss_points,
+            num_ss_iter=num_ss_it,
+            num_horizon=N,
+            matrix_Qslack=matrix_Qslack,
+            matrix_Q=matrix_Q_LMPC,
+            matrix_R=matrix_R_LMPC,
+            matrix_dR=matrix_dR_LMPC,
+            shift=shift,
+            timestep=timestep,
+            lap_number=lap_number,
+            time_lmpc=time_lmpc,
+        )
         lmpc_controller = offboard.LMPCRacingGame(lmpc_param)
         lmpc_controller.set_track(track)
         lmpc_controller.set_timestep(timestep)
         lmpc_controller.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
-            N, xdim, udim, int(round(time_lmpc/timestep)), num_ss_points, lap_number)
+            N,
+            xdim,
+            udim,
+            int(round(time_lmpc / timestep)),
+            num_ss_points,
+            lap_number,
+        )
         # define a simulator
         simulator = offboard.CarRacingSim()
         simulator.set_timestep(timestep)
@@ -77,32 +95,61 @@ def lmpc_racing(args):
         for iter in range(lap_number):
             # for the first lap, run the pid controller to collect data
             if iter == 0:
-                simulator.sim(sim_time=time_pid,
-                              one_lap_flag=True, one_lap_name="ego")
+                simulator.sim(sim_time=time_pid, one_lap_flag=True, one_lap_name="ego")
             elif iter == 1:
                 # for the second lap, run the mpc-lti controller to collect data
                 ego.set_ctrl_policy(mpc_lti_controller)
-                simulator.sim(sim_time=time_mpc_lti,
-                              one_lap_flag=True, one_lap_name="ego")
+                simulator.sim(
+                    sim_time=time_mpc_lti,
+                    one_lap_flag=True,
+                    one_lap_name="ego",
+                )
             elif iter == 2:
                 lmpc_controller.add_trajectory(
-                    ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, 0)
+                    ego.time_list,
+                    ego.timestep,
+                    ego.xcurv_list,
+                    ego.xglob_list,
+                    ego.u_list,
+                    0,
+                )
                 lmpc_controller.add_trajectory(
-                    ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, 1)
+                    ego.time_list,
+                    ego.timestep,
+                    ego.xcurv_list,
+                    ego.xglob_list,
+                    ego.u_list,
+                    1,
+                )
                 # change the controller to lmpc controller
                 ego.set_ctrl_policy(lmpc_controller)
-                simulator.sim(sim_time=time_lmpc,
-                              one_lap_flag=True, one_lap_name="ego")
+                simulator.sim(sim_time=time_lmpc, one_lap_flag=True, one_lap_name="ego")
                 ego.ctrl_policy.add_trajectory(
-                    ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, 2)
+                    ego.time_list,
+                    ego.timestep,
+                    ego.xcurv_list,
+                    ego.xglob_list,
+                    ego.u_list,
+                    2,
+                )
             else:
-                simulator.sim(sim_time=time_lmpc,
-                              one_lap_flag=True, one_lap_name="ego")
+                simulator.sim(sim_time=time_lmpc, one_lap_flag=True, one_lap_name="ego")
                 ego.ctrl_policy.add_trajectory(
-                    ego.time_list, ego.timestep, ego.xcurv_list, ego.xglob_list, ego.u_list, iter)
+                    ego.time_list,
+                    ego.timestep,
+                    ego.xcurv_list,
+                    ego.xglob_list,
+                    ego.u_list,
+                    iter,
+                )
         for i in range(0, lmpc_controller.iter):
-            print("lap time at iteration", i, "is",
-                  lmpc_controller.Qfun[0, i]*timestep, "s")
+            print(
+                "lap time at iteration",
+                i,
+                "is",
+                lmpc_controller.Qfun[0, i] * timestep,
+                "s",
+            )
         with open("data/simulator/lmpc_racing.obj", "wb") as handle:
             pickle.dump(simulator, handle, protocol=pickle.HIGHEST_PROTOCOL)
     else:
@@ -116,14 +163,27 @@ def lmpc_racing(args):
         # currently, only animate the last lap of simulation
         simulator.animate(filename="lmpc_racing", only_last_lap=True)
     if args["save_trajectory"]:
-        ego_xcurv = np.stack(simulator.vehicles["ego"].xcurv_list[lap_number-1],axis=0)
-        ego_xglob = np.stack(simulator.vehicles["ego"].xglob_list[lap_number-1],axis=0)
-        np.savetxt("data/optimal_traj/xcurv_"+track_layout+".csv",ego_xcurv,delimiter=',')
-        np.savetxt("data/optimal_traj/xglob_"+track_layout+".csv",ego_xglob,delimiter=',')
+        ego_xcurv = np.stack(
+            simulator.vehicles["ego"].xcurv_list[lap_number - 1], axis=0
+        )
+        ego_xglob = np.stack(
+            simulator.vehicles["ego"].xglob_list[lap_number - 1], axis=0
+        )
+        np.savetxt(
+            "data/optimal_traj/xcurv_" + track_layout + ".csv",
+            ego_xcurv,
+            delimiter=",",
+        )
+        np.savetxt(
+            "data/optimal_traj/xglob_" + track_layout + ".csv",
+            ego_xglob,
+            delimiter=",",
+        )
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--track-layout", type=str)
     parser.add_argument("--lap-number", type=int)

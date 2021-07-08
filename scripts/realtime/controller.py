@@ -11,16 +11,17 @@ from sim import realtime
 def set_controller(args):
     veh_name = args["veh_name"]
     ctrl_policy = args["ctrl_policy"]
-    node_name = 'controller_' + veh_name
+    node_name = "controller_" + veh_name
     rospy.init_node(node_name, anonymous=True)
     loop_rate = 10
     timestep = 1 / loop_rate
-    matrix_A = np.genfromtxt('data/sys/LTI/matrix_A.csv', delimiter=",")
-    matrix_B = np.genfromtxt('data/sys/LTI/matrix_B.csv', delimiter=",")
+    matrix_A = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=",")
+    matrix_B = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=",")
     matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
     matrix_R = np.diag([0.1, 0.1])
     mpc_lti_param = base.MPCTrackingParam(
-        matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
+        matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8
+    )
     if ctrl_policy == "mpc-lti":
         ctrl = realtime.MPCTracking(mpc_lti_param)
         ctrl.set_subscriber_track()
@@ -29,7 +30,8 @@ def set_controller(args):
         ctrl.set_subscriber_track()
     elif ctrl_policy == "mpc-cbf":
         mpc_cbf_param = base.MPCCBFRacingParam(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
+            matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8
+        )
         ctrl = realtime.MPCCBFRacing(mpc_cbf_param)
         ctrl.agent_name = veh_name
         ctrl.set_subscriber_track()
@@ -45,19 +47,31 @@ def set_controller(args):
         points_lmpc = 5000
         time_lmpc = points_lmpc * timestep
         # Cost on the slack variable for the terminal constraint
-        matrix_Qslack = 5*np.diag([10, 1, 1, 1, 10, 1])
+        matrix_Qslack = 5 * np.diag([10, 1, 1, 1, 10, 1])
         # State cost x = [vx, vy, wz, epsi, s, ey]
         matrix_Q_LMPC = 0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         # Input cost u = [delta, a]
         matrix_R_LMPC = 1 * np.diag([1.0, 1.0])
         # Input rate cost u
         matrix_dR_LMPC = 5 * np.diag([1.0, 1.0])
-        lmpc_param = base.LMPCRacingParam(num_ss_points, num_ss_it, N, matrix_Qslack, matrix_Q_LMPC,
-                                          matrix_R_LMPC, matrix_dR_LMPC, shift, timestep, laps_number, time_lmpc)
+        lmpc_param = base.LMPCRacingParam(
+            num_ss_points,
+            num_ss_it,
+            N,
+            matrix_Qslack,
+            matrix_Q_LMPC,
+            matrix_R_LMPC,
+            matrix_dR_LMPC,
+            shift,
+            timestep,
+            laps_number,
+            time_lmpc,
+        )
 
         lmpc_ctrl = realtime.LMPCRacingGame(lmpc_param)
         lmpc_ctrl.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
-            N, xdim, udim, points_lmpc, num_ss_points, laps_number)
+            N, xdim, udim, points_lmpc, num_ss_points, laps_number
+        )
         lmpc_ctrl.set_subscriber_track()
         lmpc_ctrl.set_timestep(timestep)
         lmpc_ctrl.u = np.zeros(2)
@@ -69,14 +83,17 @@ def set_controller(args):
         mpc_lti_ctrl.set_subscriber_track()
         mpc_lti_ctrl.set_timestep(timestep)
         mpc_lti_ctrl.u = np.zeros(2)
-        veh_input_topic = veh_name + '/input'
+        veh_input_topic = veh_name + "/input"
         lmpc_ctrl.set_vehicles_track()
         pid_ctrl.__pub_input = rospy.Publisher(
-            veh_input_topic, VehicleControl, queue_size=10)
+            veh_input_topic, VehicleControl, queue_size=10
+        )
         mpc_lti_ctrl.__pub_input = rospy.Publisher(
-            veh_input_topic, VehicleControl, queue_size=10)
+            veh_input_topic, VehicleControl, queue_size=10
+        )
         lmpc_ctrl.__pub_input = rospy.Publisher(
-            veh_input_topic, VehicleControl, queue_size=10)
+            veh_input_topic, VehicleControl, queue_size=10
+        )
         current_lap = 0
     else:
         pass
@@ -86,19 +103,27 @@ def set_controller(args):
     else:
         ctrl.set_subscriber_optimal_traj()
         ctrl.set_timestep(timestep)
-        ctrl.set_state(np.zeros(6,), np.zeros(6,))
+        ctrl.set_state(
+            np.zeros(
+                6,
+            ),
+            np.zeros(
+                6,
+            ),
+        )
         ctrl.u = np.zeros(2)
         ctrl.set_subscriber_state(veh_name)
-        veh_input_topic = veh_name + '/input'
+        veh_input_topic = veh_name + "/input"
         ctrl.__pub_input = rospy.Publisher(
-            veh_input_topic, VehicleControl, queue_size=10)
+            veh_input_topic, VehicleControl, queue_size=10
+        )
     r = rospy.Rate(loop_rate)
     start_timer = datetime.datetime.now()
     tmp = 0
 
     while not rospy.is_shutdown():
         current_time = datetime.datetime.now()
-        if (current_time-start_timer).total_seconds() >= (tmp+1)*(1/loop_rate):
+        if (current_time - start_timer).total_seconds() >= (tmp + 1) * (1 / loop_rate):
             if ctrl_policy == "lmpc":
                 # for lmpc, for the first lap, the ego vehicle will use pid to track the center line and store the data
                 if current_lap == 0:
@@ -108,39 +133,54 @@ def set_controller(args):
                     pid_ctrl.__pub_input.publish(VehicleControl(u[1], u[0]))
                     time.sleep(0.05)
                     pid_ctrl.update_memory(current_lap)
-                    if pid_ctrl.x[4] >= (current_lap+1)*pid_ctrl.lap_length:
+                    if pid_ctrl.x[4] >= (current_lap + 1) * pid_ctrl.lap_length:
                         lmpc_ctrl.add_trajectory(
-                            pid_ctrl.time_list, pid_ctrl.timestep, pid_ctrl.xcurv_list, pid_ctrl.xglob_list, pid_ctrl.u_list, 0)
+                            pid_ctrl.time_list,
+                            pid_ctrl.timestep,
+                            pid_ctrl.xcurv_list,
+                            pid_ctrl.xglob_list,
+                            pid_ctrl.u_list,
+                            0,
+                        )
                         end_timer = datetime.datetime.now()
-                        delta_time = (
-                            end_timer - lap_start_timer).total_seconds()
-                        print("lap:", current_lap+1,
-                              ",lap time: {}".format(delta_time))
+                        delta_time = (end_timer - lap_start_timer).total_seconds()
+                        print(
+                            "lap:",
+                            current_lap + 1,
+                            ",lap time: {}".format(delta_time),
+                        )
 
                         lap_start_timer = datetime.datetime.now()
                         mpc_lti_ctrl.set_subscriber_state(veh_name)
-                        #time.sleep(0.01)
+                        # time.sleep(0.01)
                         current_lap = current_lap + 1
                     else:
                         pass
                 elif current_lap == 1:
                     mpc_lti_ctrl.calc_input()
                     u = mpc_lti_ctrl.get_input()
-                    mpc_lti_ctrl.__pub_input.publish(
-                        VehicleControl(u[1], u[0]))
+                    mpc_lti_ctrl.__pub_input.publish(VehicleControl(u[1], u[0]))
                     time.sleep(0.05)
                     mpc_lti_ctrl.update_memory(current_lap)
-                    if mpc_lti_ctrl.x[4] >= (current_lap+1)*mpc_lti_ctrl.lap_length:
-                        lmpc_ctrl.add_trajectory(mpc_lti_ctrl.time_list, mpc_lti_ctrl.timestep,
-                                                 mpc_lti_ctrl.xcurv_list, mpc_lti_ctrl.xglob_list, mpc_lti_ctrl.u_list, 0)
+                    if mpc_lti_ctrl.x[4] >= (current_lap + 1) * mpc_lti_ctrl.lap_length:
+                        lmpc_ctrl.add_trajectory(
+                            mpc_lti_ctrl.time_list,
+                            mpc_lti_ctrl.timestep,
+                            mpc_lti_ctrl.xcurv_list,
+                            mpc_lti_ctrl.xglob_list,
+                            mpc_lti_ctrl.u_list,
+                            0,
+                        )
                         end_timer = datetime.datetime.now()
-                        delta_time = (
-                            end_timer - lap_start_timer).total_seconds()
-                        print("lap:", current_lap+1,
-                              ",lap time: {}".format(delta_time))
+                        delta_time = (end_timer - lap_start_timer).total_seconds()
+                        print(
+                            "lap:",
+                            current_lap + 1,
+                            ",lap time: {}".format(delta_time),
+                        )
                         lap_start_timer = datetime.datetime.now()
                         lmpc_ctrl.set_subscriber_state(veh_name)
-                        #time.sleep(0.01)
+                        # time.sleep(0.01)
                         print("start lmpc")
                         current_lap = current_lap + 1
                     else:
@@ -151,14 +191,22 @@ def set_controller(args):
                     lmpc_ctrl.__pub_input.publish(VehicleControl(u[1], u[0]))
                     time.sleep(0.02)
                     lmpc_ctrl.update_memory(current_lap)
-                    if lmpc_ctrl.x[4] >= (current_lap+1)*lmpc_ctrl.lap_length:
-                        lmpc_ctrl.add_trajectory(lmpc_ctrl.time_list, lmpc_ctrl.timestep,
-                                                 lmpc_ctrl.xcurv_list, lmpc_ctrl.xglob_list, lmpc_ctrl.u_list, current_lap-2)
+                    if lmpc_ctrl.x[4] >= (current_lap + 1) * lmpc_ctrl.lap_length:
+                        lmpc_ctrl.add_trajectory(
+                            lmpc_ctrl.time_list,
+                            lmpc_ctrl.timestep,
+                            lmpc_ctrl.xcurv_list,
+                            lmpc_ctrl.xglob_list,
+                            lmpc_ctrl.u_list,
+                            current_lap - 2,
+                        )
                         end_timer = datetime.datetime.now()
-                        delta_time = (
-                            end_timer - lap_start_timer).total_seconds()
-                        print("lap:", current_lap+1,
-                              ",lap time: {}".format(delta_time))
+                        delta_time = (end_timer - lap_start_timer).total_seconds()
+                        print(
+                            "lap:",
+                            current_lap + 1,
+                            ",lap time: {}".format(delta_time),
+                        )
                         lap_start_timer = datetime.datetime.now()
                         current_lap = current_lap + 1
                     else:
@@ -173,9 +221,10 @@ def set_controller(args):
         r.sleep()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         import argparse
+
         parser = argparse.ArgumentParser()
         parser.add_argument("--veh-name", type=str)
         parser.add_argument("--ctrl-policy", type=str)

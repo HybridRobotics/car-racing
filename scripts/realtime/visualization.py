@@ -21,17 +21,16 @@ def start_visualization():
     ax.set_axis_off()
     ax.set_xlim(-6, 6)
     ax.set_ylim(-12, 8)
-    ax.axis('equal')
+    ax.axis("equal")
     vis.set_ax(ax)
     # determine if new vehicle is added
-    s = rospy.Service('add_vehicle_visualization',
-                      AddNewVehicle, vis.add_vehicle)
+    s = rospy.Service("add_vehicle_visualization", AddNewVehicle, vis.add_vehicle)
     while not rospy.is_shutdown():
         ani = animation.FuncAnimation(fig, vis.update, init_func=vis.init)
         plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         start_visualization()
     except rospy.ROSInterruptException:
