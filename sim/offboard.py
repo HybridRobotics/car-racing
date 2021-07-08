@@ -330,6 +330,7 @@ class CarRacingSim(base.CarRacingSim):
         trajglobs = {}
         (local_line,) = ax.plot([], [])
         (local_spline,) = ax.plot([], [])
+        overtake_name_list = []
         for name in self.vehicles:
             patches_vehicle = patches.Polygon(
                 vertex_directions,
@@ -351,8 +352,6 @@ class CarRacingSim(base.CarRacingSim):
                 trajglob = np.zeros((ani_time, 6))
                 local_traj_xglob = np.zeros((ani_time, 21, 6))
                 local_spline_xglob = np.zeros((ani_time, 21, 6))
-                overtake_name_list = []
-
                 for j in range(ani_time):
                     trajglob[ani_time - 1 - counter, :] = self.vehicles[name].xglob_log[
                         -1 - j
@@ -373,7 +372,6 @@ class CarRacingSim(base.CarRacingSim):
                                 0,
                                 self.vehicles[name].overtake_vehicle_list[-1 - j],
                             )
-
                         if self.vehicles[name].spline_list[-1 - j] is None:
                             local_spline_xglob[ani_time - 1 - counter, :, :] = np.zeros(
                                 (21, 6)
@@ -382,9 +380,10 @@ class CarRacingSim(base.CarRacingSim):
                             local_spline_xglob[
                                 ani_time - 1 - counter, :, :
                             ] = self.vehicles[name].spline_list[-1 - j][:, :]
-
                     counter = counter + 1
             else:
+                local_traj_xglob = np.zeros((int(round(self.vehicles[name].time / self.timestep)) + 1, 21, 6))
+                local_spline_xglob = np.zeros((int(round(self.vehicles[name].time / self.timestep)) + 1, 21, 6))
                 laps = self.vehicles[name].laps
                 trajglob = np.zeros(
                     (
@@ -460,24 +459,26 @@ class CarRacingSim(base.CarRacingSim):
                         local_spline_xglob[i, :, 5],
                     )
                     local_spline.set_color("black")
-
-                if overtake_name_list[i] is None:
-                    patches_vehicles[name].set_edgecolor(
-                        self.vehicles[name].param.edgecolor
-                    )
+                if overtake_name_list == []:
+                    pass
                 else:
-                    veh_of_interest = False
-                    for name_1 in list(overtake_name_list[i]):
-                        if name == name_1:
-                            veh_of_interest = True
-                        else:
-                            pass
-                    if veh_of_interest:
-                        patches_vehicles[name].set_edgecolor("red")
-                    else:
+                    if overtake_name_list[i] is None:
                         patches_vehicles[name].set_edgecolor(
                             self.vehicles[name].param.edgecolor
                         )
+                    else:
+                        veh_of_interest = False
+                        for name_1 in list(overtake_name_list[i]):
+                            if name == name_1:
+                                veh_of_interest = True
+                            else:
+                                pass
+                        if veh_of_interest:
+                            patches_vehicles[name].set_edgecolor("red")
+                        else:
+                            patches_vehicles[name].set_edgecolor(
+                                self.vehicles[name].param.edgecolor
+                            )
 
         media = anim.FuncAnimation(
             fig, update, frames=np.arange(0, trajglob.shape[0]), interval=100

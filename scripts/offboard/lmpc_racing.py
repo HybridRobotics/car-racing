@@ -95,13 +95,13 @@ def lmpc_racing(args):
         for iter in range(lap_number):
             # for the first lap, run the pid controller to collect data
             if iter == 0:
-                simulator.sim(sim_time=time_pid, one_lap_flag=True, one_lap_name="ego")
+                simulator.sim(sim_time=time_pid, one_lap=True, one_lap_name="ego")
             elif iter == 1:
                 # for the second lap, run the mpc-lti controller to collect data
                 ego.set_ctrl_policy(mpc_lti_controller)
                 simulator.sim(
                     sim_time=time_mpc_lti,
-                    one_lap_flag=True,
+                    one_lap=True,
                     one_lap_name="ego",
                 )
             elif iter == 2:
@@ -123,7 +123,7 @@ def lmpc_racing(args):
                 )
                 # change the controller to lmpc controller
                 ego.set_ctrl_policy(lmpc_controller)
-                simulator.sim(sim_time=time_lmpc, one_lap_flag=True, one_lap_name="ego")
+                simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                 ego.ctrl_policy.add_trajectory(
                     ego.time_list,
                     ego.timestep,
@@ -133,7 +133,7 @@ def lmpc_racing(args):
                     2,
                 )
             else:
-                simulator.sim(sim_time=time_lmpc, one_lap_flag=True, one_lap_name="ego")
+                simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                 ego.ctrl_policy.add_trajectory(
                     ego.time_list,
                     ego.timestep,

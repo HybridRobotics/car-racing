@@ -651,11 +651,11 @@ class NoDynamicsModel(ModelBase):
         self.t_symbol = t_symbol
         self.s_func = s_func
         self.ey_func = ey_func
-        xcurv = np.zeros(self.xdim)
-        xglob = np.zeros(self.xdim)
-        xcurv, xglob = self.get_estimation(0)
-        self.traj_xcurv.append(xcurv)
-        self.traj_xglob.append(xglob)
+        self.xcurv = np.zeros(self.xdim)
+        self.xglob = np.zeros(self.xdim)
+        self.xcurv, self.xglob = self.get_estimation(0)
+        self.traj_xcurv.append(self.xcurv)
+        self.traj_xglob.append(self.xglob)
 
     def get_estimation(self, t0):
         # position estimation in curvilinear coordinates

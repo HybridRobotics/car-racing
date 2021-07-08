@@ -107,7 +107,7 @@ def lmpc_racing(args):
                         pass
                     else:
                         simulator.sim(
-                            sim_time=time_pid, one_lap=True, one_lap_name="ego"
+                            sim_time=90, one_lap=True, one_lap_name="ego"
                         )
                 elif iter == 1:
                     if args["direct_lmpc"]:
@@ -116,7 +116,7 @@ def lmpc_racing(args):
                         # for the second lap, run the mpc-lti controller to collect data
                         ego.set_ctrl_policy(mpc_lti_controller)
                         simulator.sim(
-                            sim_time=time_mpc_lti,
+                            sim_time=90,
                             one_lap=True,
                             one_lap_name="ego",
                         )
@@ -201,7 +201,6 @@ def set_up_ego(timestep, track):
     )
     ego.set_timestep(timestep)
     # run the pid controller for the first lap to collect data
-    time_pid = 90.0
     pid_controller = offboard.PIDTracking(vt=0.7, eyt=0.0)
     pid_controller.set_timestep(timestep)
     ego.set_ctrl_policy(pid_controller)
@@ -210,7 +209,6 @@ def set_up_ego(timestep, track):
     ego.set_state_global(np.zeros((6,)))
     ego.set_track(track)
     # run mpc-lti controller for the second lap to collect data
-    time_mpc_lti = 90.0
     mpc_lti_param = base.MPCTrackingParam(vt=0.7, eyt=0.0)
     mpc_lti_controller = offboard.MPCTracking(mpc_lti_param)
     mpc_lti_controller.set_timestep(timestep)

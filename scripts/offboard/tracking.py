@@ -50,7 +50,6 @@ def tracking(args):
     if args["plotting"]:
         simulator.plot_simulation()
         simulator.plot_state("ego")
-        simulator.plot_input("ego")
     if args["animation"]:
         simulator.animate(filename="tracking", only_last_lap=True)
 
