@@ -454,19 +454,20 @@ class LMPCRacingGame(ControlBase):
             ] - 1
 
     def add_trajectory(
-        self, time_list, timestep, xcurv_list, xglob_list, u_list, lap_number
-    ):
+        self, ego, lap_number
+    ):  
+        
         iter = self.iter
         end_iter = int(
-            round((time_list[lap_number][-1] - time_list[lap_number][0]) / timestep)
+            round((ego.time_list[lap_number][-1] - ego.time_list[lap_number][0]) / ego.timestep)
         )
-        time_list = np.stack(time_list[lap_number], axis=0)
+        time_list = np.stack(ego.time_list[lap_number], axis=0)
         self.time_ss[iter] = end_iter
-        xcurv_list = np.stack(xcurv_list[lap_number], axis=0)
+        xcurv_list = np.stack(ego.xcurv_list[lap_number], axis=0)
         self.ss_xcurv[0 : (end_iter + 1), :, iter] = xcurv_list[0 : (end_iter + 1), :]
-        xglob_list = np.stack(xglob_list[lap_number], axis=0)
+        xglob_list = np.stack(ego.xglob_list[lap_number], axis=0)
         self.ss_glob[0 : (end_iter + 1), :, iter] = xglob_list[0 : (end_iter + 1), :]
-        u_list = np.stack(u_list[lap_number], axis=0)
+        u_list = np.stack(ego.u_list[lap_number], axis=0)
         self.u_ss[0:end_iter, :, iter] = u_list[0:end_iter, :]
         self.Qfun[0 : (end_iter + 1), iter] = lmpc_helper.compute_cost(
             xcurv_list[0 : (end_iter + 1), :],

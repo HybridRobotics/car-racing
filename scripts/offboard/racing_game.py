@@ -126,40 +126,24 @@ def lmpc_racing(args):
                             pickle.dump(ego, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 elif iter == 2:
                     lmpc_controller.add_trajectory(
-                        ego.time_list,
-                        ego.timestep,
-                        ego.xcurv_list,
-                        ego.xglob_list,
-                        ego.u_list,
+                        ego,
                         0,
                     )
                     lmpc_controller.add_trajectory(
-                        ego.time_list,
-                        ego.timestep,
-                        ego.xcurv_list,
-                        ego.xglob_list,
-                        ego.u_list,
+                        ego,
                         1,
                     )
                     # change the controller to lmpc controller
                     ego.set_ctrl_policy(lmpc_controller)
                     simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                     ego.ctrl_policy.add_trajectory(
-                        ego.time_list,
-                        ego.timestep,
-                        ego.xcurv_list,
-                        ego.xglob_list,
-                        ego.u_list,
+                        ego,
                         2,
                     )
                 else:
                     simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                     ego.ctrl_policy.add_trajectory(
-                        ego.time_list,
-                        ego.timestep,
-                        ego.xcurv_list,
-                        ego.xglob_list,
-                        ego.u_list,
+                        ego,
                         iter,
                     )
             for i in range(0, lmpc_controller.iter):
