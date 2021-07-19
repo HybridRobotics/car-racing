@@ -51,7 +51,14 @@ Run
 ```
 python scripts/offboard/tracking.py --ctrl-policy mpc-lti --track-layout l_shape --simulation --plotting --animation 
 ```
-This allows to test algorithm for tracking. The choices of `--ctrl-policy` could be `mpc-lti` and `pid`. `--track-layout` could be `l_shape`, `m_shape`, `goggle` and `ellipse`. `--simulation` is no longer required once you have generated .obj file for simulation data. `--plotting`, `animation` are currently purely optional.
+This allows to test algorithm for tracking. The argparse arguments are listed as follow,
+| name | type | choices | description |
+| :---: | :---: | :---: | :---: |
+| `ctrl_policy` | string | `pid`, `mpc-lti` | control policy |
+| `track_layout` | string | `l_shape`, `m_shape`, `google`, `ellipse` | track layouts |
+| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
+| `plotting` | action | `store_true` | save plotting if true |
+| `animation` | action | `store_true` | save animation if true |
 
 #### Racing
 
