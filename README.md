@@ -61,6 +61,54 @@ This allows to test algorithm for tracking. The argparse arguments are listed as
 | `animation` | action | `store_true` | save animation if true |
 
 #### Racing
+Run
+```
+python scripts/offboard/racing.py --track-layout l_shape --simulation --plotting --animation
+```
+This allows to test algorithm for MPC-CBF controller. The argparse arguments are listed as follow,
+| name | type | choices | description |
+| :---: | :---: | :---: | :---: |
+| `track_layout` | string | `l_shape`, `m_shape`, `google`, `ellipse` | track layouts |
+| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
+| `plotting` | action | `store_true` | save plotting if true |
+| `animation` | action | `store_true` | save animation if true |
+
+#### LMPC Racing
+Run
+```
+python scripts/offboard/lmpc_racing.py --track-layout l_shape --lap-number 8 --simulation --plotting --animation --save-trajectory
+```
+This allows to test algorithm for LMPC controller. The argparse arguments are listed as follow,
+| name | type | choices | description |
+| :---: | :---: | :---: | :---: |
+| `track_layout` | string | `l_shape`, `m_shape`, `google`, `ellipse` | track layouts |
+| `lap_number` | int | any number that is greater than `2` | number of laps that will be simulated |
+| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
+| `plotting` | action | `store_true` | save plotting if true |
+| `animation` | action | `store_true` | save animation if true |
+| `save_trajectory` | action | `store_true` | save time optimal trajectory if true |
+
+#### Racing Game
+Run
+```
+python scripts/offboard/racing_game.py --track-layout l_shape --lap-number 10 --simulation --direct-lmpc --animation --plotting --number-other-agents 3
+```
+This allows to test algorithm for racing game. The argparse arguments are listed as follow,
+| name | type | choices | description |
+| :---: | :---: | :---: | :---: |
+| `track_layout` | string | `l_shape`, `m_shape`, `google`, `ellipse` | track layouts |
+| `lap_number` | int | any number that is greater than `2` | number of laps that will be simulated |
+| `direct_lmpc` | action | `store_true` | if true, the simulator will begin the LMPC controller directly using store trajectories |
+| `sim_replay` | action | `store_true` | if true, by changingfile path, the simulator will simulate with different parameters but from same initial conditions |
+| `zero_noise` | action | `store_true` | no noises in dynamic update if true |
+| `diff_alpha` | action | `store_true` | if true, different alpha values will be used for same initial conditions |
+| `random_other_agents` | action | `store_true` | other agents will be generated randomly if true |
+| `number_other_agents` | int | any number that is greater than `0` | number of agents that will be generated |
+| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
+| `plotting` | action | `store_true` | save plotting if true |
+| `animation` | action | `store_true` | save animation if true |
+
+
 
 ### Realtime
 To start the simulator, run the following command in terminal:
