@@ -146,8 +146,8 @@ class MPCTracking(ControlBase):
 
     def calc_input(self):
         xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(X_DIM, 1)
-        self.u = ctrl.mpc(
-            self.x, self.mpc_lti_param, self.track, xtarget=xtarget
+        self.u = ctrl.mpc_lti(
+            self.x, self.mpc_lti_param, xtarget
         )
         if self.agent_name == "ego":
             if self.realtime_flag == False:
@@ -379,7 +379,7 @@ class LMPCRacingGame(ControlBase):
                 overtake_list
             )
             self.overtake_planner.vehicles["ego"].spline_list.append(bezier_xglob)
-            self.u = ctrl.mpc(
+            self.u = ctrl.mpc_multi_agents(
                 x,
                 self.racing_game_param,
                 self.track,

@@ -2,6 +2,7 @@ import datetime
 import numpy as np
 import casadi as ca
 from utils import lmpc_helper, racing_env
+from utils.racing_game_helper import *
 from utils.constants import *
 from casadi import *
 from scipy import sparse
@@ -24,26 +25,14 @@ def pid(xcurv, xtarget):
     return u_next
 
 
-def mpc(
+def mpc_lti(
     xcurv,
     mpc_lti_param,
-    track,
-    xtarget=None,
-    target_traj_xcurv=None,
-    lap_length=None,
-    vehicles=None,
-    agent_name=None,
-    direction_flag=None,
-    target_traj_xglob=None,
-    overtake_name_list=None,
+    xtarget
 ):
-    if target_traj_xcurv is None:
-        vt = xtarget[0]
-        eyt = xtarget[5]
-        num_horizon = mpc_lti_param.num_horizon
-    else:
-        print("overtaking")
-        num_horizon = mpc_lti_param.num_horizon_ctrl
+    vt = xtarget[0]
+    eyt = xtarget[5]
+    num_horizon = mpc_lti_param.num_horizon
     start_timer = datetime.datetime.now()
     opti = ca.Opti()
     # define variables
@@ -51,11 +40,6 @@ def mpc(
     uvar = opti.variable(U_DIM, num_horizon)
     cost = 0
     opti.subject_to(xvar[:, 0] == xcurv)
-    if xtarget is None:
-        vx = xcurv[0]
-        f_traj = interp1d(target_traj_xcurv[:, 4], target_traj_xcurv[:, 5])
-        veh_len = vehicles["ego"].param.length
-        veh_width = vehicles["ego"].param.width
     # dynamics + state/input constraints
     for i in range(num_horizon):
         # system dynamics
@@ -79,195 +63,126 @@ def mpc(
         # min and max of ey
         opti.subject_to(xvar[5, i] <= track.width)
         opti.subject_to(-track.width <= xvar[5, i])
-        if xtarget is None:
-            s_tmp = vx * 0.1 * i + xcurv[4]
-            if s_tmp < target_traj_xcurv[0, 4]:
-                s_tmp = target_traj_xcurv[0, 4]
-            if s_tmp >= target_traj_xcurv[-1, 4]:
-                s_tmp = target_traj_xcurv[-1, 4]
-            xtarget = np.array([vx, 0, 0, 0, 0, f_traj(s_tmp)])
-            cost += ca.mtimes(
-                (xvar[:, i] - xtarget).T,
-                ca.mtimes(mpc_lti_param.matrix_Q, xvar[:, i] - xtarget),
-            )
+        # state cost
+        cost += ca.mtimes(
+            (xvar[:, i] - xtarget).T,
+            ca.mtimes(mpc_lti_param.matrix_Q, xvar[:, i] - xtarget),
+        )
+    # setup solver
+    option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
+    opti.minimize(cost)
+    opti.solver("ipopt", option)
+    sol = opti.solve()
+    x_pred = sol.value(xvar).T
+    u_pred = sol.value(uvar).T
+    end_timer = datetime.datetime.now()
+    solver_time = (end_timer - start_timer).total_seconds()
+    print("solver time: {}".format(solver_time))
+    return u_pred[0, :]
+
+def mpc_multi_agents(
+    xcurv,
+    mpc_lti_param,
+    track,
+    target_traj_xcurv=None,
+    lap_length=None,
+    vehicles=None,
+    agent_name=None,
+    direction_flag=None,
+    target_traj_xglob=None,
+    overtake_name_list=None,
+):
+    print("overtaking")
+    num_horizon = mpc_lti_param.num_horizon_ctrl
+    start_timer = datetime.datetime.now()
+    opti = ca.Opti()
+    # define variables
+    xvar = opti.variable(X_DIM, num_horizon + 1)
+    uvar = opti.variable(U_DIM, num_horizon)
+    cost = 0
+    opti.subject_to(xvar[:, 0] == xcurv)
+    vx = xcurv[0]
+    f_traj = interp1d(target_traj_xcurv[:, 4], target_traj_xcurv[:, 5])
+    veh_len = vehicles["ego"].param.length
+    veh_width = vehicles["ego"].param.width
+    # dynamics + state/input constraints
+    for i in range(num_horizon):
+        # system dynamics
+        opti.subject_to(
+            xvar[:, i + 1]
+            == ca.mtimes(mpc_lti_param.matrix_A, xvar[:, i])
+            + ca.mtimes(mpc_lti_param.matrix_B, uvar[:, i])
+        )
+        # min and max of delta
+        opti.subject_to(-0.5 <= uvar[0, i])
+        opti.subject_to(uvar[0, i] <= 0.5)
+        # min and max of a
+        opti.subject_to(-1.0 <= uvar[1, i])
+        opti.subject_to(uvar[1, i] <= 1.0)
+        # input cost
+        cost += ca.mtimes(uvar[:, i].T, ca.mtimes(mpc_lti_param.matrix_R, uvar[:, i]))
+    for i in range(num_horizon + 1):
+        # speed vx upper bound
+        opti.subject_to(xvar[0, i] <= 10.0)
+        opti.subject_to(xvar[0, i] >= 0.0)
+        # min and max of ey
+        opti.subject_to(xvar[5, i] <= track.width)
+        opti.subject_to(-track.width <= xvar[5, i])
+        s_tmp = vx * 0.1 * i + xcurv[4]
+        if s_tmp < target_traj_xcurv[0, 4]:
+            s_tmp = target_traj_xcurv[0, 4]
+        if s_tmp >= target_traj_xcurv[-1, 4]:
+            s_tmp = target_traj_xcurv[-1, 4]
+        xtarget = np.array([vx, 0, 0, 0, 0, f_traj(s_tmp)])
+        cost += ca.mtimes(
+            (xvar[:, i] - xtarget).T,
+            ca.mtimes(mpc_lti_param.matrix_Q, xvar[:, i] - xtarget),
+        )
+    for i in range(num_horizon + 1):
+        # constraint on the left, first line is the track boundary
+        s_tmp = vx * 0.1 * i + xcurv[4]
+        if direction_flag == 0:
+            pass
         else:
-            # state cost
-            cost += ca.mtimes(
-                (xvar[:, i] - xtarget).T,
-                ca.mtimes(mpc_lti_param.matrix_Q, xvar[:, i] - xtarget),
-            )
-    if xtarget is None:
-        for i in range(num_horizon + 1):
-            # constraint on the left, first line is the track boundary
-            s_tmp = vx * 0.1 * i + xcurv[4]
-            if direction_flag == 0:
-                pass
-            else:
-                name = overtake_name_list[direction_flag - 1]
-                epsi_other = vehicles[name].xcurv[3]
-                s_other = vehicles[name].xcurv[4]
-                while s_other > lap_length:
-                    s_other = s_other - lap_length
-                if (
-                    abs(s_other - xcurv[4])
-                    <= mpc_lti_param.planning_prediction_factor
-                    * vehicles[name].xcurv[0]
-                    or abs(s_other + track.lap_length - xcurv[4])
-                    <= mpc_lti_param.planning_prediction_factor
-                    * vehicles[name].xcurv[0]
-                    or abs(s_other - track.lap_length - xcurv[4])
-                    <= mpc_lti_param.planning_prediction_factor
-                    * vehicles[name].xcurv[0]
-                ):
-                    s_veh = s_other
-                    epsi_veh = epsi_other
-                    ey_veh = vehicles[name].xcurv[5]
-                    ey_veh_max = (
-                        ey_veh
-                        + 0.5 * veh_len * np.sin(epsi_veh)
-                        + 0.5 * veh_width * np.cos(epsi_veh)
-                    )
-                    ey_veh_min = (
-                        ey_veh
-                        - 0.5 * veh_len * np.sin(epsi_veh)
-                        - 0.5 * veh_width * np.cos(epsi_veh)
-                    )
-                    s_veh_max = (
-                        s_veh
-                        + 0.5 * veh_len * np.cos(epsi_veh)
-                        + 0.5 * veh_width * np.sin(epsi_veh)
-                    )
-                    s_veh_min = (
-                        s_veh
-                        - 0.5 * veh_len * np.cos(epsi_veh)
-                        - 0.5 * veh_width * np.sin(epsi_veh)
-                    )
-                    if (
-                        (
-                            s_tmp
-                            + 0.5 * veh_len * np.cos(xcurv[3])
-                            + 0.5 * veh_width * np.sin(xcurv[3])
-                            <= s_veh_min
-                            or s_tmp
-                            - 0.5 * veh_len * np.cos(xcurv[3])
-                            - 0.5 * veh_width * np.sin(xcurv[3])
-                            >= s_veh_max
-                        )
-                        or (
-                            s_tmp
-                            + 0.5 * veh_len * np.cos(xcurv[3])
-                            + 0.5 * veh_width * np.sin(xcurv[3])
-                            <= s_veh_min + lap_length
-                            or s_tmp
-                            - 0.5 * veh_len * np.cos(xcurv[3])
-                            - 0.5 * veh_width * np.sin(xcurv[3])
-                            >= s_veh_max + lap_length
-                        )
-                        or (
-                            s_tmp
-                            + 0.5 * veh_len * np.cos(xcurv[3])
-                            + 0.5 * veh_width * np.sin(xcurv[3])
-                            + lap_length
-                            <= s_veh_min
-                            or s_tmp
-                            - 0.5 * veh_len * np.cos(xcurv[3])
-                            - 0.5 * veh_width * np.sin(xcurv[3])
-                            + lap_length
-                            >= s_veh_max
-                        )
-                    ):
-                        pass
-                    else:
-                        opti.subject_to(
-                            xvar[5, i]
-                            + 0.5 * veh_len * np.sin(xvar[3, i])
-                            + 0.5 * veh_width * np.cos(xvar[3, i])
-                            <= 1.1 * ey_veh_min
-                        )
-            if direction_flag == np.size(overtake_name_list):
-                pass
-            else:
-                name = overtake_name_list[direction_flag]
-                epsi_other = vehicles[name].xcurv[3]
-                s_other = vehicles[name].xcurv[4]
-                while s_other > lap_length:
-                    s_other = s_other - lap_length
-                if (
-                    abs(s_other - xcurv[4])
-                    <= mpc_lti_param.planning_prediction_factor
-                    * vehicles[name].xcurv[0]
-                    or abs(s_other + track.lap_length - xcurv[4])
-                    <= mpc_lti_param.planning_prediction_factor
-                    * vehicles[name].xcurv[0]
-                    or abs(s_other - track.lap_length - xcurv[4])
-                    <= mpc_lti_param.planning_prediction_factor
-                    * vehicles[name].xcurv[0]
-                ):
-                    s_veh = s_other
-                    epsi_veh = epsi_other
-                    ey_veh = vehicles[name].xcurv[5]
-                    ey_veh_max = (
-                        ey_veh
-                        + 0.5 * veh_len * np.sin(epsi_veh)
-                        + 0.5 * veh_width * np.cos(epsi_veh)
-                    )
-                    ey_veh_min = (
-                        ey_veh
-                        - 0.5 * veh_len * np.sin(epsi_veh)
-                        - 0.5 * veh_width * np.cos(epsi_veh)
-                    )
-                    s_veh_max = (
-                        s_veh
-                        + 0.5 * veh_len * np.cos(epsi_veh)
-                        + 0.5 * veh_width * np.sin(epsi_veh)
-                    )
-                    s_veh_min = (
-                        s_veh
-                        - 0.5 * veh_len * np.cos(epsi_veh)
-                        - 0.5 * veh_width * np.sin(epsi_veh)
-                    )
-                    if (
-                        (
-                            s_tmp
-                            + 0.5 * veh_len * np.cos(xcurv[3])
-                            + 0.5 * veh_width * np.sin(xcurv[3])
-                            <= s_veh_min
-                            or s_tmp
-                            - 0.5 * veh_len * np.cos(xcurv[3])
-                            - 0.5 * veh_width * np.sin(xcurv[3])
-                            >= s_veh_max
-                        )
-                        or (
-                            s_tmp
-                            + 0.5 * veh_len * np.cos(xcurv[3])
-                            + 0.5 * veh_width * np.sin(xcurv[3])
-                            <= s_veh_min + lap_length
-                            or s_tmp
-                            - 0.5 * veh_len * np.cos(xcurv[3])
-                            - 0.5 * veh_width * np.sin(xcurv[3])
-                            >= s_veh_max + lap_length
-                        )
-                        or (
-                            s_tmp
-                            + 0.5 * veh_len * np.cos(xcurv[3])
-                            + 0.5 * veh_width * np.sin(xcurv[3])
-                            + lap_length
-                            <= s_veh_min
-                            or s_tmp
-                            - 0.5 * veh_len * np.cos(xcurv[3])
-                            - 0.5 * veh_width * np.sin(xcurv[3])
-                            + lap_length
-                            >= s_veh_max
-                        )
-                    ):
-                        pass
-                    else:
-                        opti.subject_to(
-                            xvar[5, i]
-                            - 0.5 * veh_len * np.sin(xvar[3, i])
-                            - 0.5 * veh_width * np.cos(xvar[3, i])
-                            >= 1.2 * ey_veh_max
-                        )
+            name = overtake_name_list[direction_flag - 1]
+            epsi_agent = vehicles[name].xcurv[3]
+            s_agent = vehicles[name].xcurv[4]
+            while s_agent > lap_length:
+                s_agent = s_agent - lap_length
+            s_veh = s_agent
+            epsi_veh = epsi_agent
+            ey_veh = vehicles[name].xcurv[5]
+            ey_veh_max, ey_veh_min, s_veh_max, s_veh_min = get_agent_range(s_veh, ey_veh, epsi_veh, veh_len, veh_width)
+            ey_ego_max, ey_ego_min, s_ego_max, s_ego_min = get_agent_range(s_tmp, xcurv[5], xcurv[3], veh_len, veh_width)
+            ego_agent_overlap_flag = ego_agent_overlap_checker(s_ego_min, s_ego_max, s_veh_min, s_veh_max, lap_length)
+            if ego_agent_overlap_flag:
+                opti.subject_to(
+                    xvar[5, i]
+                    + 0.5 * veh_len * np.sin(xvar[3, i])
+                    + 0.5 * veh_width * np.cos(xvar[3, i])
+                    <= 1.2 * ey_veh_min
+                )
+        if direction_flag == np.size(overtake_name_list):
+            pass
+        else:
+            name = overtake_name_list[direction_flag]
+            epsi_agent = vehicles[name].xcurv[3]
+            s_agent = vehicles[name].xcurv[4]
+            while s_agent > lap_length:
+                s_agent = s_agent - lap_length
+            s_veh = s_agent
+            epsi_veh = epsi_agent
+            ey_veh = vehicles[name].xcurv[5]
+            ey_veh_max, ey_veh_min, s_veh_max, s_veh_min = get_agent_range(s_veh, ey_veh, epsi_veh, veh_len, veh_width)
+            ey_ego_max, ey_ego_min, s_ego_max, s_ego_min = get_agent_range(s_tmp, xcurv[5], xcurv[3], veh_len, veh_width)
+            ego_agent_overlap_flag = ego_agent_overlap_checker(s_ego_min, s_ego_max, s_veh_min, s_veh_max, lap_length)
+            if ego_agent_overlap_flag:
+                opti.subject_to(
+                    xvar[5, i]
+                    - 0.5 * veh_len * np.sin(xvar[3, i])
+                    - 0.5 * veh_width * np.cos(xvar[3, i])
+                    >= 1.2 * ey_veh_max
+                )
     # setup solver
     option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
     opti.minimize(cost)
