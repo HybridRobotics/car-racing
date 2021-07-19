@@ -22,8 +22,6 @@ def lmpc_racing(args):
         ego.set_timestep(timestep)
         vt = 1.2
         N = 12
-        xdim = 6
-        udim = 2
         # run the pid controller for the first lap to collect data
         time_pid = 90.0
         pid_controller = offboard.PIDTracking(vt=vt, eyt=0.1)
@@ -76,8 +74,6 @@ def lmpc_racing(args):
         lmpc_controller.set_timestep(timestep)
         lmpc_controller.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
             N,
-            xdim,
-            udim,
             int(round(time_lmpc / timestep)),
             num_ss_points,
             lap_number,

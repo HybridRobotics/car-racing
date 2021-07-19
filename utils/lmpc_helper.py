@@ -5,6 +5,7 @@ from scipy import linalg
 import datetime
 from cvxopt.solvers import qp
 from utils import racing_env
+from utils.constants import *
 
 
 def compute_cost(xcurv, u, lap_length):
@@ -31,17 +32,15 @@ def regression_and_linearization(
     time_ss,
     max_num_point,
     qp,
-    n,
-    d,
     matrix,
     point_and_tangent,
     dt,
     i,
 ):
     x0 = lin_points[i, :]
-    Ai = np.zeros((n, n))
-    Bi = np.zeros((n, d))
-    Ci = np.zeros((n, 1))
+    Ai = np.zeros((X_DIM, X_DIM))
+    Bi = np.zeros((X_DIM, U_DIM))
+    Ci = np.zeros((X_DIM, 1))
     # Compute Index to use
     h = 5
     lamb = 0.0
@@ -336,8 +335,6 @@ class lmpc_prediction:
     def __init__(
         self,
         num_horizon=12,
-        xdim=6,
-        udim=2,
         points_lmpc=5000,
         num_ss_points=32 + 12,
         lap_number=None,
@@ -345,15 +342,14 @@ class lmpc_prediction:
         """
         Initialization:
             num_horizon: horizon length
-            xdim, udim: state and input dimensions
             points_lmpc: maximum simulation timesteps
             num_ss_points: number used to build safe set at each time step
         """
         self.predicted_xcurv = np.zeros(
-            (num_horizon + 1, xdim, points_lmpc, lap_number)
+            (num_horizon + 1, X_DIM, points_lmpc, lap_number)
         )
-        self.predicted_u = np.zeros((num_horizon, udim, points_lmpc, lap_number))
-        self.ss_used = np.zeros((xdim, num_ss_points, points_lmpc, lap_number))
+        self.predicted_u = np.zeros((num_horizon, U_DIM, points_lmpc, lap_number))
+        self.ss_used = np.zeros((X_DIM, num_ss_points, points_lmpc, lap_number))
         self.Qfun_used = np.zeros((num_ss_points, points_lmpc, lap_number))
 
 

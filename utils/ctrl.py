@@ -2,6 +2,7 @@ import datetime
 import numpy as np
 import casadi as ca
 from utils import lmpc_helper, racing_env
+from utils.constants import *
 from casadi import *
 from scipy import sparse
 from scipy.sparse import vstack
@@ -10,9 +11,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 
-def pid(xcurv, xtarget, udim):
+def pid(xcurv, xtarget):
     start_timer = datetime.datetime.now()
-    u_next = np.zeros(udim)
+    u_next = np.zeros(U_DIM)
     vt = xtarget[0]
     eyt = xtarget[5]
     u_next[0] = -0.6 * (xcurv[5] - eyt) - 0.9 * xcurv[3]
@@ -25,7 +26,6 @@ def pid(xcurv, xtarget, udim):
 
 def mpc(
     xcurv,
-    udim,
     mpc_lti_param,
     track,
     xtarget=None,
@@ -47,8 +47,8 @@ def mpc(
     start_timer = datetime.datetime.now()
     opti = ca.Opti()
     # define variables
-    xvar = opti.variable(len(xcurv), num_horizon + 1)
-    uvar = opti.variable(udim, num_horizon)
+    xvar = opti.variable(X_DIM, num_horizon + 1)
+    uvar = opti.variable(U_DIM, num_horizon)
     cost = 0
     opti.subject_to(xvar[:, 0] == xcurv)
     if xtarget is None:
@@ -289,7 +289,6 @@ def mpc(
 def mpccbf(
     xcurv,
     xtarget,
-    udim,
     vehicles,
     agent_name,
     lap_length,
@@ -303,8 +302,8 @@ def mpccbf(
     start_timer = datetime.datetime.now()
     opti = ca.Opti()
     # define variables
-    xvar = opti.variable(len(xcurv), mpc_cbf_param.num_horizon + 1)
-    uvar = opti.variable(udim, mpc_cbf_param.num_horizon)
+    xvar = opti.variable(X_DIM, mpc_cbf_param.num_horizon + 1)
+    uvar = opti.variable(U_DIM, mpc_cbf_param.num_horizon)
     cost = 0
     opti.subject_to(xvar[:, 0] == xcurv)
     # get other vehicles' state estimations
@@ -422,8 +421,6 @@ def lmpc(
     matrix_Atv,
     matrix_Btv,
     matrix_Ctv,
-    xdim,
-    udim,
     ss_curv,
     Qfun,
     iter,
@@ -433,7 +430,7 @@ def lmpc(
     lmpc_param,
 ):
     start_timer = datetime.datetime.now()
-    ss_point_selected_tot = np.empty((xdim, 0))
+    ss_point_selected_tot = np.empty((X_DIM, 0))
     Qfun_selected_tot = np.empty((0))
     for jj in range(0, lmpc_param.num_ss_iter):
         ss_point_selected, Qfun_selected = lmpc_helper.select_points(
@@ -451,14 +448,14 @@ def lmpc(
     # initialize the problem
     opti = ca.Opti()
     # define variables
-    x = opti.variable(xdim, lmpc_param.num_horizon + 1)
-    u = opti.variable(udim, lmpc_param.num_horizon)
+    x = opti.variable(X_DIM, lmpc_param.num_horizon + 1)
+    u = opti.variable(U_DIM, lmpc_param.num_horizon)
     lambd = opti.variable(Qfun_selected_tot.shape[0])
-    slack = opti.variable(xdim)
+    slack = opti.variable(X_DIM)
     cost_mpc = 0
     cost_learning = 0
     # add constraints and cost function
-    x_track = np.array([5.0, 0, 0, 0, 0, 0]).reshape(xdim, 1)
+    x_track = np.array([5.0, 0, 0, 0, 0, 0]).reshape(X_DIM, 1)
     opti.subject_to(x[:, 0] == xcurv)
     for i in range(lmpc_param.num_horizon):
         opti.subject_to(

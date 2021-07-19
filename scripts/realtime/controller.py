@@ -39,8 +39,6 @@ def set_controller(args):
     elif ctrl_policy == "lmpc":
         laps_number = 100
         N = 12
-        xdim = 6
-        udim = 2
         num_ss_it = 2
         num_ss_points = 32 + N
         shift = 0
@@ -70,7 +68,7 @@ def set_controller(args):
 
         lmpc_ctrl = realtime.LMPCRacingGame(lmpc_param)
         lmpc_ctrl.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
-            N, xdim, udim, points_lmpc, num_ss_points, laps_number
+            N, points_lmpc, num_ss_points, laps_number
         )
         lmpc_ctrl.set_subscriber_track()
         lmpc_ctrl.set_timestep(timestep)
