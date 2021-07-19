@@ -3,7 +3,8 @@ import pickle
 import sympy as sp
 import numpy as np
 from sim import offboard
-from utils import racing_env, base, lmpc_helper
+from utils import racing_env, base
+from utils.lmpc_helper import LMPCPrediction
 
 
 def lmpc_racing(args):
@@ -72,7 +73,7 @@ def lmpc_racing(args):
         lmpc_controller = offboard.LMPCRacingGame(lmpc_param)
         lmpc_controller.set_track(track)
         lmpc_controller.set_timestep(timestep)
-        lmpc_controller.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
+        lmpc_controller.openloop_prediction = LMPCPrediction(
             N,
             int(round(time_lmpc / timestep)),
             num_ss_points,

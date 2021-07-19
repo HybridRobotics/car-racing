@@ -5,7 +5,8 @@ import numpy as np
 import random
 import math
 from sim import offboard
-from utils import racing_env, base, lmpc_helper
+from utils import racing_env, base
+from utils.lmpc_helper import LMPCPrediction
 
 
 def lmpc_racing(args):
@@ -212,7 +213,7 @@ def set_up_lmpc(timestep, track, lap_number, alpha, opti_traj_xcurv, opti_traj_x
     lmpc_controller.set_track(track)
     lmpc_controller.set_timestep(timestep)
     lmpc_controller.set_opti_traj(opti_traj_xcurv, opti_traj_xglob)
-    lmpc_controller.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
+    lmpc_controller.openloop_prediction = LMPCPrediction(
         lap_number=lap_number
     )
     return lmpc_controller, time_lmpc

@@ -302,7 +302,7 @@ class LMPCRacingGame(ControlBase):
         self.iter = 0
         self.time_in_iter = 0
         self.p = Pool(4)
-        self.openloop_prediction_lmpc = None
+        self.openloop_prediction = None
 
     def set_vehicles_track(self):
         if self.realtime_flag == False:
@@ -347,16 +347,16 @@ class LMPCRacingGame(ControlBase):
             )
             self.u = self.u_pred[0, :]
             iter = self.iter
-            self.openloop_prediction_lmpc.predicted_xcurv[
+            self.openloop_prediction.predicted_xcurv[
                 :, :, self.time_in_iter, iter
             ] = self.x_pred
-            self.openloop_prediction_lmpc.predicted_u[
+            self.openloop_prediction.predicted_u[
                 :, :, self.time_in_iter, iter
             ] = self.u_pred
-            self.openloop_prediction_lmpc.ss_used[
+            self.openloop_prediction.ss_used[
                 :, :, self.time_in_iter, iter
             ] = self.ss_point_selected_tot
-            self.openloop_prediction_lmpc.Qfun_used[
+            self.openloop_prediction.Qfun_used[
                 :, self.time_in_iter, iter
             ] = self.Qfun_selected_tot
             self.add_point(self.x, self.u, self.time_in_iter)

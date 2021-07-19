@@ -329,7 +329,7 @@ class closedloop_data:
         self.xglob[1:, :] = 0 * self.xglob[1:, :]
 
 
-class lmpc_prediction:
+class LMPCPrediction:
     """Object collecting the predictions and SS at eath time step"""
 
     def __init__(
