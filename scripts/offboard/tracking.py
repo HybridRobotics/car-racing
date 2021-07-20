@@ -11,8 +11,7 @@ def tracking(args):
         "data/track_layout/" + track_layout + ".csv", delimiter=","
     )
     if args["simulation"]:
-        track_width = 0.8
-        track = racing_env.ClosedTrack(track_spec, track_width)
+        track = racing_env.ClosedTrack(track_spec, track_width = 0.8)
         # setup ego car
         ego = offboard.DynamicBicycleModel(
             name="ego", param=base.CarParam(edgecolor="black")

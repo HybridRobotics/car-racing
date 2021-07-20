@@ -14,18 +14,16 @@ def lmpc_racing(args):
     )
     lap_number = args["lap_number"]
     if args["simulation"]:
-        track_width = 0.8
-        track = racing_env.ClosedTrack(track_spec, track_width)
+        track = racing_env.ClosedTrack(track_spec, track_width = 0.8)
         ego = offboard.DynamicBicycleModel(
             name="ego", param=base.CarParam(edgecolor="black")
         )
         timestep = 1.0 / 10.0
         ego.set_timestep(timestep)
-        vt = 1.2
         N = 12
         # run the pid controller for the first lap to collect data
         time_pid = 90.0
-        pid_controller = offboard.PIDTracking(vt=vt, eyt=0.1)
+        pid_controller = offboard.PIDTracking(vt=1.2, eyt=0.1)
         pid_controller.set_timestep(timestep)
         ego.set_ctrl_policy(pid_controller)
         pid_controller.set_track(track)
@@ -39,7 +37,7 @@ def lmpc_racing(args):
         matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
         matrix_R = np.diag([0.1, 0.1])
         mpc_lti_param = base.MPCTrackingParam(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=vt, eyt=0.1
+            matrix_A, matrix_B, matrix_Q, matrix_R, vt=1.2, eyt=0.1
         )
         mpc_lti_controller = offboard.MPCTracking(mpc_lti_param)
         mpc_lti_controller.set_timestep(timestep)

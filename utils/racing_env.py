@@ -324,14 +324,14 @@ class ClosedTrack:
         get_local_position: get (s, ey, epsi, CompletedFlag) from (X, Y, psi)
     """
 
-    def __init__(self, spec, width):
+    def __init__(self, spec, track_width = 0.8):
         """Initialization
         spec: geometry of the track
-        width: track width
+        track_width: track width
         point_and_tangent: specs of each segments
         lap_length: length of the closed track
         """
-        self.width = width
+        self.width = track_width
         self.spec = spec
         # Now given the above segments we compute the (x, y) points of the track and the angle of the tangent vector (psi) at
         # these points. For each segment we compute the (x, y, psi) coordinate at the last point of the segment. Furthermore,

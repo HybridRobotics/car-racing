@@ -12,8 +12,7 @@ def racing(args):
         "data/track_layout/" + track_layout + ".csv", delimiter=","
     )
     if args["simulation"]:
-        track_width = 1.0
-        track = racing_env.ClosedTrack(track_spec, track_width)
+        track = racing_env.ClosedTrack(track_spec, track_width = 1.0)
         matrix_A = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=",")
         matrix_B = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=",")
         matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])

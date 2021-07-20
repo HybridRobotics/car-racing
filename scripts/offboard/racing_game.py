@@ -21,8 +21,7 @@ def lmpc_racing(args):
     opti_traj_xglob = np.genfromtxt(
         "data/optimal_traj/xglob_" + track_layout + ".csv", delimiter=","
     )
-    track_width = 0.8
-    track = racing_env.ClosedTrack(track_spec, track_width)
+    track = racing_env.ClosedTrack(track_spec, track_width=0.8)
     num_veh = args["number_other_agents"]
     if args["diff_alpha"]:
         alpha_list = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]

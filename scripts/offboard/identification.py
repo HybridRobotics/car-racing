@@ -19,8 +19,7 @@ def linear_time_invariant():
             [np.pi / 2 * 1.5, -1.5],
         ]
     )
-    track_width = 1.0
-    track = racing_env.ClosedTrack(track_spec, track_width)
+    track = racing_env.ClosedTrack(track_spec, track_width = 1.0)
     # setup ego car
     ego = offboard.DynamicBicycleModel(
         name="ego", param=base.CarParam(edgecolor="black")
@@ -35,6 +34,7 @@ def linear_time_invariant():
     simulator.set_timestep(0.1)
     simulator.set_track(track)
     simulator.add_vehicle(ego)
+    ego.ctrl_policy.set_racing_sim(simulator)
     simulator.sim(sim_time=500.0)
     # calculate linearized dynamics
     xdata = np.stack(simulator.vehicles["ego"].closedloop_xcurv, axis=0)
