@@ -27,8 +27,9 @@ def pid(xcurv, xtarget):
 
 def mpc_lti(
     xcurv,
+    xtarget,
     mpc_lti_param,
-    xtarget
+    track
 ):
     vt = xtarget[0]
     eyt = xtarget[5]
@@ -85,7 +86,6 @@ def mpc_multi_agents(
     mpc_lti_param,
     track,
     target_traj_xcurv=None,
-    lap_length=None,
     vehicles=None,
     agent_name=None,
     direction_flag=None,
@@ -147,14 +147,14 @@ def mpc_multi_agents(
             name = overtake_name_list[direction_flag - 1]
             epsi_agent = vehicles[name].xcurv[3]
             s_agent = vehicles[name].xcurv[4]
-            while s_agent > lap_length:
-                s_agent = s_agent - lap_length
+            while s_agent > track.lap_length:
+                s_agent = s_agent - track.lap_length
             s_veh = s_agent
             epsi_veh = epsi_agent
             ey_veh = vehicles[name].xcurv[5]
             ey_veh_max, ey_veh_min, s_veh_max, s_veh_min = get_agent_range(s_veh, ey_veh, epsi_veh, veh_len, veh_width)
             ey_ego_max, ey_ego_min, s_ego_max, s_ego_min = get_agent_range(s_tmp, xcurv[5], xcurv[3], veh_len, veh_width)
-            ego_agent_overlap_flag = ego_agent_overlap_checker(s_ego_min, s_ego_max, s_veh_min, s_veh_max, lap_length)
+            ego_agent_overlap_flag = ego_agent_overlap_checker(s_ego_min, s_ego_max, s_veh_min, s_veh_max, track.lap_length)
             if ego_agent_overlap_flag:
                 opti.subject_to(
                     xvar[5, i]
@@ -168,14 +168,14 @@ def mpc_multi_agents(
             name = overtake_name_list[direction_flag]
             epsi_agent = vehicles[name].xcurv[3]
             s_agent = vehicles[name].xcurv[4]
-            while s_agent > lap_length:
-                s_agent = s_agent - lap_length
+            while s_agent > track.lap_length:
+                s_agent = s_agent - track.lap_length
             s_veh = s_agent
             epsi_veh = epsi_agent
             ey_veh = vehicles[name].xcurv[5]
             ey_veh_max, ey_veh_min, s_veh_max, s_veh_min = get_agent_range(s_veh, ey_veh, epsi_veh, veh_len, veh_width)
             ey_ego_max, ey_ego_min, s_ego_max, s_ego_min = get_agent_range(s_tmp, xcurv[5], xcurv[3], veh_len, veh_width)
-            ego_agent_overlap_flag = ego_agent_overlap_checker(s_ego_min, s_ego_max, s_veh_min, s_veh_max, lap_length)
+            ego_agent_overlap_flag = ego_agent_overlap_checker(s_ego_min, s_ego_max, s_veh_min, s_veh_max, track.lap_length)
             if ego_agent_overlap_flag:
                 opti.subject_to(
                     xvar[5, i]
@@ -204,13 +204,13 @@ def mpc_multi_agents(
 def mpccbf(
     xcurv,
     xtarget,
+    mpc_cbf_param,
     vehicles,
     agent_name,
     lap_length,
     time,
     timestep,
     realtime_flag,
-    mpc_cbf_param,
 ):
     vt = xtarget[0]
     eyt = xtarget[5]
@@ -333,6 +333,7 @@ def mpccbf(
 
 def lmpc(
     xcurv,
+    lmpc_param,
     matrix_Atv,
     matrix_Btv,
     matrix_Ctv,
@@ -342,7 +343,6 @@ def lmpc(
     lap_length,
     lap_width,
     u_old,
-    lmpc_param,
 ):
     start_timer = datetime.datetime.now()
     ss_point_selected_tot = np.empty((X_DIM, 0))

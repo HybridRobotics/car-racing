@@ -127,6 +127,7 @@ class MPCTrackingParam:
         matrix_R=np.diag([0.1, 0.1]),
         vt=0.6,
         eyt=0.0,
+        num_horizon = 10
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -134,7 +135,7 @@ class MPCTrackingParam:
         self.matrix_R = matrix_R
         self.vt = vt
         self.eyt = eyt
-        self.num_horizon = 10
+        self.num_horizon = num_horizon
 
 
 class MPCTracking(ControlBase):
@@ -147,7 +148,7 @@ class MPCTracking(ControlBase):
     def calc_input(self):
         xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(X_DIM, 1)
         self.u = ctrl.mpc_lti(
-            self.x, self.mpc_lti_param, xtarget
+            self.x,  xtarget, self.mpc_lti_param, self.track
         )
         if self.agent_name == "ego":
             if self.realtime_flag == False:
@@ -161,15 +162,25 @@ class MPCTracking(ControlBase):
 
 
 class MPCCBFRacingParam:
-    def __init__(self, matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.6, eyt=0.0):
+    def __init__(
+        self,
+        matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
+        matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
+        matrix_Q=np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
+        matrix_R=np.diag([0.1, 0.1]),
+        vt=0.6,
+        eyt=0.0,
+        num_horizon=10,
+        alhpa=0.6
+    ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
         self.matrix_Q = matrix_Q
         self.matrix_R = matrix_R
         self.vt = vt
         self.eyt = eyt
-        self.num_horizon = 10
-        self.alpha = 0.6
+        self.num_horizon = num_horizon
+        self.alpha = alhpa
 
 
 class MPCCBFRacing(ControlBase):
@@ -187,25 +198,25 @@ class MPCCBFRacing(ControlBase):
             self.u = ctrl.mpccbf(
                 self.x,
                 xtarget,
+                self.mpc_cbf_param,
                 self.racing_sim.vehicles,
                 self.agent_name,
                 self.racing_sim.track.lap_length,
                 self.time,
                 self.timestep,
                 self.realtime_flag,
-                self.mpc_cbf_param,
             )
         elif self.realtime_flag == True:
             self.u = ctrl.mpccbf(
                 self.x,
                 xtarget,
+                self.mpc_cbf_param,
                 self.vehicles,
                 self.agent_name,
                 self.lap_length,
                 self.time,
                 self.timestep,
                 self.realtime_flag,
-                self.mpc_cbf_param,
             )
         else:
             pass
@@ -223,25 +234,25 @@ class MPCCBFRacing(ControlBase):
 class LMPCRacingParam:
     def __init__(
         self,
+        matrix_Q=0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        matrix_R=1 * np.diag([1.0, 0.25]),
+        matrix_Qslack=5 * np.diag([10, 0, 0, 1, 10, 0]),
+        matrix_dR=5 * np.diag([0.8, 0.0]),
         num_ss_points=32 + 12,
         num_ss_iter=2,
         num_horizon=12,
-        matrix_Qslack=5 * np.diag([10, 1, 1, 1, 10, 1]),
-        matrix_Q=0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-        matrix_R=1 * np.diag([1.0, 1.0]),
-        matrix_dR=5 * np.diag([1.0, 0.0]),
         shift=0,
         timestep=None,
         lap_number=None,
         time_lmpc=None,
     ):
+        self.matrix_Q = matrix_Q
+        self.matrix_R = matrix_R
+        self.matrix_Qslack = matrix_Qslack
+        self.matrix_dR = matrix_dR
         self.num_ss_points = num_ss_points
         self.num_ss_iter = num_ss_iter
         self.num_horizon = num_horizon
-        self.matrix_R = matrix_R
-        self.matrix_Q = matrix_Q
-        self.matrix_dR = matrix_dR
-        self.matrix_Qslack = matrix_Qslack
         self.shift = shift
         self.timestep = timestep
         self.lap_number = lap_number
@@ -251,15 +262,17 @@ class LMPCRacingParam:
 class RacingGameParam:
     def __init__(
         self,
-        timestep=None,
         matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
         matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
         matrix_Q=np.diag([10.0, 0.0, 0.0, 5.0, 0.0, 50.0]),
         matrix_R=np.diag([0.1, 0.1]),
+        bezier_order=3,
+        safety_factor=1.5,
         num_horizon_ctrl=10,
         num_horizon_planner=20,
         planning_prediction_factor=1.5,
         alpha=0.98,
+        timestep=None,
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -270,8 +283,8 @@ class RacingGameParam:
         self.planning_prediction_factor = planning_prediction_factor
         self.alpha = alpha
         self.timestep = timestep
-        self.bezier_order = 3
-        self.safety_factor = 1.5
+        self.bezier_order = bezier_order
+        self.safety_factor = safety_factor
 
 
 class LMPCRacingGame(ControlBase):
@@ -334,6 +347,7 @@ class LMPCRacingGame(ControlBase):
                 self.lin_input,
             ) = ctrl.lmpc(
                 x,
+                self.lmpc_param,
                 matrix_Atv,
                 matrix_Btv,
                 matrix_Ctv,
@@ -343,7 +357,6 @@ class LMPCRacingGame(ControlBase):
                 self.lap_length,
                 self.lap_width,
                 u_old,
-                self.lmpc_param,
             )
             self.u = self.u_pred[0, :]
             iter = self.iter
@@ -384,7 +397,6 @@ class LMPCRacingGame(ControlBase):
                 self.racing_game_param,
                 self.track,
                 target_traj_xcurv=overtake_traj_xcurv,
-                lap_length=self.lap_length,
                 vehicles=self.overtake_planner.vehicles,
                 agent_name=self.agent_name,
                 direction_flag=direction_flag,

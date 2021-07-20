@@ -21,13 +21,7 @@ def tracking(args):
         if args["ctrl_policy"] == "pid":
             ego.set_ctrl_policy(offboard.PIDTracking(vt=0.8))
         elif args["ctrl_policy"] == "mpc-lti":
-            matrix_A = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=",")
-            matrix_B = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=",")
-            matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
-            matrix_R = np.diag([0.1, 0.1])
-            mpc_lti_param = base.MPCTrackingParam(
-                matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8
-            )
+            mpc_lti_param = base.MPCTrackingParam(vt=0.8)
             ego.set_ctrl_policy(offboard.MPCTracking(mpc_lti_param))
         else:
             raise NotImplementedError

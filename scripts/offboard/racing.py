@@ -13,19 +13,13 @@ def racing(args):
     )
     if args["simulation"]:
         track = racing_env.ClosedTrack(track_spec, track_width = 1.0)
-        matrix_A = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=",")
-        matrix_B = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=",")
-        matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
-        matrix_R = np.diag([0.1, 0.1])
         # setup ego car
         ego = offboard.DynamicBicycleModel(
             name="ego", param=base.CarParam(edgecolor="black")
         )
         ego.set_state_curvilinear(np.zeros((6,)))
         ego.set_state_global(np.zeros((6,)))
-        mpc_cbf_param = base.MPCCBFRacingParam(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8
-        )
+        mpc_cbf_param = base.MPCCBFRacingParam(vt=0.8)
         ego.set_ctrl_policy(offboard.MPCCBFRacing(mpc_cbf_param))
         ego.ctrl_policy.set_timestep(0.1)
         ego.set_track(track)

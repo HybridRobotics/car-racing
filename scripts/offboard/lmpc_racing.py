@@ -20,7 +20,6 @@ def lmpc_racing(args):
         )
         timestep = 1.0 / 10.0
         ego.set_timestep(timestep)
-        N = 12
         # run the pid controller for the first lap to collect data
         time_pid = 90.0
         pid_controller = offboard.PIDTracking(vt=1.2, eyt=0.1)
@@ -32,38 +31,13 @@ def lmpc_racing(args):
         ego.set_track(track)
         # run mpc-lti controller for the second lap to collect data
         time_mpc_lti = 90.0
-        matrix_A = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=",")
-        matrix_B = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=",")
-        matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
-        matrix_R = np.diag([0.1, 0.1])
-        mpc_lti_param = base.MPCTrackingParam(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=1.2, eyt=0.1
-        )
+        mpc_lti_param = base.MPCTrackingParam(vt=1.2, eyt=0.1)
         mpc_lti_controller = offboard.MPCTracking(mpc_lti_param)
         mpc_lti_controller.set_timestep(timestep)
         mpc_lti_controller.set_track(track)
         # lmpc controller
-        num_ss_it = 2
-        num_ss_points = 32 + N
-        shift = 0
         time_lmpc = 10000 * timestep
-        # Cost on the slack variable for the terminal constraint
-        matrix_Qslack = 5 * np.diag([10, 0, 0, 1, 10, 0])
-        # State cost x = [vx, vy, wz, epsi, s, ey]
-        matrix_Q_LMPC = 0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        # Input cost u = [delta, a]
-        matrix_R_LMPC = 1 * np.diag([1.0, 0.25])
-        # Input rate cost u
-        matrix_dR_LMPC = 5 * np.diag([0.8, 0.0])
         lmpc_param = base.LMPCRacingParam(
-            num_ss_points=num_ss_points,
-            num_ss_iter=num_ss_it,
-            num_horizon=N,
-            matrix_Qslack=matrix_Qslack,
-            matrix_Q=matrix_Q_LMPC,
-            matrix_R=matrix_R_LMPC,
-            matrix_dR=matrix_dR_LMPC,
-            shift=shift,
             timestep=timestep,
             lap_number=lap_number,
             time_lmpc=time_lmpc,
