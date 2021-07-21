@@ -3,6 +3,8 @@ import pickle
 import sympy as sp
 import numpy as np
 from sim import offboard
+from utils import racing_env, base, lmpc_helper
+from utils.constants import *
 from utils import racing_env, base
 from utils.lmpc_helper import LMPCPrediction
 
@@ -26,8 +28,8 @@ def lmpc_racing(args):
         pid_controller.set_timestep(timestep)
         ego.set_ctrl_policy(pid_controller)
         pid_controller.set_track(track)
-        ego.set_state_curvilinear(np.zeros((6,)))
-        ego.set_state_global(np.zeros((6,)))
+        ego.set_state_curvilinear(np.zeros((X_DIM, 1)))
+        ego.set_state_global(np.zeros((X_DIM, 1)))
         ego.set_track(track)
         # run mpc-lti controller for the second lap to collect data
         time_mpc_lti = 90.0

@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 from sim import offboard
 from utils import base, racing_env
+from utils.constants import *
 
 
 def tracking(args):
@@ -16,8 +17,8 @@ def tracking(args):
         ego = offboard.DynamicBicycleModel(
             name="ego", param=base.CarParam(edgecolor="black")
         )
-        ego.set_state_curvilinear(np.zeros((6,)))
-        ego.set_state_global(np.zeros((6,)))
+        ego.set_state_curvilinear(np.zeros((X_DIM, 1)))
+        ego.set_state_global(np.zeros((X_DIM, 1)))
         if args["ctrl_policy"] == "pid":
             ego.set_ctrl_policy(offboard.PIDTracking(vt=0.8))
         elif args["ctrl_policy"] == "mpc-lti":

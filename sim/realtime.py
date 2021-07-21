@@ -14,6 +14,7 @@ from car_racing.msg import (
 )
 from utils import vehicle_dynamics, base, ctrl, racing_env
 import copy
+from utils.constants import *
 
 
 # real-time dynamic model
@@ -180,8 +181,8 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
         curv = racing_env.get_curvature(
             self.lap_length, self.point_and_tangent, xcurv[4]
         )
-        xcurv_est = np.zeros(6)
-        xglob_est = np.zeros(6)
+        xcurv_est = np.zeros((X_DIM, 1))
+        xglob_est = np.zeros((X_DIM, 1))
         xcurv_est[0:3] = xcurv[0:3]
         xcurv_est[3] = xcurv[3] + self.timestep * (
             xcurv[2]
@@ -209,8 +210,8 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
 
     # get prediction for mpc-cbf controller
     def get_trajectory_nsteps(self, n):
-        xcurv_nsteps = np.zeros((6, n))
-        xglob_nsteps = np.zeros((6, n))
+        xcurv_nsteps = np.zeros((X_DIM, n))
+        xglob_nsteps = np.zeros((X_DIM, n))
         for index in range(n):
             if index == 0:
                 xcurv_est, xglob_est = self.get_estimation(self.xglob, self.xcurv)
@@ -242,7 +243,7 @@ class ControlBase:
         self.__pub_input = None
         # indicate the realtime simulator
         self.realtime_flag = True
-        self.xglob = np.zeros(6)
+        self.xglob = np.zeros((X_DIM, 1))
 
     def __track_cb(self, msg):
         size1 = msg.size
@@ -267,10 +268,10 @@ class ControlBase:
     def __optimal_traj_cb(self, msg):
         size = msg.size
         self.opti_size = msg.size
-        self.opti_traj_xcurv = np.zeros((size, 6))
+        self.opti_traj_xcurv = np.zeros((size, X_DIM))
         tmp = 0
         for index in range(size):
-            for index_1 in range(6):
+            for index_1 in range(X_DIM):
                 self.opti_traj_xcurv[index, index_1] = msg.list_xcurv[tmp]
                 tmp = tmp + 1
 
@@ -306,10 +307,10 @@ class ControlBase:
     def __optimal_traj_cb(self, msg):
         size = msg.size
         self.opti_size = msg.size
-        self.opti_traj_xcurv = np.zeros((size, 6))
+        self.opti_traj_xcurv = np.zeros((size, X_DIM))
         tmp = 0
         for index in range(size):
-            for index_1 in range(6):
+            for index_1 in range(X_DIM):
                 self.opti_traj_xcurv[index, index_1] = msg.list_xcurv[tmp]
                 tmp = tmp + 1
 
@@ -343,12 +344,12 @@ class ControlBase:
 
     def __state_cb(self, msg):
         if self.x is None:
-            self.x = np.zeros(
-                6,
-            )
-            self.xglob = np.zeros(
-                6,
-            )
+            self.x = np.zeros((
+                X_DIM, 1
+            ))
+            self.xglob = np.zeros((
+                X_DIM, 1
+            ))
             self.x[0] = msg.state_curv.vx
             self.x[1] = msg.state_curv.vy
             self.x[2] = msg.state_curv.wz
@@ -431,15 +432,15 @@ class MPCCBFRacing(base.MPCCBFRacing, ControlBase):
                         name=name, param=base.CarParam()
                     )
                     self.vehicles[name].name = self.agent_name
-                    self.vehicles[name].xglob = np.zeros(6)
-                    self.vehicles[name].xcurv = np.zeros(6)
+                    self.vehicles[name].xglob = np.zeros((X_DIM, 1))
+                    self.vehicles[name].xcurv = np.zeros((X_DIM, 1))
                 # other vehicle
                 else:
                     self.vehicles[name] = DynamicBicycleModel(
                         name=name, param=base.CarParam()
                     )
-                    self.vehicles[name].xglob = np.zeros(6)
-                    self.vehicles[name].xcurv = np.zeros(6)
+                    self.vehicles[name].xglob = np.zeros((X_DIM, 1))
+                    self.vehicles[name].xcurv = np.zeros((X_DIM, 1))
                     self.vehicles[name].timestep = self.timestep
                     self.vehicles[name].lap_length = self.lap_length
                     self.vehicles[name].lap_width = self.lap_width
@@ -473,8 +474,8 @@ class CarRacingSim(base.CarRacingSim):
         self.vehicles[req.name] = DynamicBicycleModel(
             name=req.name, param=base.CarParam()
         )
-        self.vehicles[req.name].xglob = np.zeros(6)
-        self.vehicles[req.name].xcurv = np.zeros(6)
+        self.vehicles[req.name].xglob = np.zeros((X_DIM, 1))
+        self.vehicles[req.name].xcurv = np.zeros((X_DIM, 1))
         self.vehicles[req.name].msg_state.name = req.name
         self.vehicles[req.name].set_subscriber_sim(req.name)
         self.num_vehicle = self.num_vehicle + 1
@@ -526,10 +527,10 @@ class Visualization:
 
     def __optimal_traj_cb(self, msg):
         size = msg.size
-        self.opti_traj_xglob = np.zeros((size, 6))
+        self.opti_traj_xglob = np.zeros((size, X_DIM))
         tmp = 0
         for index in range(size):
-            for index_1 in range(6):
+            for index_1 in range(X_DIM):
                 self.opti_traj_xglob[index, index_1] = msg.list_xglob[tmp]
                 tmp = tmp + 1
 
@@ -550,8 +551,8 @@ class Visualization:
             name=req.name, param=base.CarParam()
         )
         self.vehicles[req.name].ax = self.ax
-        self.vehicles[req.name].xglob = np.zeros(6)
-        self.vehicles[req.name].xcurv = np.zeros(6)
+        self.vehicles[req.name].xglob = np.zeros((X_DIM, 1))
+        self.vehicles[req.name].xcurv = np.zeros((X_DIM, 1))
         self.num_vehicle = self.num_vehicle + 1
         (
             x_car,

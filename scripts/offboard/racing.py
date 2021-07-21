@@ -4,6 +4,7 @@ import sympy as sp
 import numpy as np
 from sim import offboard
 from utils import base, racing_env
+from utils.constants import *
 
 
 def racing(args):
@@ -17,9 +18,9 @@ def racing(args):
         ego = offboard.DynamicBicycleModel(
             name="ego", param=base.CarParam(edgecolor="black")
         )
-        ego.set_state_curvilinear(np.zeros((6,)))
-        ego.set_state_global(np.zeros((6,)))
         mpc_cbf_param = base.MPCCBFRacingParam(vt=0.8)
+        ego.set_state_curvilinear(np.zeros((X_DIM, 1)))
+        ego.set_state_global(np.zeros((X_DIM, 1)))
         ego.set_ctrl_policy(offboard.MPCCBFRacing(mpc_cbf_param))
         ego.ctrl_policy.set_timestep(0.1)
         ego.set_track(track)

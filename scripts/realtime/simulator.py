@@ -16,6 +16,7 @@ from car_racing.msg import (
     OptimalTraj,
 )
 from car_racing.srv import AddNewVehicle
+from utils.constants import *
 
 
 def get_msg_xglob(state):
@@ -39,11 +40,11 @@ def get_msg_track_info(track, layout):
 
 def get_msg_optimal_traj(traj_xglob, traj_xcurv):
     size, _ = np.shape(traj_xglob)
-    list_xglob = np.zeros(size * 6)
-    list_xcurv = np.zeros(size * 6)
+    list_xglob = np.zeros(size * X_DIM)
+    list_xcurv = np.zeros(size * X_DIM)
     tmp = 0
     for index in range(size):
-        for index_1 in range(6):
+        for index_1 in range(X_DIM):
             list_xglob[tmp] = traj_xglob[index, index_1]
             list_xcurv[tmp] = traj_xcurv[index, index_1]
             tmp = tmp + 1

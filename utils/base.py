@@ -652,15 +652,15 @@ class NoDynamicsModel(ModelBase):
         self.t_symbol = t_symbol
         self.s_func = s_func
         self.ey_func = ey_func
-        self.xcurv = np.zeros(X_DIM)
-        self.xglob = np.zeros(X_DIM)
+        self.xcurv = np.zeros((X_DIM, 1))
+        self.xglob = np.zeros((X_DIM, 1))
         self.xcurv, self.xglob = self.get_estimation(0)
         self.traj_xcurv.append(self.xcurv)
         self.traj_xglob.append(self.xglob)
 
     def get_estimation(self, t0):
         # position estimation in curvilinear coordinates
-        xcurv_est = np.zeros(X_DIM)
+        xcurv_est = np.zeros((X_DIM, 1))
         xcurv_est[0] = sp.diff(self.s_func, self.t_symbol).subs(self.t_symbol, t0)
         xcurv_est[1] = sp.diff(self.ey_func, self.t_symbol).subs(self.t_symbol, t0)
         xcurv_est[2] = 0
@@ -670,7 +670,7 @@ class NoDynamicsModel(ModelBase):
         # position estimation in global coordinates
         X, Y = self.track.get_global_position(xcurv_est[4], xcurv_est[5])
         psi = self.track.get_orientation(xcurv_est[4], xcurv_est[5])
-        xglob_est = np.zeros(X_DIM)
+        xglob_est = np.zeros((X_DIM, 1))
         xglob_est[0:3] = xcurv_est[0:3]
         xglob_est[3] = psi
         xglob_est[4] = X
@@ -682,8 +682,8 @@ class NoDynamicsModel(ModelBase):
         xglob_est_nsteps = np.zeros((X_DIM, n))
         for index in range(n):
             xcurv_est, xglob_est = self.get_estimation(self.time + index * delta_t)
-            xcurv_est_nsteps[:, index] = xcurv_est
-            xglob_est_nsteps[:, index] = xglob_est
+            xcurv_est_nsteps[:, index] = xcurv_est[:, 0]
+            xglob_est_nsteps[:, index] = xglob_est[:, 0]
         return xcurv_est_nsteps, xglob_est_nsteps
 
     def forward_dynamics(self):
@@ -700,8 +700,8 @@ class DynamicBicycleModel(ModelBase):
         # dt <= delta_t and ( dt / delta_t) = integer value
         # Discretization Parameters
         delta_t = 0.001
-        xglob_next = np.zeros(X_DIM)
-        xcurv_next = np.zeros(X_DIM)
+        xglob_next = np.zeros((X_DIM, 1))
+        xcurv_next = np.zeros((X_DIM, 1))
         xglob_next = self.xglob
         xcurv_next = self.xcurv
         vehicle_param = CarParam()

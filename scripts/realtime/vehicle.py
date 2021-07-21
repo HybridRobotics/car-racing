@@ -13,7 +13,7 @@ from car_racing.msg import (
 from utils import vehicle_dynamics, racing_env, base
 from sim import realtime
 from car_racing.srv import AddNewVehicle
-
+from utils.constants import *
 
 def get_msg_xglob(state):
     return VehicleStateGlob(state[0], state[1], state[2], state[3], state[4], state[5])
@@ -71,7 +71,7 @@ def set_vehicle(args):
     s0 = initial_xcurv[4]
     ey0 = initial_xcurv[5]
     veh.realtime_flag = True
-    xglob0 = np.zeros(6)
+    xglob0 = np.zeros((X_DIM, 1))
     xglob0[0:3] = initial_xcurv[0:3]
     psi0 = racing_env.get_orientation(
         veh.lap_length, veh.lap_width, veh.point_and_tangent, s0, ey0

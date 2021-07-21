@@ -10,6 +10,7 @@ from scipy.interpolate import interp1d
 import copy
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from utils.constants import *
 
 
 class OvertakePlanner:
@@ -403,9 +404,9 @@ class OvertakePlanner:
                     min_cost = cost_list[index]
                     best_ey = solution_ey[:, index]
                     direction_flag = index
-        target_traj_xcurv = np.zeros((num_horizon_planner + 1, 6))
-        target_traj_xglob = np.zeros((num_horizon_planner + 1, 6))
-        bezier_xglob = np.zeros((num_horizon_planner + 1, 6))
+        target_traj_xcurv = np.zeros((num_horizon_planner + 1, X_DIM))
+        target_traj_xglob = np.zeros((num_horizon_planner + 1, X_DIM))
+        bezier_xglob = np.zeros((num_horizon_planner + 1, X_DIM))
         for index in range(num_horizon_planner + 1):
             t = i * (1.0 / num_horizon_planner)
             if max_s_obs <= track.lap_length / 3 and s_ego >= 2 * track.lap_length / 3:

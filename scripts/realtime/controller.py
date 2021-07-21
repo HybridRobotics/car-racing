@@ -5,6 +5,7 @@ import time
 import datetime
 from car_racing.msg import VehicleControl, VehicleState
 from utils import racing_env, lmpc_helper, base
+from utils.constants import *
 from sim import realtime
 
 
@@ -102,14 +103,14 @@ def set_controller(args):
         ctrl.set_subscriber_optimal_traj()
         ctrl.set_timestep(timestep)
         ctrl.set_state(
-            np.zeros(
-                6,
-            ),
-            np.zeros(
-                6,
-            ),
+            np.zeros((
+                X_DIM, 1
+            )),
+            np.zeros((
+                X_DIM, 1
+            )),
         )
-        ctrl.u = np.zeros(2)
+        ctrl.u = np.zeros((U_DIM, 1))
         ctrl.set_subscriber_state(veh_name)
         veh_input_topic = veh_name + "/input"
         ctrl.__pub_input = rospy.Publisher(

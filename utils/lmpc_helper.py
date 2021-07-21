@@ -311,9 +311,9 @@ class closedloop_data:
         self.points = int(sim_time / timestep)
         self.u = np.zeros((self.points, 2))  # Initialize the input vector
         # Initialize state vector (In curvilinear abscissas)
-        self.xcurv = np.zeros((self.points + 1, 6))
+        self.xcurv = np.zeros((self.points + 1, X_DIM))
         # Initialize the state vector in absolute reference frame
-        self.xglob = np.zeros((self.points + 1, 6))
+        self.xglob = np.zeros((self.points + 1, X_DIM))
         self.sim_points = 0.0
         self.xcurv[0, 0] = v0
         self.xglob[0, 0] = v0

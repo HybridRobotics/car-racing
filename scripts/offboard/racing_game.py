@@ -5,6 +5,8 @@ import numpy as np
 import random
 import math
 from sim import offboard
+from utils import racing_env, base, lmpc_helper
+from utils.constants import *
 from utils import racing_env, base
 from utils.lmpc_helper import LMPCPrediction
 
@@ -189,8 +191,8 @@ def set_up_ego(timestep, track):
     pid_controller.set_timestep(timestep)
     ego.set_ctrl_policy(pid_controller)
     pid_controller.set_track(track)
-    ego.set_state_curvilinear(np.zeros((6,)))
-    ego.set_state_global(np.zeros((6,)))
+    ego.set_state_curvilinear(np.zeros((X_DIM,1)))
+    ego.set_state_global(np.zeros((X_DIM,1)))
     ego.set_track(track)
     # run mpc-lti controller for the second lap to collect data
     mpc_lti_param = base.MPCTrackingParam(vt=0.7, eyt=0.0)

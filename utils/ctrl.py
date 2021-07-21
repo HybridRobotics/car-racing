@@ -14,7 +14,7 @@ import matplotlib.patches as patches
 
 def pid(xcurv, xtarget):
     start_timer = datetime.datetime.now()
-    u_next = np.zeros(U_DIM)
+    u_next = np.zeros((U_DIM, 1))
     vt = xtarget[0]
     eyt = xtarget[5]
     u_next[0] = -0.6 * (xcurv[5] - eyt) - 0.9 * xcurv[3]
@@ -416,7 +416,7 @@ def lmpc(
         x[:, lmpc_param.num_horizon] == mtimes(ss_point_selected_tot, lambd)
     )
     opti.subject_to(mtimes(np.ones((1, lambd.shape[0])), lambd) == 1)
-    opti.subject_to(mtimes(np.diag([1, 1, 1, 1, 1, 1]), slack) == np.zeros(6))
+    opti.subject_to(mtimes(np.diag([1, 1, 1, 1, 1, 1]), slack) == np.zeros(X_DIM))
     cost_learning += mtimes(np.array([Qfun_selected_tot]), lambd)
     cost = cost_mpc + cost_learning
     option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
