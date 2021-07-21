@@ -171,7 +171,7 @@ class MPCCBFRacingParam:
         vt=0.6,
         eyt=0.0,
         num_horizon=10,
-        alhpa=0.6
+        alpha=0.6
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -180,7 +180,7 @@ class MPCCBFRacingParam:
         self.vt = vt
         self.eyt = eyt
         self.num_horizon = num_horizon
-        self.alpha = alhpa
+        self.alpha = alpha
 
 
 class MPCCBFRacing(ControlBase):

@@ -342,7 +342,7 @@ def lmpc(
     iter,
     lap_length,
     lap_width,
-    u_old,
+    u_old
 ):
     start_timer = datetime.datetime.now()
     ss_point_selected_tot = np.empty((X_DIM, 0))
