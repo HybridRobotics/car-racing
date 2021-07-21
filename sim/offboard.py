@@ -42,8 +42,8 @@ class DynamicBicycleModel(base.DynamicBicycleModel):
         curv = racing_env.get_curvature(
             self.lap_length, self.point_and_tangent, xcurv[4]
         )
-        xcurv_est = np.zeros((X_DIM, 1))
-        xglob_est = np.zeros((X_DIM, 1))
+        xcurv_est = np.zeros((X_DIM, ))
+        xglob_est = np.zeros((X_DIM, ))
         xcurv_est[0:3] = xcurv[0:3]
         xcurv_est[3] = xcurv[3] + self.timestep * (
             xcurv[2]
@@ -134,32 +134,32 @@ class CarRacingSim(base.CarRacingSim):
                 int(
                     round(
                         (
-                            self.vehicles[name].time_list[i][-1]
-                            - self.vehicles[name].time_list[i][0]
+                            self.vehicles[name].times[i][-1]
+                            - self.vehicles[name].times[i][0]
                         )
                         / self.timestep
                     )
                 ),
             ):
-                time[counter] = self.vehicles[name].time_list[i][j]
+                time[counter] = self.vehicles[name].times[i][j]
 
-                traj[counter, :] = self.vehicles[name].xcurv_list[i][j][:]
+                traj[counter, :] = self.vehicles[name].xcurvs[i][j][:]
                 counter = counter + 1
         for i in range(
             0,
             int(
                 round(
                     (
-                        self.vehicles[name].traj_time[-1]
-                        - self.vehicles[name].traj_time[0]
+                        self.vehicles[name].lap_times[-1]
+                        - self.vehicles[name].lap_times[0]
                     )
                     / self.timestep
                 )
             )
             + 1,
         ):
-            time[counter] = self.vehicles[name].traj_time[i]
-            traj[counter, :] = self.vehicles[name].traj_xcurv[i][:]
+            time[counter] = self.vehicles[name].lap_times[i]
+            traj[counter, :] = self.vehicles[name].lap_xcurvs[i][:]
             counter = counter + 1
         fig, axs = plt.subplots(4)
         axs[0].plot(time, traj[:, 0], "-o", linewidth=1, markersize=1)
@@ -195,30 +195,30 @@ class CarRacingSim(base.CarRacingSim):
                 int(
                     round(
                         (
-                            self.vehicles[name].time_list[i][-1]
-                            - self.vehicles[name].time_list[i][0]
+                            self.vehicles[name].times[i][-1]
+                            - self.vehicles[name].times[i][0]
                         )
                         / self.timestep
                     )
                 ),
             ):
-                time[counter] = self.vehicles[name].time_list[i][j]
-                u[counter, :] = self.vehicles[name].u_list[i][j][:]
+                time[counter] = self.vehicles[name].times[i][j]
+                u[counter, :] = self.vehicles[name].inputs[i][j][:]
                 counter = counter + 1
         for i in range(
             0,
             int(
                 round(
                     (
-                        self.vehicles[name].traj_time[-1]
-                        - self.vehicles[name].traj_time[0]
+                        self.vehicles[name].lap_times[-1]
+                        - self.vehicles[name].lap_times[0]
                     )
                     / self.timestep
                 )
             ),
         ):
-            time[counter] = self.vehicles[name].traj_time[i]
-            u[counter, :] = self.vehicles[name].traj_u[i][:]
+            time[counter] = self.vehicles[name].lap_times[i]
+            u[counter, :] = self.vehicles[name].lap_inputs[i][:]
             counter = counter + 1
         fig, axs = plt.subplots(2)
         axs[0].plot(time, u[:, 0], "-o", linewidth=1, markersize=1)
@@ -237,25 +237,7 @@ class CarRacingSim(base.CarRacingSim):
     def plot_simulation(self):
         fig, ax = plt.subplots()
         # plotting racing track
-        num_sampling_per_meter = 100
-        num_track_points = int(np.floor(num_sampling_per_meter * self.track.lap_length))
-        points_out = np.zeros((num_track_points, 2))
-        points_center = np.zeros((num_track_points, 2))
-        points_in = np.zeros((num_track_points, 2))
-        for i in range(0, num_track_points):
-            points_out[i, :] = self.track.get_global_position(
-                i / float(num_sampling_per_meter), self.track.width
-            )
-            points_center[i, :] = self.track.get_global_position(
-                i / float(num_sampling_per_meter), 0.0
-            )
-            points_in[i, :] = self.track.get_global_position(
-                i / float(num_sampling_per_meter), -self.track.width
-            )
-        # ax.plot(self.track.point_and_tangent[:, 0], self.track.point_and_tangent[:, 1], "o") # plot joint point between segments
-        ax.plot(points_center[:, 0], points_center[:, 1], "--r")
-        ax.plot(points_in[:, 0], points_in[:, 1], "-b")
-        ax.plot(points_out[:, 0], points_out[:, 1], "-b")
+        self.track.plot_track(ax)
         # plot trajectories
         for name in self.vehicles:
             laps = self.vehicles[name].laps
@@ -269,29 +251,29 @@ class CarRacingSim(base.CarRacingSim):
                     int(
                         round(
                             (
-                                self.vehicles[name].time_list[i][-1]
-                                - self.vehicles[name].time_list[i][0]
+                                self.vehicles[name].times[i][-1]
+                                - self.vehicles[name].times[i][0]
                             )
                             / self.timestep
                         )
                     ),
                 ):
-                    trajglob[counter, :] = self.vehicles[name].xglob_list[i][j][:]
+                    trajglob[counter, :] = self.vehicles[name].xglobs[i][j][:]
                     counter = counter + 1
             for i in range(
                 0,
                 int(
                     round(
                         (
-                            self.vehicles[name].traj_time[-1]
-                            - self.vehicles[name].traj_time[0]
+                            self.vehicles[name].lap_times[-1]
+                            - self.vehicles[name].lap_times[0]
                         )
                         / self.timestep
                     )
                 )
                 + 1,
             ):
-                trajglob[counter, :] = self.vehicles[name].traj_xglob[i][:]
+                trajglob[counter, :] = self.vehicles[name].lap_xglobs[i][:]
                 counter = counter + 1
             ax.plot(trajglob[:, 4], trajglob[:, 5])
         plt.show()
@@ -299,25 +281,7 @@ class CarRacingSim(base.CarRacingSim):
     def animate(self, filename="untitled", only_last_lap=False, lap_number=None):
         fig, ax = plt.subplots()
         # plotting racing track
-        num_sampling_per_meter = 100
-        num_track_points = int(np.floor(num_sampling_per_meter * self.track.lap_length))
-        points_out = np.zeros((num_track_points, 2))
-        points_center = np.zeros((num_track_points, 2))
-        points_in = np.zeros((num_track_points, 2))
-        for i in range(0, num_track_points):
-            points_out[i, :] = self.track.get_global_position(
-                i / float(num_sampling_per_meter), self.track.width
-            )
-            points_center[i, :] = self.track.get_global_position(
-                i / float(num_sampling_per_meter), 0.0
-            )
-            points_in[i, :] = self.track.get_global_position(
-                i / float(num_sampling_per_meter), -self.track.width
-            )
-        # ax.plot(self.track.point_and_tangent[:, 0], self.track.point_and_tangent[:, 1], "o") # plot joint point between segments
-        ax.plot(points_center[:, 0], points_center[:, 1], "--r")
-        ax.plot(points_in[:, 0], points_in[:, 1], "-b")
-        ax.plot(points_out[:, 0], points_out[:, 1], "-b")
+        self.track.plot_track(ax)
         if self.opti_traj_xglob is None:
             pass
         else:
@@ -330,7 +294,15 @@ class CarRacingSim(base.CarRacingSim):
         trajglobs = {}
         (local_line,) = ax.plot([], [])
         (local_spline,) = ax.plot([], [])
-        overtake_name_list = []
+        vehicles_interest = []
+        if only_last_lap:
+            ani_time = 600
+        else:
+            lap_number = self.vehicles["ego"].laps
+            ani_time = int(round((self.vehicles["ego"].times[lap_number-1][-1]-self.vehicles["ego"].times[lap_number-1][0])/self.vehicles["ego"].timestep))+1
+        horizon_planner = self.vehicles["ego"].ctrl_policy.racing_game_param.num_horizon_planner
+        local_traj_xglob = np.zeros((ani_time, horizon_planner+1, X_DIM))
+        local_spline_xglob = np.zeros((ani_time, horizon_planner+1, X_DIM))
         for name in self.vehicles:
             patches_vehicle = patches.Polygon(
                 vertex_directions,
@@ -342,48 +314,45 @@ class CarRacingSim(base.CarRacingSim):
                 linewidth=2,
             )
             ax.add_patch(patches_vehicle)
+            ax.add_line(local_line)
+            ax.add_line(local_spline)
             ax.axis("equal")
             patches_vehicles[name] = patches_vehicle
             if only_last_lap:
-                ani_time = 400
-                # lap_number = self.vehicles["ego"].laps
-                # ani_time = int(round((self.vehicles["ego"].time_list[lap_number-1][-1]-self.vehicles["ego"].time_list[lap_number-1][0])/self.vehicles["ego"].timestep))+1
                 counter = 0
                 trajglob = np.zeros((ani_time, X_DIM))
-                local_traj_xglob = np.zeros((ani_time, 21, X_DIM))
-                local_spline_xglob = np.zeros((ani_time, 21, X_DIM))
                 for j in range(ani_time):
                     trajglob[ani_time - 1 - counter, :] = self.vehicles[name].xglob_log[
                         -1 - j
                     ][:]
                     if name == "ego":
-                        if self.vehicles[name].local_traj_list[-1 - j] is None:
+                        if self.vehicles[name].local_trajs[-1 - j] is None:
                             local_traj_xglob[ani_time - 1 - counter, :, :] = np.zeros(
-                                (21, X_DIM)
+                                (horizon_planner+1, X_DIM)
                             )
                         else:
                             local_traj_xglob[
                                 ani_time - 1 - counter, :, :
-                            ] = self.vehicles[name].local_traj_list[-1 - j][:, :]
-                        if self.vehicles[name].overtake_vehicle_list[-1 - j] is None:
-                            overtake_name_list.insert(0, None)
+                            ] = self.vehicles[name].local_trajs[-1 - j][:, :]
+                        if self.vehicles[name].vehicles_interest[-1 - j] is None:
+                            vehicles_interest.insert(0, None)
                         else:
-                            overtake_name_list.insert(
+                            vehicles_interest.insert(
                                 0,
-                                self.vehicles[name].overtake_vehicle_list[-1 - j],
+                                self.vehicles[name].vehicles_interest[-1 - j],
                             )
-                        if self.vehicles[name].spline_list[-1 - j] is None:
+                        if self.vehicles[name].splines[-1 - j] is None:
                             local_spline_xglob[ani_time - 1 - counter, :, :] = np.zeros(
-                                (21, X_DIM)
+                                (horizon_planner+1, X_DIM)
                             )
                         else:
                             local_spline_xglob[
                                 ani_time - 1 - counter, :, :
-                            ] = self.vehicles[name].spline_list[-1 - j][:, :]
+                            ] = self.vehicles[name].splines[-1 - j][:, :]
                     counter = counter + 1
             else:
-                local_traj_xglob = np.zeros((int(round(self.vehicles[name].time / self.timestep)) + 1, 21, X_DIM))
-                local_spline_xglob = np.zeros((int(round(self.vehicles[name].time / self.timestep)) + 1, 21, X_DIM))
+                local_traj_xglob = np.zeros((int(round(self.vehicles[name].time / self.timestep)) + 1, horizon_planner+1, X_DIM))
+                local_spline_xglob = np.zeros((int(round(self.vehicles[name].time / self.timestep)) + 1, horizon_planner+1, X_DIM))
                 laps = self.vehicles[name].laps
                 trajglob = np.zeros(
                     (
@@ -398,29 +367,29 @@ class CarRacingSim(base.CarRacingSim):
                         int(
                             round(
                                 (
-                                    self.vehicles[name].time_list[i][-1]
-                                    - self.vehicles[name].time_list[i][0]
+                                    self.vehicles[name].times[i][-1]
+                                    - self.vehicles[name].times[i][0]
                                 )
                                 / self.timestep
                             )
                         ),
                     ):
-                        trajglob[counter, :] = self.vehicles[name].xglob_list[i][j][:]
+                        trajglob[counter, :] = self.vehicles[name].xglobs[i][j][:]
                         counter = counter + 1
                 for i in range(
                     0,
                     int(
                         round(
                             (
-                                self.vehicles[name].traj_time[-1]
-                                - self.vehicles[name].traj_time[0]
+                                self.vehicles[name].lap_times[-1]
+                                - self.vehicles[name].lap_times[0]
                             )
                             / self.timestep
                         )
                     )
                     + 1,
                 ):
-                    trajglob[counter, :] = self.vehicles[name].traj_xglob[i][:]
+                    trajglob[counter, :] = self.vehicles[name].lap_xglobs[i][:]
                     counter = counter + 1
             trajglobs[name] = trajglob
         # update vehicles for animation
@@ -459,16 +428,16 @@ class CarRacingSim(base.CarRacingSim):
                         local_spline_xglob[i, :, 5],
                     )
                     local_spline.set_color("black")
-                if overtake_name_list == []:
+                if vehicles_interest == []:
                     pass
                 else:
-                    if overtake_name_list[i] is None:
+                    if vehicles_interest[i] is None:
                         patches_vehicles[name].set_edgecolor(
                             self.vehicles[name].param.edgecolor
                         )
                     else:
                         veh_of_interest = False
-                        for name_1 in list(overtake_name_list[i]):
+                        for name_1 in list(vehicles_interest[i]):
                             if name == name_1:
                                 veh_of_interest = True
                             else:

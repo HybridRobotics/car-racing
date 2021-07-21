@@ -5,7 +5,6 @@ import numpy as np
 from sim import offboard
 from utils import racing_env, base, lmpc_helper
 from utils.constants import *
-from utils import racing_env, base
 from utils.lmpc_helper import LMPCPrediction
 
 
@@ -28,8 +27,9 @@ def lmpc_racing(args):
         pid_controller.set_timestep(timestep)
         ego.set_ctrl_policy(pid_controller)
         pid_controller.set_track(track)
-        ego.set_state_curvilinear(np.zeros((X_DIM, 1)))
-        ego.set_state_global(np.zeros((X_DIM, 1)))
+        ego.set_state_curvilinear(np.zeros((X_DIM, )))
+        ego.set_state_global(np.zeros((X_DIM, )))
+        ego.initialize_state_log()
         ego.set_track(track)
         # run mpc-lti controller for the second lap to collect data
         time_mpc_lti = 90.0
@@ -119,10 +119,10 @@ def lmpc_racing(args):
         simulator.animate(filename="lmpc_racing", only_last_lap=True)
     if args["save_trajectory"]:
         ego_xcurv = np.stack(
-            simulator.vehicles["ego"].xcurv_list[lap_number - 1], axis=0
+            simulator.vehicles["ego"].xcurvs[lap_number - 1], axis=0
         )
         ego_xglob = np.stack(
-            simulator.vehicles["ego"].xglob_list[lap_number - 1], axis=0
+            simulator.vehicles["ego"].xglobs[lap_number - 1], axis=0
         )
         np.savetxt(
             "data/optimal_traj/xcurv_" + track_layout + ".csv",

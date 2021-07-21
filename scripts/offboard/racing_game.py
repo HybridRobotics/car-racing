@@ -26,10 +26,10 @@ def lmpc_racing(args):
     track = racing_env.ClosedTrack(track_spec, track_width=0.8)
     num_veh = args["number_other_agents"]
     if args["diff_alpha"]:
-        alpha_list = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]
+        alphas = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]
     else:
-        alpha_list = [0.6]
-    for alpha in alpha_list:
+        alphas = [0.8]
+    for alpha in alphas:
         if args["simulation"]:
             timestep = 1.0 / 10.0
             # load the trajectory generate from pid and mpc controller or build new ego and controller
@@ -62,38 +62,40 @@ def lmpc_racing(args):
                 with open("data/simulator/racing_game.obj", "rb") as handle:
                     simulator = pickle.load(handle)
                     num = len(simulator.vehicles) - 1
-                    veh_list = set_up_other_vehicles(track, num)
+                    vehicles = set_up_other_vehicles(track, num)
                     for index in range(0, num):
                         veh_name = "car" + str(index + 1)
-                        car_ini_xcurv = simulator.vehicles[veh_name].xcurv_list[0][0][:]
-                        veh_list[index].set_state_curvilinear_func(
+                        car_ini_xcurv = simulator.vehicles[veh_name].xcurvs[0][0][:]
+                        vehicles[index].set_state_curvilinear_func(
                             t_symbol,
                             car_ini_xcurv[0] * t_symbol + car_ini_xcurv[4],
                             car_ini_xcurv[5] + 0.0 * t_symbol,
                         )
-                        simulator.add_vehicle(veh_list[index])
+                        simulator.add_vehicle(vehicles[index])
             elif args["random_other_agents"]:
-                veh_list = set_up_other_vehicles(track, num_veh)
+                vehicles = set_up_other_vehicles(track, num_veh)
                 for index in range(0, num_veh):
                     veh_name = "car" + str(index + 1)
-                    veh_list[index].set_state_curvilinear_func(
+                    vehicles[index].set_state_curvilinear_func(
                         t_symbol,
                         0.1 * random.randint(0, 10) * t_symbol
                         + 3
                         + random.randint(0, 14),
                         0.7 - 0.1 * random.randint(0, 14) + 0.0 * t_symbol,
                     )
-                    simulator.add_vehicle(veh_list[index])
+                    vehicles[index].start_logging()
+                    simulator.add_vehicle(vehicles[index])
             else:
-                veh_list = set_up_other_vehicles(track, num_veh)
+                vehicles = set_up_other_vehicles(track, num_veh)
                 for index in range(0, num_veh):
                     veh_name = "car" + str(index + 1)
-                    veh_list[index].set_state_curvilinear_func(
+                    vehicles[index].set_state_curvilinear_func(
                         t_symbol,
-                        (0.3 + index * 0.3) * t_symbol + 3 + index * 2,
-                        -0.3 + index * 0.2 + 0.0 * t_symbol,
+                        (0.6 + index * 0.2) * t_symbol + 8 + index * 2,
+                        -0.2 + index * 0.2 + 0.0 * t_symbol,
                     )
-                    simulator.add_vehicle(veh_list[index])
+                    vehicles[index].start_logging()
+                    simulator.add_vehicle(vehicles[index])
             if args["direct_lmpc"]:
                 pass
             else:
@@ -177,7 +179,7 @@ def lmpc_racing(args):
             elif args["random_other_agents"]:
                 file_name = "racing_game_random"
             else:
-                file_name = "racing_game"
+                file_name = "racing_game_" + track_layout
             simulator.animate(filename=file_name, only_last_lap=True)
 
 
@@ -191,8 +193,9 @@ def set_up_ego(timestep, track):
     pid_controller.set_timestep(timestep)
     ego.set_ctrl_policy(pid_controller)
     pid_controller.set_track(track)
-    ego.set_state_curvilinear(np.zeros((X_DIM,1)))
-    ego.set_state_global(np.zeros((X_DIM,1)))
+    ego.set_state_curvilinear(np.zeros((X_DIM,)))
+    ego.set_state_global(np.zeros((X_DIM,)))
+    ego.start_logging()
     ego.set_track(track)
     # run mpc-lti controller for the second lap to collect data
     mpc_lti_param = base.MPCTrackingParam(vt=0.7, eyt=0.0)
@@ -207,7 +210,7 @@ def set_up_lmpc(timestep, track, lap_number, alpha, opti_traj_xcurv, opti_traj_x
     lmpc_param = base.LMPCRacingParam(
         timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc
     )
-    racing_game_param = base.RacingGameParam(timestep=timestep, alpha=alpha)
+    racing_game_param = base.RacingGameParam(timestep=timestep, alpha=alpha, num_horizon_planner = 12)
     lmpc_controller = offboard.LMPCRacingGame(
         lmpc_param, racing_game_param=racing_game_param
     )
@@ -221,16 +224,16 @@ def set_up_lmpc(timestep, track, lap_number, alpha, opti_traj_xcurv, opti_traj_x
 
 
 def set_up_other_vehicles(track, num_veh):
-    veh_list = []
+    vehicles = []
     for index in range(0, num_veh):
         veh_name = "car" + str(index + 1)
-        veh_list.append(
+        vehicles.append(
             offboard.NoDynamicsModel(
                 name=veh_name, param=base.CarParam(edgecolor="orange")
             )
         )
-        veh_list[index].set_track(track)
-    return veh_list
+        vehicles[index].set_track(track)
+    return vehicles
 
 
 if __name__ == "__main__":

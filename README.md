@@ -123,7 +123,14 @@ rosrun car_racing vehicle.py --veh-name vehicle1 --color blue --vx 0 --vy 0 --wz
 
 rosrun car_racing controller.py --ctrl-policy mpc-lti --veh-name vehicle1
 ```
-Where `--veh-name` is a self-defined vehicle's name, `--color` is the color of the vehicle in the animation. `--vs, --vy, --wz, --epsi, --s, --ey` is the initial state of the vehicle in Frenet coordinate. The choices of ` --ctrl-policy` could be `pid`, `mpc-lti` and `mpc-cbf`. 
+
+These allow to start nodes for the vehicle and corresponding controller. The argparse arguments are listed as follow,
+| name | type | choices | description |
+| :---: | :---: | :---: | :---: |
+| `veh_name` | string | a self-defined name | vehicle's name |
+| `color` | string | color's name | vehicle's color in animation |
+| `vs`, `vy`, `wz`, `epsi`, `s`, `ey` | float | initial states |vehicle's initial states in Frenet coordinates |
+| `ctrl_policy` | string | `pid`, `mpc-lti`, `mpc-cbf` , `lmpc`| vehicle's controller type| 
 
 ## Author
 - [Jun Zeng](https://github.com/junzengx14)

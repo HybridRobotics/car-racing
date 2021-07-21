@@ -4,7 +4,7 @@ import numpy as np
 import time
 import datetime
 from car_racing.msg import VehicleControl, VehicleState
-from utils import racing_env, lmpc_helper, base
+from utils import lmpc_helper, base
 from utils.constants import *
 from sim import realtime
 
@@ -104,13 +104,13 @@ def set_controller(args):
         ctrl.set_timestep(timestep)
         ctrl.set_state(
             np.zeros((
-                X_DIM, 1
+                X_DIM, 
             )),
             np.zeros((
-                X_DIM, 1
+                X_DIM, 
             )),
         )
-        ctrl.u = np.zeros((U_DIM, 1))
+        ctrl.u = np.zeros((U_DIM, ))
         ctrl.set_subscriber_state(veh_name)
         veh_input_topic = veh_name + "/input"
         ctrl.__pub_input = rospy.Publisher(
@@ -134,11 +134,11 @@ def set_controller(args):
                     pid_ctrl.update_memory(current_lap)
                     if pid_ctrl.x[4] >= (current_lap + 1) * pid_ctrl.lap_length:
                         lmpc_ctrl.add_trajectory(
-                            pid_ctrl.time_list,
+                            pid_ctrl.times,
                             pid_ctrl.timestep,
-                            pid_ctrl.xcurv_list,
-                            pid_ctrl.xglob_list,
-                            pid_ctrl.u_list,
+                            pid_ctrl.xcurvs,
+                            pid_ctrl.xglobs,
+                            pid_ctrl.inputs,
                             0,
                         )
                         end_timer = datetime.datetime.now()
@@ -163,11 +163,11 @@ def set_controller(args):
                     mpc_lti_ctrl.update_memory(current_lap)
                     if mpc_lti_ctrl.x[4] >= (current_lap + 1) * mpc_lti_ctrl.lap_length:
                         lmpc_ctrl.add_trajectory(
-                            mpc_lti_ctrl.time_list,
+                            mpc_lti_ctrl.times,
                             mpc_lti_ctrl.timestep,
-                            mpc_lti_ctrl.xcurv_list,
-                            mpc_lti_ctrl.xglob_list,
-                            mpc_lti_ctrl.u_list,
+                            mpc_lti_ctrl.xcurvs,
+                            mpc_lti_ctrl.xglobs,
+                            mpc_lti_ctrl.inputs,
                             0,
                         )
                         end_timer = datetime.datetime.now()
@@ -192,11 +192,11 @@ def set_controller(args):
                     lmpc_ctrl.update_memory(current_lap)
                     if lmpc_ctrl.x[4] >= (current_lap + 1) * lmpc_ctrl.lap_length:
                         lmpc_ctrl.add_trajectory(
-                            lmpc_ctrl.time_list,
+                            lmpc_ctrl.times,
                             lmpc_ctrl.timestep,
-                            lmpc_ctrl.xcurv_list,
-                            lmpc_ctrl.xglob_list,
-                            lmpc_ctrl.u_list,
+                            lmpc_ctrl.xcurvs,
+                            lmpc_ctrl.xglobs,
+                            lmpc_ctrl.inputs,
                             current_lap - 2,
                         )
                         end_timer = datetime.datetime.now()

@@ -40,15 +40,15 @@ def get_msg_track_info(track, layout):
 
 def get_msg_optimal_traj(traj_xglob, traj_xcurv):
     size, _ = np.shape(traj_xglob)
-    list_xglob = np.zeros(size * X_DIM)
-    list_xcurv = np.zeros(size * X_DIM)
+    xglobs = np.zeros(size * X_DIM)
+    xcurvs = np.zeros(size * X_DIM)
     tmp = 0
     for index in range(size):
         for index_1 in range(X_DIM):
-            list_xglob[tmp] = traj_xglob[index, index_1]
-            list_xcurv[tmp] = traj_xcurv[index, index_1]
+            xglobs[tmp] = traj_xglob[index, index_1]
+            xcurvs[tmp] = traj_xcurv[index, index_1]
             tmp = tmp + 1
-    return OptimalTraj(size, list_xglob, list_xcurv)
+    return OptimalTraj(size, xglobs, xcurvs)
 
 
 def start_simulator(track_layout):
@@ -70,7 +70,7 @@ def start_simulator(track_layout):
     sim.__pub_track = rospy.Publisher("track_info", TrackInfo, queue_size=10)
     while not rospy.is_shutdown():
         sim.num_vehicle = 0
-        vehicle_list = []
+        vehicles = []
         for name in sim.vehicles:
             sim.vehicles[name].msg_state.state_curv = get_msg_xcurv(
                 sim.vehicles[name].xcurv
@@ -83,9 +83,9 @@ def start_simulator(track_layout):
                 tmp, VehicleState, queue_size=10
             )
             sim.vehicles[name].__pub_state.publish(sim.vehicles[name].msg_state)
-            vehicle_list.append(name)
+            vehicles.append(name)
             sim.num_vehicle = sim.num_vehicle + 1
-        sim.__pub_veh_list.publish(VehicleList(vehicle_list))
+        sim.__pub_veh_list.publish(VehicleList(vehicles))
         sim.__pub_veh_num.publish(NumVehicle(sim.num_vehicle))
         sim.__pub_track.publish(get_msg_track_info(track, track_layout))
         r.sleep()

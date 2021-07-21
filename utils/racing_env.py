@@ -316,6 +316,40 @@ def sign(a):
     return res
 
 
+def plot_track(ax, lap_length, width, point_and_tangent):
+    num_sampling_per_meter = 100
+    num_track_points = int(np.floor(num_sampling_per_meter * lap_length))
+    points_out = np.zeros((num_track_points, 2))
+    points_center = np.zeros((num_track_points, 2))
+    points_in = np.zeros((num_track_points, 2))
+    for i in range(0, num_track_points):
+        points_out[i, :] = get_global_position(
+            lap_length,
+            width,
+            point_and_tangent,
+            i / float(num_sampling_per_meter),
+            width,
+        )
+        points_center[i, :] = get_global_position(
+            lap_length,
+            width,
+            point_and_tangent,
+            i / float(num_sampling_per_meter),
+            0.0,
+        )
+        points_in[i, :] = get_global_position(
+            lap_length,
+            width,
+            point_and_tangent,
+            i / float(num_sampling_per_meter),
+            -width,
+        )
+    ax.plot(points_center[:, 0], points_center[:, 1], "--r")
+    ax.plot(points_in[:, 0], points_in[:, 1], "-b")
+    ax.plot(points_out[:, 0], points_out[:, 1], "-b")
+
+
+
 class ClosedTrack:
     """map object
     Methods:
@@ -477,3 +511,6 @@ class ClosedTrack:
     def get_curvature(self, s):
         curv = get_curvature(self.lap_length, self.point_and_tangent, s)
         return curv
+
+    def plot_track(self, ax):
+        plot_track(ax, self.lap_length, self.width, self.point_and_tangent)

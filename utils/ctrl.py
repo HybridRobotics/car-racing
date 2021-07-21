@@ -1,7 +1,7 @@
 import datetime
 import numpy as np
 import casadi as ca
-from utils import lmpc_helper, racing_env
+from utils import lmpc_helper
 from utils.racing_game_helper import *
 from utils.constants import *
 from casadi import *
@@ -14,7 +14,7 @@ import matplotlib.patches as patches
 
 def pid(xcurv, xtarget):
     start_timer = datetime.datetime.now()
-    u_next = np.zeros((U_DIM, 1))
+    u_next = np.zeros((U_DIM, ))
     vt = xtarget[0]
     eyt = xtarget[5]
     u_next[0] = -0.6 * (xcurv[5] - eyt) - 0.9 * xcurv[3]
@@ -90,7 +90,7 @@ def mpc_multi_agents(
     agent_name=None,
     direction_flag=None,
     target_traj_xglob=None,
-    overtake_name_list=None,
+    sorted_vehicles=None,
 ):
     print("overtaking")
     num_horizon = mpc_lti_param.num_horizon_ctrl
@@ -144,7 +144,7 @@ def mpc_multi_agents(
         if direction_flag == 0:
             pass
         else:
-            name = overtake_name_list[direction_flag - 1]
+            name = sorted_vehicles[direction_flag - 1]
             epsi_agent = vehicles[name].xcurv[3]
             s_agent = vehicles[name].xcurv[4]
             while s_agent > track.lap_length:
@@ -162,10 +162,10 @@ def mpc_multi_agents(
                     + 0.5 * veh_width * np.cos(xvar[3, i])
                     <= 1.2 * ey_veh_min
                 )
-        if direction_flag == np.size(overtake_name_list):
+        if direction_flag == np.size(sorted_vehicles):
             pass
         else:
-            name = overtake_name_list[direction_flag]
+            name = sorted_vehicles[direction_flag]
             epsi_agent = vehicles[name].xcurv[3]
             s_agent = vehicles[name].xcurv[4]
             while s_agent > track.lap_length:

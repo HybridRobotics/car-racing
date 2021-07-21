@@ -137,7 +137,7 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
                 width_car,
                 height_car,
                 angle_car,
-            ) = self.get_vehicle_in_rectangle(self.xglob, self.param)
+            ) = self.get_vehicle_in_rectangle(self.xglob)
             self.patch.set_xy([x_car, y_car])
             self.patch.angle = angle_car
             self.patch.set_width(width_car)
@@ -147,42 +147,13 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
         tmp = "simulator/" + veh_name + "/state"
         self.__sub_state = rospy.Subscriber(tmp, VehicleState, self.__state_cb_visual)
 
-    # show the vehicle with a rectangle
-    def get_vehicle_in_rectangle(self, vehicle_state_glob, veh_param):
-        car_length = veh_param.length
-        car_width = veh_param.width
-        car_dx = 0.5 * car_length
-        car_dy = 0.5 * car_width
-        car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
-        car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
-        car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
-        x = vehicle_state_glob[4]
-        y = vehicle_state_glob[5]
-        R = np.matrix(
-            [
-                [
-                    np.cos(vehicle_state_glob[3]),
-                    -np.sin(vehicle_state_glob[3]),
-                ],
-                [np.sin(vehicle_state_glob[3]), np.cos(vehicle_state_glob[3])],
-            ]
-        )
-        rotated_car_frame = R * car_frame
-        return (
-            x + rotated_car_frame[0, 2],
-            y + rotated_car_frame[1, 2],
-            2 * car_dx,
-            2 * car_dy,
-            vehicle_state_glob[3] * 180 / 3.14,
-        )
-
     # in this estimation, the vehicles is assumed to move with input is equal to zero
     def get_estimation(self, xglob, xcurv):
         curv = racing_env.get_curvature(
             self.lap_length, self.point_and_tangent, xcurv[4]
         )
-        xcurv_est = np.zeros((X_DIM, 1))
-        xglob_est = np.zeros((X_DIM, 1))
+        xcurv_est = np.zeros((X_DIM, ))
+        xglob_est = np.zeros((X_DIM, ))
         xcurv_est[0:3] = xcurv[0:3]
         xcurv_est[3] = xcurv[3] + self.timestep * (
             xcurv[2]
@@ -243,7 +214,7 @@ class ControlBase:
         self.__pub_input = None
         # indicate the realtime simulator
         self.realtime_flag = True
-        self.xglob = np.zeros((X_DIM, 1))
+        self.xglob = np.zeros((X_DIM, ))
 
     def __track_cb(self, msg):
         size1 = msg.size
@@ -345,10 +316,10 @@ class ControlBase:
     def __state_cb(self, msg):
         if self.x is None:
             self.x = np.zeros((
-                X_DIM, 1
+                X_DIM, 
             ))
             self.xglob = np.zeros((
-                X_DIM, 1
+                X_DIM, 
             ))
             self.x[0] = msg.state_curv.vx
             self.x[1] = msg.state_curv.vy
@@ -367,8 +338,8 @@ class ControlBase:
             xglob = copy.deepcopy(self.xglob)
             while x[4] > self.lap_length:
                 x[4] = x[4] - self.lap_length
-            self.traj_xcurv.append(x)
-            self.traj_xglob.append(xglob)
+            self.lap_xcurvs.append(x)
+            self.lap_xglobs.append(xglob)
         else:
             self.x[0] = msg.state_curv.vx
             self.x[1] = msg.state_curv.vy
@@ -432,15 +403,15 @@ class MPCCBFRacing(base.MPCCBFRacing, ControlBase):
                         name=name, param=base.CarParam()
                     )
                     self.vehicles[name].name = self.agent_name
-                    self.vehicles[name].xglob = np.zeros((X_DIM, 1))
-                    self.vehicles[name].xcurv = np.zeros((X_DIM, 1))
+                    self.vehicles[name].xglob = np.zeros((X_DIM, ))
+                    self.vehicles[name].xcurv = np.zeros((X_DIM, ))
                 # other vehicle
                 else:
                     self.vehicles[name] = DynamicBicycleModel(
                         name=name, param=base.CarParam()
                     )
-                    self.vehicles[name].xglob = np.zeros((X_DIM, 1))
-                    self.vehicles[name].xcurv = np.zeros((X_DIM, 1))
+                    self.vehicles[name].xglob = np.zeros((X_DIM, ))
+                    self.vehicles[name].xcurv = np.zeros((X_DIM, ))
                     self.vehicles[name].timestep = self.timestep
                     self.vehicles[name].lap_length = self.lap_length
                     self.vehicles[name].lap_width = self.lap_width
@@ -474,8 +445,8 @@ class CarRacingSim(base.CarRacingSim):
         self.vehicles[req.name] = DynamicBicycleModel(
             name=req.name, param=base.CarParam()
         )
-        self.vehicles[req.name].xglob = np.zeros((X_DIM, 1))
-        self.vehicles[req.name].xcurv = np.zeros((X_DIM, 1))
+        self.vehicles[req.name].xglob = np.zeros((X_DIM, ))
+        self.vehicles[req.name].xcurv = np.zeros((X_DIM, ))
         self.vehicles[req.name].msg_state.name = req.name
         self.vehicles[req.name].set_subscriber_sim(req.name)
         self.num_vehicle = self.num_vehicle + 1
@@ -551,8 +522,8 @@ class Visualization:
             name=req.name, param=base.CarParam()
         )
         self.vehicles[req.name].ax = self.ax
-        self.vehicles[req.name].xglob = np.zeros((X_DIM, 1))
-        self.vehicles[req.name].xcurv = np.zeros((X_DIM, 1))
+        self.vehicles[req.name].xglob = np.zeros((X_DIM, ))
+        self.vehicles[req.name].xcurv = np.zeros((X_DIM, ))
         self.num_vehicle = self.num_vehicle + 1
         (
             x_car,
@@ -560,8 +531,8 @@ class Visualization:
             width_car,
             height_car,
             angle_car,
-        ) = self.get_vehicle_in_rectangle(
-            self.vehicles[req.name].xglob, self.vehicles[req.name].param
+        ) = self.vehicles[req.name].get_vehicle_in_rectangle(
+            self.vehicles[req.name].xglob
         )
         self.vehicles[req.name].patch = patches.Rectangle(
             (x_car, y_car), width_car, height_car, angle_car, color=req.color
@@ -575,67 +546,7 @@ class Visualization:
         return 1
 
     def init(self):
-        self.plot_track(self.ax)
+        racing_env.plot_track(self.ax, self.lap_length, self.lap_width, self.point_and_tangent)
 
     def update(self, i):
         pass
-
-    def plot_track(self, ax):
-        num_sampling_per_meter = 100
-        num_track_points = int(np.floor(num_sampling_per_meter * self.lap_length))
-        points_out = np.zeros((num_track_points, 2))
-        points_center = np.zeros((num_track_points, 2))
-        points_in = np.zeros((num_track_points, 2))
-        for i in range(0, num_track_points):
-            points_out[i, :] = racing_env.get_global_position(
-                self.lap_length,
-                self.lap_width,
-                self.point_and_tangent,
-                i / float(num_sampling_per_meter),
-                self.lap_width,
-            )
-            points_center[i, :] = racing_env.get_global_position(
-                self.lap_length,
-                self.lap_width,
-                self.point_and_tangent,
-                i / float(num_sampling_per_meter),
-                0.0,
-            )
-            points_in[i, :] = racing_env.get_global_position(
-                self.lap_length,
-                self.lap_width,
-                self.point_and_tangent,
-                i / float(num_sampling_per_meter),
-                -self.lap_width,
-            )
-        ax.plot(points_center[:, 0], points_center[:, 1], "--r")
-        ax.plot(points_in[:, 0], points_in[:, 1], "-b")
-        ax.plot(points_out[:, 0], points_out[:, 1], "-b")
-
-    def get_vehicle_in_rectangle(self, vehicle_state_glob, veh_param):
-        car_length = veh_param.length
-        car_width = veh_param.width
-        car_dx = 0.5 * car_length
-        car_dy = 0.5 * car_width
-        car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
-        car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
-        car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
-        x = vehicle_state_glob[4]
-        y = vehicle_state_glob[5]
-        R = np.matrix(
-            [
-                [
-                    np.cos(vehicle_state_glob[3]),
-                    -np.sin(vehicle_state_glob[3]),
-                ],
-                [np.sin(vehicle_state_glob[3]), np.cos(vehicle_state_glob[3])],
-            ]
-        )
-        rotated_car_frame = R * car_frame
-        return (
-            x + rotated_car_frame[0, 2],
-            y + rotated_car_frame[1, 2],
-            2 * car_dx,
-            2 * car_dy,
-            vehicle_state_glob[3] * 180 / 3.14,
-        )

@@ -17,8 +17,9 @@ def tracking(args):
         ego = offboard.DynamicBicycleModel(
             name="ego", param=base.CarParam(edgecolor="black")
         )
-        ego.set_state_curvilinear(np.zeros((X_DIM, 1)))
-        ego.set_state_global(np.zeros((X_DIM, 1)))
+        ego.set_state_curvilinear(np.zeros((X_DIM, )))
+        ego.set_state_global(np.zeros((X_DIM, )))
+        ego.initialize_state_log()
         if args["ctrl_policy"] == "pid":
             ego.set_ctrl_policy(offboard.PIDTracking(vt=0.8))
         elif args["ctrl_policy"] == "mpc-lti":

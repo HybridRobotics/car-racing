@@ -19,8 +19,9 @@ def racing(args):
             name="ego", param=base.CarParam(edgecolor="black")
         )
         mpc_cbf_param = base.MPCCBFRacingParam(vt=0.8)
-        ego.set_state_curvilinear(np.zeros((X_DIM, 1)))
-        ego.set_state_global(np.zeros((X_DIM, 1)))
+        ego.set_state_curvilinear(np.zeros((X_DIM, )))
+        ego.set_state_global(np.zeros((X_DIM, )))
+        ego.start_logging()
         ego.set_ctrl_policy(offboard.MPCCBFRacing(mpc_cbf_param))
         ego.ctrl_policy.set_timestep(0.1)
         ego.set_track(track)
@@ -34,7 +35,7 @@ def racing(args):
         car1.set_state_curvilinear_func(
             t_symbol, 0.2 * t_symbol + 4.0, 0.1 + 0.0 * t_symbol
         )
-
+        car1.start_logging()
         car2 = offboard.NoDynamicsModel(
             name="car2", param=base.CarParam(edgecolor="orange")
         )
@@ -42,7 +43,7 @@ def racing(args):
         car2.set_state_curvilinear_func(
             t_symbol, 0.2 * t_symbol + 10.0, -0.1 + 0.0 * t_symbol
         )
-
+        car2.start_logging()
         # setup simulation
         simulator = offboard.CarRacingSim()
         simulator.set_timestep(0.1)
