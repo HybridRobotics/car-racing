@@ -2,7 +2,7 @@ import datetime
 import numpy as np
 import sympy as sp
 from utils.constants import *
-from utils import vehicle_dynamics, ctrl, lmpc_helper, racing_env, planner, traj_planner
+from utils import vehicle_dynamics, ctrl, lmpc_helper, racing_env, path_planner, traj_planner
 from scipy.interpolate import interp1d
 from pathos.multiprocessing import ProcessingPool as Pool
 from cvxopt.solvers import qp
@@ -291,7 +291,7 @@ class LMPCRacingGame(ControlBase):
         self.lmpc_param = lmpc_param
         self.racing_game_param = racing_game_param
         if self.path_planner:
-            self.overtake_planner = planner.OvertakePlanner(racing_game_param)
+            self.overtake_planner = path_planner.OvertakePlanner(racing_game_param)
         else:
             self.overtake_planner = traj_planner.OvertakeTrajPlanner(racing_game_param)
         self.x_pred = None

@@ -108,6 +108,8 @@ This allows to test algorithm for racing game. The argparse arguments are listed
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
 
+Currently, path planner and trajecotry planner are available for the overtaking maneuver. Changing the varibale `self.path_planner` in `base.py` to `True` allows the controller to simulate with path planner, 
+
 
 
 ### Realtime
