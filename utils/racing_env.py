@@ -84,7 +84,6 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
         s = s - lap_length
     while s < 0:
         s = s + lap_length
-
     index = np.all(
         [
             [s >= point_and_tangent[:, 3]],
@@ -93,7 +92,6 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
         axis=0,
     )
     i = np.asscalar(np.where(np.squeeze(index))[0][0])
-
     if point_and_tangent[i, 5] == 0.0:  # If segment is a straight line
         # Extract the first final and initial point of the segment
         xf = point_and_tangent[i, 0]
@@ -101,11 +99,9 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
         xs = point_and_tangent[i - 1, 0]
         ys = point_and_tangent[i - 1, 1]
         psi = point_and_tangent[i, 2]
-
         # Compute the segment length
         deltaL = point_and_tangent[i, 4]
         reltaL = s - point_and_tangent[i, 3]
-
         # Do the linear combination
         x = (
             (1 - reltaL / deltaL) * xs
@@ -126,16 +122,13 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
             direction = 1
         else:
             direction = -1
-
         CenterX = point_and_tangent[i - 1, 0] + np.abs(r) * np.cos(
             ang + direction * np.pi / 2
         )  # x coordinate center of circle
         CenterY = point_and_tangent[i - 1, 1] + np.abs(r) * np.sin(
             ang + direction * np.pi / 2
         )  # y coordinate center of circle
-
         spanAng = (s - point_and_tangent[i, 3]) / (np.pi * np.abs(r)) * np.pi
-
         angleNormal = wrap((direction * np.pi / 2 + ang))
         angle = -(np.pi - np.abs(angleNormal)) * (sign(angleNormal))
 
@@ -155,11 +148,9 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
     (X, Y): position in the inertial reference frame
     """
     CompletedFlag = 0
-
     for i in range(0, point_and_tangent.shape[0]):
         if CompletedFlag == 1:
             break
-
         if point_and_tangent[i, 5] == 0.0:  # If segment is a straight line
             # Extract the first final and initial point of the segment
             xf = point_and_tangent[i, 0]
@@ -192,28 +183,23 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
 
                     if np.abs(ey) <= width:
                         CompletedFlag = 1
-
         else:
             xf = point_and_tangent[i, 0]
             yf = point_and_tangent[i, 1]
             xs = point_and_tangent[i - 1, 0]
             ys = point_and_tangent[i - 1, 1]
-
             r = 1 / point_and_tangent[i, 5]  # Extract curvature
             if r >= 0:
                 direction = 1
             else:
                 direction = -1
-
             # Extract angle of the tangent at the initial point (i-1)
             ang = point_and_tangent[i - 1, 2]
-
             # Compute the center of the arc
             # x coordinate center of circle
             CenterX = xs + np.abs(r) * np.cos(ang + direction * np.pi / 2)
             # y coordinate center of circle
             CenterY = ys + np.abs(r) * np.sin(ang + direction * np.pi / 2)
-
             # Check if on the segment using angles
             if (la.norm(np.array([xs, ys]) - np.array([x, y]))) == 0:
                 ey = 0
@@ -240,7 +226,6 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
 
                     if np.abs(ey) <= width:
                         CompletedFlag = 1
-
     if epsi > 1.0:
         pdb.set_trace()
 
@@ -248,10 +233,8 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
         s = 10000
         ey = 10000
         epsi = 10000
-
         print("Error!! POINT OUT OF THE TRACK!!!! <==================")
         pdb.set_trace()
-
     return s, ey, epsi, CompletedFlag
 
 
@@ -316,12 +299,14 @@ def sign(a):
     return res
 
 
-def plot_track(ax, lap_length, width, point_and_tangent):
+def plot_track(ax, lap_length, width, point_and_tangent, center_line):
     num_sampling_per_meter = 100
     num_track_points = int(np.floor(num_sampling_per_meter * lap_length))
     points_out = np.zeros((num_track_points, 2))
     points_center = np.zeros((num_track_points, 2))
     points_in = np.zeros((num_track_points, 2))
+    
+
     for i in range(0, num_track_points):
         points_out[i, :] = get_global_position(
             lap_length,
@@ -344,9 +329,10 @@ def plot_track(ax, lap_length, width, point_and_tangent):
             i / float(num_sampling_per_meter),
             -width,
         )
-    ax.plot(points_center[:, 0], points_center[:, 1], "--r")
-    ax.plot(points_in[:, 0], points_in[:, 1], "-b")
-    ax.plot(points_out[:, 0], points_out[:, 1], "-b")
+    if center_line:
+        ax.plot(points_center[:, 0], points_center[:, 1], "--r")
+    ax.plot(points_in[:, 0], points_in[:, 1], "-b", linewidth =2)
+    ax.plot(points_out[:, 0], points_out[:, 1], "-b", linewidth = 2)
 
 
 
@@ -512,5 +498,5 @@ class ClosedTrack:
         curv = get_curvature(self.lap_length, self.point_and_tangent, s)
         return curv
 
-    def plot_track(self, ax):
-        plot_track(ax, self.lap_length, self.width, self.point_and_tangent)
+    def plot_track(self, ax, center_line = True):
+        plot_track(ax, self.lap_length, self.width, self.point_and_tangent, center_line)

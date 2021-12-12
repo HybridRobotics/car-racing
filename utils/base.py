@@ -108,6 +108,10 @@ class PIDTracking(ControlBase):
             vehicles["ego"].local_trajs.append(None)
             vehicles["ego"].vehicles_interest.append(None)
             vehicles["ego"].splines.append(None)
+            vehicles["ego"].all_splines.append(None)
+            vehicles["ego"].all_local_trajs.append(None)
+            vehicles["ego"].lmpc_prediction.append(None)
+            vehicles["ego"].mpc_cbf_prediction.append(None)
         self.time += self.timestep
 
 
@@ -151,6 +155,10 @@ class MPCTracking(ControlBase):
             vehicles["ego"].local_trajs.append(None)
             vehicles["ego"].vehicles_interest.append(None)
             vehicles["ego"].splines.append(None)
+            vehicles["ego"].all_splines.append(None)
+            vehicles["ego"].all_local_trajs.append(None)
+            vehicles["ego"].lmpc_prediction.append(None)
+            vehicles["ego"].mpc_cbf_prediction.append(None)
         self.time += self.timestep
 
 
@@ -221,6 +229,10 @@ class MPCCBFRacing(ControlBase):
             vehicles["ego"].local_trajs.append(None)
             vehicles["ego"].vehicles_interest.append(None)
             vehicles["ego"].splines.append(None)
+            vehicles["ego"].all_splines.append(None)
+            vehicles["ego"].all_local_trajs.append(None)
+            vehicles["ego"].lmpc_prediction.append(None)
+            vehicles["ego"].mpc_cbf_prediction.append(None)
         self.time += self.timestep
 
 
@@ -262,10 +274,10 @@ class RacingGameParam:
         matrix_R_planner = 1 * np.diag([5, 0.10]),
         matrix_dR_planner = 5 * np.diag([1.8, 0.0]),
         bezier_order=3,
-        safety_factor=1.5,
+        safety_factor=4.5,
         num_horizon_ctrl=10,
         num_horizon_planner=20,
-        planning_prediction_factor=1.5, #2.0,
+        planning_prediction_factor=0.5, #2.0,
         alpha=0.98,
         timestep=None,
     ):
@@ -318,6 +330,7 @@ class LMPCRacingGame(ControlBase):
         self.p = Pool(4)
         self.openloop_prediction = None
         self.old_ey = None
+        self.old_direction_flag = None
 
     def set_vehicles_track(self):
         if self.realtime_flag == False:
@@ -362,6 +375,7 @@ class LMPCRacingGame(ControlBase):
             )
             self.u = self.u_pred[0, :]
             self.old_ey = None
+            self.old_direction_flag = None
             iter = self.iter
             self.openloop_prediction.predicted_xcurv[
                 :, :, self.time_in_iter, iter
@@ -377,9 +391,22 @@ class LMPCRacingGame(ControlBase):
             ] = self.Qfun_selected_tot
             self.add_point(self.x, self.u, self.time_in_iter)
             self.time_in_iter = self.time_in_iter + 1
+            x_pred_xglob = np.zeros((12+1,X_DIM))
+            for jjj in range(0,12+1):
+                xxx, yyy = self.track.get_global_position(self.x_pred[jjj,4], self.x_pred[jjj,5])
+                psipsi = self.track.get_orientation(self.x_pred[jjj,4],self.x_pred[jjj,5])
+                x_pred_xglob[jjj,0:3] = self.x_pred[jjj,0:3]
+                x_pred_xglob[jjj,3] = psipsi
+                x_pred_xglob[jjj,4] = xxx
+                x_pred_xglob[jjj,5] = yyy
             self.overtake_planner.vehicles["ego"].local_trajs.append(None)
             self.overtake_planner.vehicles["ego"].vehicles_interest.append(None)
             self.overtake_planner.vehicles["ego"].splines.append(None)
+            self.overtake_planner.vehicles["ego"].solver_time.append(None)
+            self.overtake_planner.vehicles["ego"].all_splines.append(None)
+            self.overtake_planner.vehicles["ego"].all_local_trajs.append(None)
+            self.overtake_planner.vehicles["ego"].lmpc_prediction.append(x_pred_xglob)
+            self.overtake_planner.vehicles["ego"].mpc_cbf_prediction.append(None)
         else:
             if self.path_planner:
                 (
@@ -396,8 +423,12 @@ class LMPCRacingGame(ControlBase):
                     direction_flag,
                     sorted_vehicles,
                     bezier_xglob,
-                ) = self.overtake_planner.get_local_traj(x, self.time, vehicles_interest, matrix_Atv, matrix_Btv, matrix_Ctv, self.old_ey)
+                    solve_time,
+                    all_bezier_xglob,
+                    all_traj_xglob
+                ) = self.overtake_planner.get_local_traj(x, self.time, vehicles_interest, matrix_Atv, matrix_Btv, matrix_Ctv, self.old_ey, self.old_direction_flag)
             self.old_ey = overtake_traj_xcurv[-1, 5]
+            self.old_direction_flag = direction_flag
             self.overtake_planner.vehicles["ego"].local_trajs.append(
                 overtake_traj_xglob
             )
@@ -405,10 +436,16 @@ class LMPCRacingGame(ControlBase):
                 vehicles_interest
             )
             self.overtake_planner.vehicles["ego"].splines.append(bezier_xglob)
-            self.u = ctrl.mpc_multi_agents(
+            self.overtake_planner.vehicles["ego"].solver_time.append(solve_time)
+            self.overtake_planner.vehicles["ego"].all_splines.append(all_bezier_xglob)
+            self.overtake_planner.vehicles["ego"].all_local_trajs.append(all_traj_xglob)
+            self.u, x_pred = ctrl.mpc_multi_agents(
                 x,
                 self.racing_game_param,
                 self.track,
+                matrix_Atv,
+                matrix_Btv,
+                matrix_Ctv,
                 target_traj_xcurv=overtake_traj_xcurv,
                 vehicles = self.overtake_planner.vehicles,
                 agent_name=self.agent_name,
@@ -416,6 +453,16 @@ class LMPCRacingGame(ControlBase):
                 target_traj_xglob=overtake_traj_xglob,
                 sorted_vehicles=sorted_vehicles,
             )
+            x_pred_xglob = np.zeros((10+1,X_DIM))
+            for jjj in range(0,10+1):
+                xxx, yyy = self.track.get_global_position(x_pred[jjj,4], x_pred[jjj,5])
+                psipsi = self.track.get_orientation(x_pred[jjj,4],x_pred[jjj,5])
+                x_pred_xglob[jjj,0:3] = x_pred[jjj,0:3]
+                x_pred_xglob[jjj,3] = psipsi
+                x_pred_xglob[jjj,4] = xxx
+                x_pred_xglob[jjj,5] = yyy
+            self.overtake_planner.vehicles["ego"].lmpc_prediction.append(None)
+            self.overtake_planner.vehicles["ego"].mpc_cbf_prediction.append(x_pred_xglob)
         self.time += self.timestep
 
     def estimate_ABC(self):
@@ -572,9 +619,15 @@ class ModelBase:
         self.laps = 0
         self.realtime_flag = False
         self.xglob_log = []
+        self.xcurv_log = []
         self.local_trajs = []
         self.vehicles_interest = []
         self.splines = []
+        self.solver_time = []
+        self.all_splines = []
+        self.all_local_trajs = []
+        self.lmpc_prediction = []
+        self.mpc_cbf_prediction = []
 
     def set_zero_noise(self):
         self.zero_noise_flag = True
@@ -627,6 +680,7 @@ class ModelBase:
         xcurv = copy.deepcopy(self.xcurv)
         xglob = copy.deepcopy(self.xglob)
         self.xglob_log.append(self.xglob)
+        self.xcurv_log.append(self.xcurv)
         if xcurv[4] > self.lap_length:
             self.lap_xglobs.append(self.xglob)
             self.lap_times.append(self.time)

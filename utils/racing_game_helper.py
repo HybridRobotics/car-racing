@@ -5,6 +5,7 @@ import matplotlib.patches as patches
 import copy
 from utils.constants import *
 
+
 def get_agent_range(s_agent, ey_agent, epsi_agent, length, width):
     ey_agent_max = (
         ey_agent
@@ -56,7 +57,8 @@ def ego_agent_overlap_checker(s_ego_min, s_ego_max, s_veh_min, s_veh_max, lap_le
         overlap_flag = False
     return overlap_flag
 
-def get_bezier_control_points(vehicles_interest, veh_info_list, agent_info, racing_game_param, track, optimal_traj_xcurv):
+
+def get_bezier_control_points(vehicles_interest, veh_info_list, agent_info, racing_game_param, track, optimal_traj_xcurv, sorted_vehicles, xcurv_ego):
     num_veh = len(vehicles_interest)
     veh_length = vehicles_interest[(list(vehicles_interest)[0])].param.length
     veh_width = vehicles_interest[(list(vehicles_interest)[0])].param.width
@@ -66,17 +68,9 @@ def get_bezier_control_points(vehicles_interest, veh_info_list, agent_info, raci
     func_optimal_ey = interp1d(optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 5])
     for index in range(num_veh + 1):
         # s0
-        bezier_control_point[index, 0, 0] = (
-            agent_info.min_s
-            - prediction_factor * agent_info.max_delta_v
-            - safety_factor * veh_length
-        )
+        bezier_control_point[index, 0, 0] = xcurv_ego[4] 
         # s3
-        bezier_control_point[index, 3, 0] = (
-            agent_info.max_s
-            + prediction_factor * agent_info.max_delta_v
-            + safety_factor * veh_length
-        )
+        bezier_control_point[index, 3, 0] = xcurv_ego[4] +prediction_factor * agent_info.max_delta_v + 4
         # when the s3 is ahead start line, s0 is behind start line
         if bezier_control_point[index, 0, 0] > bezier_control_point[index, 3, 0]:
             # s1
@@ -128,22 +122,19 @@ def get_bezier_control_points(vehicles_interest, veh_info_list, agent_info, raci
             bezier_control_point[index, 0, 1] = func_optimal_ey(
                 bezier_control_point[index, 0, 0]
             )
+        bezier_control_point[index, 0, 1] = xcurv_ego[5]
         # ey1 and ey2
         # the first curve
         if index == 0:
-            bezier_control_point[index, 1, 1] = track.width
-            bezier_control_point[index, 2, 1] = track.width
+            bezier_control_point[index, 1, 1] = 0.8*track.width-( - veh_info_list[index, 1] - 0.5 * veh_width)*0.2
+            bezier_control_point[index, 2, 1] = 0.8*track.width-( - veh_info_list[index, 1] - 0.5 * veh_width)*0.2
         # the last curve
         elif index == num_veh:
-            bezier_control_point[index, 1, 1] = -track.width
-            bezier_control_point[index, 2, 1] = -track.width
+            bezier_control_point[index, 1, 1] = -0.8*track.width+((veh_info_list[index-1, 1] - 0.5 * veh_width))*0.2
+            bezier_control_point[index, 2, 1] = -0.8*track.width+((veh_info_list[index-1, 1] - 0.5 * veh_width))*0.2
         else:
-            bezier_control_point[index, 1, 1] = (
-                veh_info_list[index, 1] + 0.5 * veh_width
-            )
-            bezier_control_point[index, 2, 1] = (
-                veh_info_list[index, 1] + 0.5 * veh_width
-            )
+            bezier_control_point[index, 1, 1] = 0.7*(veh_info_list[index, 1] + 0.5 * veh_width)+0.3*(veh_info_list[index-1, 1] - 0.5 * veh_width)
+            bezier_control_point[index, 2, 1] = 0.7*(veh_info_list[index, 1] + 0.5 * veh_width)+0.3*(veh_info_list[index-1, 1] - 0.5 * veh_width)
         # ey3
         if bezier_control_point[index, 3, 0] >= track.lap_length:
             if (
@@ -164,6 +155,7 @@ def get_bezier_control_points(vehicles_interest, veh_info_list, agent_info, raci
                 )
     return bezier_control_point
 
+
 def get_bezier_curve(bezier_control_point, t):
     s0, s1, s2, s3 = bezier_control_point[:, 0]
     ey0, ey1, ey2, ey3 = bezier_control_point[:, 1]
@@ -182,6 +174,7 @@ def get_bezier_curve(bezier_control_point, t):
     return [bezier_curve_s, bezier_curve_ey]
 
 
+# used to plot the states at each time step during debugging
 def debug_plot(track, vehicles, target_traj_xglob):
     fig, ax = plt.subplots()
     track.plot_track(ax)
@@ -252,52 +245,56 @@ def get_traj_xglob(traj_xcurv, track):
 def check_ego_agent_distance(ego, agent, racing_game_param, lap_length):
     vehicle_interest = False    
     delta_v = abs(ego.xcurv[0] - agent.xcurv[0])
+    s_agent = copy.deepcopy(agent.xcurv[4])
+    s_ego = copy.deepcopy(ego.xcurv[4])
+    while s_agent > lap_length:
+        s_agent = s_agent - lap_length
+    while s_ego > lap_length:
+        s_ego = s_ego - lap_length
     if (
         # agent and ego in same lap, agent is in front of the ego
         (
             (
-                agent.xcurv[4] - ego.xcurv[4]
+                s_agent - s_ego
                 <= racing_game_param.safety_factor
                 * ego.param.length
                 + racing_game_param.planning_prediction_factor
                 * delta_v
             )
-            and (agent.xcurv[4] >= ego.xcurv[4])
+            and (s_agent >= s_ego)
         )
         or (
             # agent is in next lap, agent is in front of the ego
             (
-                agent.xcurv[4] + lap_length - ego.xcurv[4]
+                s_agent + lap_length - s_ego
                 <= racing_game_param.safety_factor
                 * ego.param.length
                 + racing_game_param.planning_prediction_factor
                 * delta_v
             )
-            and (agent.xcurv[4] + lap_length >= ego.xcurv[4])
+            and (s_agent + lap_length >= s_ego)
         )
         or (
             # agent and ego in same lap, ego is in front of the agent
             (
-                -agent.xcurv[4] + ego.xcurv[4]
-                <= 0.0
-                * racing_game_param.safety_factor
+                -s_agent + s_ego
+                <= 1.0
                 * ego.param.length
-                + 0.5*racing_game_param.planning_prediction_factor
+                + 0*racing_game_param.planning_prediction_factor
                 * delta_v
             )
-            and (agent.xcurv[4] <= ego.xcurv[4])
+            and (s_agent <= s_ego)
         )
         or (
             # ego is in next lap, ego is in front of the agent
             (
-                -agent.xcurv[4] + ego.xcurv[4] + lap_length
-                <= 0.0
-                * racing_game_param.safety_factor
+                -s_agent + s_ego + lap_length
+                <= 1.0
                 * ego.param.length
-                + 0.5*racing_game_param.planning_prediction_factor
+                + 0*racing_game_param.planning_prediction_factor
                 * delta_v
             )
-            and (agent.xcurv[4] <= ego.xcurv[4] + lap_length)
+            and (s_agent <= s_ego + lap_length)
         )
     ): 
         vehicle_interest = True

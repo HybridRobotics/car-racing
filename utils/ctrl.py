@@ -85,12 +85,16 @@ def mpc_multi_agents(
     xcurv,
     mpc_lti_param,
     track,
+    matrix_Atv,
+    matrix_Btv,
+    matrix_Ctv,
     target_traj_xcurv=None,
     vehicles=None,
     agent_name=None,
     direction_flag=None,
     target_traj_xglob=None,
     sorted_vehicles=None,
+    time=None
 ):
     print("overtaking")
     num_horizon = mpc_lti_param.num_horizon_ctrl
@@ -105,6 +109,77 @@ def mpc_multi_agents(
     f_traj = interp1d(target_traj_xcurv[:, 4], target_traj_xcurv[:, 5])
     veh_len = vehicles["ego"].param.length
     veh_width = vehicles["ego"].param.width
+    ### CBF parameter
+    CBF_Flag = True
+    ABC_Flag = True
+    if CBF_Flag:
+        safety_time = 2.0
+        alpha = 0.6
+        dist_margin_front = xcurv[0] * safety_time
+        dist_margin_behind = xcurv[0] * safety_time
+        realtime_flag = False 
+        obs_infos = {}
+        timestep = 0.1
+        num_cycle_ego = int(xcurv[4] / track.lap_length)
+        dist_ego = xcurv[4] - num_cycle_ego * track.lap_length
+        for name in sorted_vehicles:
+            if name != agent_name:
+                if realtime_flag == False:
+                    obs_traj, _ = vehicles[name].get_trajectory_nsteps(
+                        time, timestep, num_horizon + 1
+                    )
+                elif realtime_flag == True:
+                    obs_traj, _ = vehicles[name].get_trajectory_nsteps(
+                        num_horizon + 1
+                    )
+                else:
+                    pass
+                num_cycle_obs = int(obs_traj[4, 0] / track.lap_length)
+                dist_obs = obs_traj[4, 0] - num_cycle_obs * track.lap_length
+                if (dist_ego > dist_obs - dist_margin_front) & (
+                    dist_ego < dist_obs + dist_margin_behind
+                ):
+                    obs_infos[name] = obs_traj
+        cbf_slack = opti.variable(len(obs_infos), num_horizon + 1)
+        safety_margin = 0.15
+        degree = 6  # 2, 4, 6, 8
+        for count, obs_name in enumerate(obs_infos):
+            obs_traj = obs_infos[obs_name]
+            # get ego agent and obstacles' dimensions
+            l_agent = veh_len / 2
+            w_agent = veh_width / 2
+            l_obs = veh_len / 2
+            w_obs = veh_width / 2
+            # calculate control barrier functions for each obstacle at timestep
+            for i in range(num_horizon):
+                num_cycle_obs = int(obs_traj[4, 0] / track.lap_length)
+                diffs = (
+                    xvar[4, i]
+                    - obs_traj[4, i]
+                    - (num_cycle_ego - num_cycle_obs) * track.lap_length
+                )
+                diffey = xvar[5, i] - obs_traj[5, i]
+                diffs_next = xvar[4, i + 1] - obs_traj[4, i + 1]
+                diffey_next = xvar[5, i + 1] - obs_traj[5, i + 1]
+                h = (
+                    diffs ** degree / ((l_agent + l_obs) ** degree)
+                    + diffey ** degree / ((w_agent + w_obs) ** degree)
+                    - 1
+                    - safety_margin
+                    - cbf_slack[count, i]
+                )
+                h_next = (
+                    diffs_next ** degree / ((l_agent + l_obs) ** degree)
+                    + diffey_next ** degree / ((w_agent + w_obs) ** degree)
+                    - 1
+                    - safety_margin
+                    - cbf_slack[count, i + 1]
+                )
+                opti.subject_to(h_next - h >= -alpha * h)
+                opti.subject_to(cbf_slack[count, i] >= 0)
+                cost += 10000 * cbf_slack[count, i]
+            opti.subject_to(cbf_slack[count, i + 1] >= 0)
+            cost += 10000 * cbf_slack[count, i + 1]
     # dynamics + state/input constraints
     for i in range(num_horizon):
         # system dynamics
@@ -123,7 +198,7 @@ def mpc_multi_agents(
         cost += ca.mtimes(uvar[:, i].T, ca.mtimes(mpc_lti_param.matrix_R, uvar[:, i]))
     for i in range(num_horizon + 1):
         # speed vx upper bound
-        opti.subject_to(xvar[0, i] <= 10.0)
+        opti.subject_to(xvar[0, i] <= 5.0)
         opti.subject_to(xvar[0, i] >= 0.0)
         # min and max of ey
         opti.subject_to(xvar[5, i] <= track.width)
@@ -156,12 +231,15 @@ def mpc_multi_agents(
             ey_ego_max, ey_ego_min, s_ego_max, s_ego_min = get_agent_range(s_tmp, xcurv[5], xcurv[3], veh_len, veh_width)
             ego_agent_overlap_flag = ego_agent_overlap_checker(s_ego_min, s_ego_max, s_veh_min, s_veh_max, track.lap_length)
             if ego_agent_overlap_flag:
-                opti.subject_to(
-                    xvar[5, i]
-                    + 0.5 * veh_len * np.sin(xvar[3, i])
-                    + 0.5 * veh_width * np.cos(xvar[3, i])
-                    <= 1.2 * ey_veh_min
-                )
+                if CBF_Flag:
+                    pass
+                else:
+                    opti.subject_to(
+                        xvar[5, i]
+                        + 0.5 * veh_len * np.sin(xvar[3, i])
+                        + 0.5 * veh_width * np.cos(xvar[3, i])
+                        <= 1.2 * ey_veh_min
+                    )
         if direction_flag == np.size(sorted_vehicles):
             pass
         else:
@@ -177,12 +255,15 @@ def mpc_multi_agents(
             ey_ego_max, ey_ego_min, s_ego_max, s_ego_min = get_agent_range(s_tmp, xcurv[5], xcurv[3], veh_len, veh_width)
             ego_agent_overlap_flag = ego_agent_overlap_checker(s_ego_min, s_ego_max, s_veh_min, s_veh_max, track.lap_length)
             if ego_agent_overlap_flag:
-                opti.subject_to(
-                    xvar[5, i]
-                    - 0.5 * veh_len * np.sin(xvar[3, i])
-                    - 0.5 * veh_width * np.cos(xvar[3, i])
-                    >= 1.2 * ey_veh_max
-                )
+                if CBF_Flag:
+                    pass
+                else:
+                    opti.subject_to(
+                        xvar[5, i]
+                        - 0.5 * veh_len * np.sin(xvar[3, i])
+                        - 0.5 * veh_width * np.cos(xvar[3, i])
+                        >= 1.2 * ey_veh_max
+                    )
     # setup solver
     option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
     opti.minimize(cost)
@@ -191,14 +272,26 @@ def mpc_multi_agents(
         sol = opti.solve()
         x_pred = sol.value(xvar).T
         u_pred = sol.value(uvar).T
+        lin_points = np.concatenate(
+            (sol.value(xvar).T[1:, :], np.array([sol.value(xvar).T[-1, :]])), axis=0
+        )
+        lin_input = np.vstack((u_pred[1:, :], u_pred[-1, :]))
     except RuntimeError:
         print("solver fail")
+        lin_points = np.concatenate(
+            (
+                opti.debug.value(xvar).T[1:, :],
+                np.array([opti.debug.value(xvar).T[-1, :]]),
+            ),
+            axis=0,
+        )
         x_pred = opti.debug.value(xvar).T
         u_pred = opti.debug.value(uvar).T
+        lin_input = np.vstack((u_pred[1:, :], u_pred[-1, :]))
     end_timer = datetime.datetime.now()
     solver_time = (end_timer - start_timer).total_seconds()
     print("solver time: {}".format(solver_time))
-    return u_pred[0, :]
+    return u_pred[0, :], x_pred
 
 
 def mpccbf(
@@ -381,8 +474,8 @@ def lmpc(
         )
         # min and max of ey
         opti.subject_to(x[0, i] <= 5.0)
-        opti.subject_to(x[5, i] <= lap_width)
-        opti.subject_to(-lap_width <= x[5, i])
+        opti.subject_to(x[5, i] <= lap_width - 0.5*0.2)
+        opti.subject_to(-lap_width +0.5*0.2 <= x[5, i])
         # min and max of delta
         opti.subject_to(-0.5 <= u[0, i])
         opti.subject_to(u[0, i] <= 0.5)

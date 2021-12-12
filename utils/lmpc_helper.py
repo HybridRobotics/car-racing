@@ -264,7 +264,6 @@ def compute_Q_M(
         )
         Ktot = np.append(Ktot, K[counter])
         counter = counter + 1
-
     M = np.hstack((X0, np.ones((X0.shape[0], 1))))
     Q0 = np.dot(np.dot(M.T, np.diag(Ktot)), M)
     Q = matrix(Q0 + lamb * np.eye(Q0.shape[0]))
