@@ -299,7 +299,7 @@ class RacingGameParam:
 class LMPCRacingGame(ControlBase):
     def __init__(self, lmpc_param, racing_game_param=None):
         ControlBase.__init__(self)
-        self.path_planner = False
+        self.path_planner = True
         self.lmpc_param = lmpc_param
         self.racing_game_param = racing_game_param
         if self.path_planner:
