@@ -4,7 +4,6 @@ Car Racing
 ==========
 
 This repository provides a toolkit to test control and planning problems for car racing simulation environment.
-
 <details>
  <summary>Click to open Table of Contents</summary>
 
@@ -16,7 +15,7 @@ This repository provides a toolkit to test control and planning problems for car
     - [Offboard](#offboard)
         - [System Identification](#system-identification)
         - [Tracking](#tracking)
-        - [Racing](#racing)
+        - [MPC-CBF Racing](#racing)
     - [Realtime](#realtime)
 - [Author](#author)
 - [Contributing](#contributing)
@@ -27,6 +26,8 @@ If you find this project useful in your work, please consider citing following p
 
 * J. Zeng, B. Zhang and K. Sreenath. "Safety-Critical Model Predictive Control with Discrete-Time Control Barrier Function." 2021 American Control Conference (ACC). [[PDF]](https://arxiv.org/pdf/2007.11718.pdf)
 
+* S. He, J. Zeng, K. Sreenath. "Competitive Car Racing with Multiple Vehicles using a Parallelized Optimization with Safety Guarantee."[[PDF]](https://arxiv.org/pdf/2112.06435.pdf)
+
 ## Features
 
 ## Installation
@@ -35,27 +36,24 @@ If you find this project useful in your work, please consider citing following p
 ```
 export PYTHONPATH=$PYTHONPATH:`pwd`
 ```
-
 ## Usage
-
 ### Offboard
 #### System Identification
 Run
 ```
-python scripts/offboard/identification.py
+python scripts/system/identification_test.py
 ``` 
 This allows to identify the linearized dynamics of the racing car by regression.
-
 #### Tracking
 Run
 ```
-python scripts/offboard/tracking.py --ctrl-policy mpc-lti --track-layout l_shape --simulation --plotting --animation 
+python scripts/control/tracking_test.py --ctrl-policy mpc-lti --track-layout l_shape --simulation --plotting --animation 
 ```
 This allows to test algorithm for tracking. The argparse arguments are listed as follow,
 | name | type | choices | description |
 | :---: | :---: | :---: | :---: |
 | `ctrl_policy` | string | `pid`, `mpc-lti` | control policy |
-| `track_layout` | string | `l_shape`, `m_shape`, `google`, `ellipse` | track layouts |
+| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
 | `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
@@ -63,69 +61,54 @@ This allows to test algorithm for tracking. The argparse arguments are listed as
 #### Racing
 Run
 ```
-python scripts/offboard/racing.py --track-layout l_shape --simulation --plotting --animation
+python scripts/control/racing_mpc_cbf_test.py --track-layout l_shape --simulation --plotting --animation
 ```
 This allows to test algorithm for MPC-CBF controller. The argparse arguments are listed as follow,
 | name | type | choices | description |
 | :---: | :---: | :---: | :---: |
-| `track_layout` | string | `l_shape`, `m_shape`, `google`, `ellipse` | track layouts |
+| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
 | `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
-
-#### LMPC Racing
-Run
-```
-python scripts/offboard/lmpc_racing.py --track-layout l_shape --lap-number 8 --simulation --plotting --animation --save-trajectory
-```
-This allows to test algorithm for LMPC controller. The argparse arguments are listed as follow,
-| name | type | choices | description |
-| :---: | :---: | :---: | :---: |
-| `track_layout` | string | `l_shape`, `m_shape`, `google`, `ellipse` | track layouts |
-| `lap_number` | int | any number that is greater than `2` | number of laps that will be simulated |
-| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
-| `plotting` | action | `store_true` | save plotting if true |
-| `animation` | action | `store_true` | save animation if true |
-| `save_trajectory` | action | `store_true` | save time optimal trajectory if true |
 
 #### Racing Game
-Run
+To save the historic states and inputs used for learning-based MPC, run the following command for each track layout firstly:
 ```
-python scripts/offboard/racing_game.py --track-layout l_shape --lap-number 10 --simulation --direct-lmpc --animation --plotting --number-other-agents 3
+python scripts/planning/racing_game_test.py --track-layout l_shape --lap-number 7 --simulation --number-other-agents 0 --save-trajectory
+```
+Then you can run the following command: 
+```
+python scripts/planning/racing_game_test.py --track-layout l_shape --lap-number 10 --simulation --direct-lmpc --animation --plotting --number-other-agents 3
 ```
 This allows to test algorithm for racing game. The argparse arguments are listed as follow,
 | name | type | choices | description |
 | :---: | :---: | :---: | :---: |
-| `track_layout` | string | `l_shape`, `m_shape`, `google`, `ellipse` | track layouts |
+| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
 | `lap_number` | int | any number that is greater than `2` | number of laps that will be simulated |
 | `direct_lmpc` | action | `store_true` | if true, the simulator will begin the LMPC controller directly using store trajectories |
 | `sim_replay` | action | `store_true` | if true, by changingfile path, the simulator will simulate with different parameters but from same initial conditions |
 | `zero_noise` | action | `store_true` | no noises in dynamic update if true |
 | `diff_alpha` | action | `store_true` | if true, different alpha values will be used for same initial conditions |
 | `random_other_agents` | action | `store_true` | other agents will be generated randomly if true |
-| `number_other_agents` | int | any number that is greater than `0` | number of agents that will be generated |
+| `number_other_agents` | int | any number that is greater than `0`, when it is set to `0`, the algorithm is LMPC | number of agents that will be generated |
+|`save_trajectory`| action |`store_true`|if true and when the controller is LMPC, simulator will store the history states and inputs|
+|`multi_tests`| action | `store_true`| if ture, 100 groups of randomly generated tests will be simulated|
 | `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
-
 Currently, path planner and trajecotry planner are available for the overtaking maneuver. Changing the varibale `self.path_planner` in `base.py` to `True` allows the controller to simulate with path planner, 
-
-
-
 ### Realtime
 To start the simulator, run the following command in terminal:
 ```
 roslaunch car_racing car_racing_sim.launch track_layout:=goggle
 ```
 This allows you to run the simulator and visualization node. Change the `track_layout`, you can get differnt tracks. The center line of the race track is plotted in red dash line; the optimal trajectory of the race track is plotted in green line.
-
 To add new vehicle with controller in the simulator, run the following commands in new terminals:
 ```
 rosrun car_racing vehicle.py --veh-name vehicle1 --color blue --vx 0 --vy 0 --wz 0 --epsi 0 --s 0 --ey 0
 
 rosrun car_racing controller.py --ctrl-policy mpc-lti --veh-name vehicle1
 ```
-
 These allow to start nodes for the vehicle and corresponding controller. The argparse arguments are listed as follow,
 | name | type | choices | description |
 | :---: | :---: | :---: | :---: |
@@ -133,9 +116,7 @@ These allow to start nodes for the vehicle and corresponding controller. The arg
 | `color` | string | color's name | vehicle's color in animation |
 | `vs`, `vy`, `wz`, `epsi`, `s`, `ey` | float | initial states |vehicle's initial states in Frenet coordinates |
 | `ctrl_policy` | string | `pid`, `mpc-lti`, `mpc-cbf` , `lmpc`| vehicle's controller type| 
-
 ## Author
-- [Jun Zeng](https://github.com/junzengx14)
 - [Suiyi He](https://github.com/hesuieins)
-
+- [Jun Zeng](https://github.com/junzengx14)
 ## Contributing
