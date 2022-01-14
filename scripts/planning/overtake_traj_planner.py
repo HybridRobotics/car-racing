@@ -5,6 +5,7 @@ from scripts.control import lmpc_helper
 from scripts.planning.planner_helper import *
 from casadi import *
 from scipy.interpolate import interp1d
+from multiprocess import Process, Manager
 
 
 class OvertakeTrajPlanner:
@@ -17,6 +18,13 @@ class OvertakeTrajPlanner:
         self.matrix_Atv = None
         self.matrix_Btv = None
         self.matrix_Ctv = None
+        self.sorted_vehicles = None
+        self.obs_infos = None
+        self.old_ey = None
+        self.old_direction_flag = None
+        self.bezier_xcurvs = None
+        self.bezier_funcs = None
+        self.xcurv_ego = None
 
     def get_overtake_flag(self, xcurv_ego):
         overtake_flag = False
@@ -85,7 +93,14 @@ class OvertakeTrajPlanner:
                     bezier_xcurvs[index, :, 1],
                 )
             )
-        target_traj_xcurv, direction_flag, solve_time,solution_xvar = self.solve_optimization_problem(sorted_vehicles, obs_infos, old_ey, old_direction_flag, bezier_xcurvs, bezier_funcs, xcurv_ego)
+        self.sorted_vehicles = sorted_vehicles
+        self.obs_infos = obs_infos
+        self.old_ey = old_ey
+        self.old_direction_flag = old_direction_flag
+        self.bezier_xcurvs = bezier_xcurvs
+        self.bezier_funcs = bezier_funcs
+        self.xcurv_ego = xcurv_ego
+        target_traj_xcurv, direction_flag, solve_time,solution_xvar = self.solve_optimization_problem()
         end_timer = datetime.datetime.now()
         solver_time = (end_timer - start_timer).total_seconds()
         print("local planner solver time: {}".format(solver_time))
@@ -115,130 +130,72 @@ class OvertakeTrajPlanner:
             all_local_traj_xglob
         )
 
-    def solve_optimization_problem(self, sorted_vehicles, obs_infos, old_ey, old_direction_flag, bezier_xcurvs, bezier_funcs, xcurv_ego):
+    def solve_optimization_problem(self):
+        sorted_vehicles = self.sorted_vehicles
+        obs_infos = self.obs_infos
+        old_ey = self.old_ey
+        old_direction_flag = self.old_direction_flag
+        bezier_xcurvs = self.bezier_xcurvs
+        bezier_funcs = self.bezier_funcs
+        xcurv_ego = self.xcurv_ego
         num_horizon = self.racing_game_param.num_horizon_planner
-        num_veh = len(sorted_vehicles)
+        num_veh = len(self.sorted_vehicles)
         ego = self.vehicles[self.agent_name]
         veh_length = ego.param.length
         veh_width = ego.param.width
         track = self.track
         safety_margin = 0.15
-        optis = []
-        opti_xvars = []
-        opti_uvars = []
+        manager = Manager()
+        dict_traj = manager.dict()
+        dict_solve_time = manager.dict()
+        dict_cost = manager.dict()
+        list_opti = []
+        for index in range(num_veh):
+            list_opti.append(Process(target=self.generate_traj_per_region, args=(index,dict_traj, dict_solve_time,dict_cost,)))
+        for index in range(num_veh):
+            list_opti[index].start()
+        for index in range(num_veh):
+            list_opti[index].join()
         costs = []
-        for index in range(num_veh+1):
-            optis.append(ca.Opti())
-            opti_xvars.append(optis[index].variable(X_DIM, num_horizon+1))
-            opti_uvars.append(optis[index].variable(U_DIM, num_horizon))
-            costs.append(0)
-            # initial state constraint
-            optis[index].subject_to(opti_xvars[index][:, 0] == ego.xcurv)
-        for index in range(num_horizon):
-            for j in range(num_veh+1):
-                # dynamic state update constraint
-                optis[j].subject_to(opti_xvars[j][:, index + 1] == mtimes(self.racing_game_param.matrix_A, opti_xvars[j][:, index]) + mtimes(self.racing_game_param.matrix_B, opti_uvars[j][:, index]))             
-                # min and max of vx, ey
-                optis[j].subject_to(opti_xvars[j][0, index + 1] <= 5.0)
-                optis[j].subject_to(opti_xvars[j][5, index] <= track.width - 0.5*veh_width)
-                optis[j].subject_to(opti_xvars[j][5, index] >= -track.width + 0.5*veh_width)
-                # min and max of delta
-                optis[j].subject_to(opti_uvars[j][0, index]<=0.5) 
-                optis[j].subject_to(opti_uvars[j][0, index]>=-0.5)
-                # min and max of a
-                optis[j].subject_to(opti_uvars[j][1, index]<=1.5)
-                optis[j].subject_to(opti_uvars[j][1, index]>=-1.5)
-                # constraint on the left, first line is the track boundary
-                if j == 0:
-                    pass
-                else:
-                    name = sorted_vehicles[j - 1]
-                    obs_traj = obs_infos[name]
-                    while obs_traj[4, index] > track.lap_length:
-                        obs_traj[4, index] = obs_traj[4, index] - track.lap_length
-                    diffs = opti_xvars[j][4, index] - obs_traj[4, index]
-                    diffey = opti_xvars[j][5, index] - obs_traj[5, index]
-                    if (xcurv_ego[4] + index*0.1*xcurv_ego[0] >= obs_traj[4, index] -veh_length-safety_margin) & (xcurv_ego[4] + index*0.1*xcurv_ego[0] <= obs_traj[4, index] + veh_length + safety_margin):
-                        optis[j].subject_to(diffey>= veh_width + safety_margin)
-                    else:
-                        pass
-                # constraint on the right, last line is the track boundary
-                if j == num_veh:
-                    pass
-                else:
-                    name = sorted_vehicles[j]
-                    obs_traj = obs_infos[name]
-                    while obs_traj[4, index] > track.lap_length:
-                        obs_traj[4, index] = obs_traj[4, index] - track.lap_length
-                    diffs = opti_xvars[j][4, index] - obs_traj[4, index]
-                    diffey = opti_xvars[j][5, index] - obs_traj[5, index]
-                    if (xcurv_ego[4] + index*0.1*xcurv_ego[0] >= obs_traj[4, index] -veh_length -safety_margin) & (xcurv_ego[4] + index*0.1*xcurv_ego[0] <= obs_traj[4, index] + veh_length+safety_margin):
-                        optis[j].subject_to(diffey>=veh_width + safety_margin)
-                    else:
-                        pass
-        for index in range(num_horizon):
-            for j in range(num_veh+1):
-                 if index >1:
-                    costs[j] += 30*((opti_xvars[j][5, index] - opti_xvars[j][5, index - 1])**2)
-        for index in range(num_veh+1):
-            costs[index] += -200*(opti_xvars[index][4, -1] - opti_xvars[index][4, 0]) #500
-        for index in range(num_veh+1):
-            for j in range(num_horizon+1):
-                s_tmp = ego.xcurv[4] + 1.0*j*ego.xcurv[0]*0.1
-                s_tmp = np.clip(s_tmp, bezier_xcurvs[index, 0, 0], bezier_xcurvs[index, -1, 0])
-                ey_bezier = bezier_funcs[index](s_tmp)
-                costs[index] += 20*(opti_xvars[index][5, j] - ey_bezier)**2 #40
-                costs[index] += 20*(opti_xvars[index][4, j] - s_tmp)**2     #40
-        option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
         solution_xvar = np.zeros((num_veh+1, X_DIM, num_horizon + 1))
         solve_time = np.zeros(num_veh+1)
-        for index in range(num_veh+1):
-            for j in range (num_horizon):
-                s_j = j*ego.xcurv[0]*0.1 + ego.xcurv[4]
-                # set initial value of s
-                optis[index].set_initial(opti_xvars[index][4, j], s_j)
-                # when the reference Bezier curve is across the start line and ego's position is on the next lap
-                if (bezier_xcurvs[index, -1, 0]>track.lap_length and s_j < bezier_xcurvs[index, 0, 0]):
-                    s_j = s_j + track.lap_length
-                # when the reference Bezier curve is accross the start line and ego's position is on the previous lap
-                if (bezier_xcurvs[index, 0, 0] < 0 and s_j - track.lap_length >= bezier_xcurvs[index, 0, 0]):
-                    s_j = s_j - track.lap_length               
-                s_j = np.clip(s_j, bezier_xcurvs[index, 0, 0], bezier_xcurvs[index, -1, 0])
-                # set initial value of ey
-                ey_j = bezier_funcs[index](s_j)
-                optis[index].set_initial(opti_xvars[index][5, j], ey_j)
-                optis[index].set_initial(opti_xvars[index][0, j], ego.xcurv[0])
-        for index in range(num_veh+1):
-            start_time = datetime.datetime.now()
-            optis[index].minimize(costs[index])
-            optis[index].solver("ipopt", option)
-            try:
-                sol = optis[index].solve()
-                solution_xvar[index, :, :] = sol.value(opti_xvars[index])
-                costs[index] = sol.value(costs[index])
-            except RuntimeError:
-                for j in range(0, num_horizon+1):
-                    stmp = xcurv_ego[4] + 1.1*j* 0.1 * xcurv_ego[0]
-                    solution_xvar[index, 0, j] = 1.1*xcurv_ego[0]
-                    solution_xvar[index, 4, j] = stmp
-                    stmp = np.clip(stmp, bezier_xcurvs[index, 0, 0], bezier_xcurvs[index, -1, 0])
-                    solution_xvar[index, 5, j] = bezier_funcs[index](stmp)
-                #solution_xvar[index, :, :] = optis[index].debug.value(opti_xvars[index])
-                costs[index] = float("inf")
-            end_time = datetime.datetime.now()
-            solve_time[index] = (end_time - start_time).total_seconds()
+        for index in range(num_veh):
+            solution_xvar[index,:,:] = dict_traj[index]
+            costs.append(dict_cost[index])
+            solve_time[index] = dict_solve_time[index]
         cost_selection = []
         for index in range(num_veh+1):
             cost_selection.append(0)
         for index in range(num_veh+1):
             cost_selection[index] = -10 * (solution_xvar[index, 4, -1] - solution_xvar[index, 4, 0])
-            for j in range(num_horizon+1):
-                diffs = solution_xvar[index, 4, j] - obs_traj[4,j]
-                diffey = solution_xvar[index, 5, j] - obs_traj[5,j]
-                if diffs**2 + diffey**2 - veh_length**2-veh_width**2>=0:
-                    cost_selection[index] += 0
-                else:
-                    cost_selection[index] += 100
+            if index ==0:
+                pass
+            else:
+                name = sorted_vehicles[index - 1]
+                obs_traj = obs_infos[name]           
+                for j in range(num_horizon+1):
+                    while obs_traj[4, j] > track.lap_length:
+                        obs_traj[4, j] = obs_traj[4, j] - track.lap_length
+                    diffs = solution_xvar[index, 4, j] - obs_traj[4,j]
+                    diffey = solution_xvar[index, 5, j] - obs_traj[5,j]
+                    if diffs**2 + diffey**2 - veh_length**2-veh_width**2>=0:
+                        cost_selection[index] += 0
+                    else:
+                        cost_selection[index] += 100
+            if index == num_veh:
+                pass
+            else:
+                name = sorted_vehicles[index]
+                obs_traj = obs_infos[name]           
+                for j in range(num_horizon+1):
+                    while obs_traj[4, j] > track.lap_length:
+                        obs_traj[4, j] = obs_traj[4, j] - track.lap_length
+                    diffs = solution_xvar[index, 4, j] - obs_traj[4,j]
+                    diffey = solution_xvar[index, 5, j] - obs_traj[5,j]
+                    if diffs**2 + diffey**2 - veh_length**2-veh_width**2>=0:
+                        cost_selection[index] += 0
+                    else:
+                        cost_selection[index] += 100
             if old_direction_flag is None:
                 pass
             elif old_direction_flag == index:
@@ -248,4 +205,112 @@ class OvertakeTrajPlanner:
         direction_flag = cost_selection.index(min(cost_selection))
         traj_xcurv = solution_xvar[direction_flag, :, :].T
         return traj_xcurv, direction_flag, solve_time, solution_xvar
-  
+
+    def generate_traj_per_region(self, pos_index, dict_traj, dict_solve_time, dict_cost):
+        sorted_vehicles = self.sorted_vehicles
+        obs_infos = self.obs_infos
+        old_ey = self.old_ey
+        old_direction_flag = self.old_direction_flag
+        bezier_xcurvs = self.bezier_xcurvs
+        bezier_funcs = self.bezier_funcs
+        xcurv_ego = self.xcurv_ego
+        num_horizon = self.racing_game_param.num_horizon_planner
+        num_veh = len(self.sorted_vehicles)
+        ego = self.vehicles[self.agent_name]
+        veh_length = ego.param.length
+        veh_width = ego.param.width
+        track = self.track
+        safety_margin = 0.15
+        opti = ca.Opti()
+        opti_xvar = opti.variable(X_DIM, num_horizon+1)
+        opti_uvar = opti.variable(U_DIM, num_horizon)
+        opti.subject_to(opti_xvar[:,0] == ego.xcurv)
+        cost = 0
+        for index in range(num_horizon):
+            # dynamic state update constraint
+            opti.subject_to(opti_xvar[:, index + 1] == mtimes(self.racing_game_param.matrix_A, opti_xvar[:, index]) + mtimes(self.racing_game_param.matrix_B, opti_uvar[:, index]))             
+            # min and max of vx, ey
+            opti.subject_to(opti_xvar[0, index + 1] <= 5.0)
+            opti.subject_to(opti_xvar[5, index] <= track.width - 0.5*veh_width)
+            opti.subject_to(opti_xvar[5, index] >= -track.width + 0.5*veh_width)
+            # min and max of delta
+            opti.subject_to(opti_uvar[0, index]<=0.5) 
+            opti.subject_to(opti_uvar[0, index]>=-0.5)
+            # min and max of a
+            opti.subject_to(opti_uvar[1, index]<=1.5)
+            opti.subject_to(opti_uvar[1, index]>=-1.5)
+            # constraint on the left, first line is the track boundary
+            if pos_index == 0:
+                pass
+            else:
+                name = sorted_vehicles[pos_index - 1]
+                obs_traj = obs_infos[name]
+                while obs_traj[4, index] > track.lap_length:
+                    obs_traj[4, index] = obs_traj[4, index] - track.lap_length
+                diffs = opti_xvar[4, index] - obs_traj[4, index]
+                diffey = opti_xvar[5, index] - obs_traj[5, index]
+                if (xcurv_ego[4] + index*0.1*xcurv_ego[0] >= obs_traj[4, index] -veh_length-safety_margin) & (xcurv_ego[4] + index*0.1*xcurv_ego[0] <= obs_traj[4, index] + veh_length + safety_margin):
+                    opti.subject_to(diffey>= veh_width + safety_margin)
+                else:
+                    pass
+            # constraint on the right, last line is the track boundary
+            if pos_index == num_veh:
+                pass
+            else:
+                name = sorted_vehicles[pos_index]
+                obs_traj = obs_infos[name]
+                while obs_traj[4, index] > track.lap_length:
+                    obs_traj[4, index] = obs_traj[4, index] - track.lap_length
+                diffs = opti_xvar[4, index] - obs_traj[4, index]
+                diffey = opti_xvar[5, index] - obs_traj[5, index]
+                if (xcurv_ego[4] + index*0.1*xcurv_ego[0] >= obs_traj[4, index] -veh_length -safety_margin) & (xcurv_ego[4] + index*0.1*xcurv_ego[0] <= obs_traj[4, index] + veh_length+safety_margin):
+                    opti.subject_to(diffey>=veh_width + safety_margin)
+                else:
+                    pass
+        for index in range(num_horizon):
+            if index>1:
+                cost += 30*((opti_xvar[5, index] - opti_xvar[5, index - 1])**2)
+        cost += -200*(opti_xvar[4, -1] - opti_xvar[4, 0]) #500
+        for j in range(num_horizon+1):
+            s_tmp = ego.xcurv[4] + 1.0*j*ego.xcurv[0]*0.1
+            s_tmp = np.clip(s_tmp, bezier_xcurvs[pos_index, 0, 0], bezier_xcurvs[pos_index, -1, 0])
+            ey_bezier = bezier_funcs[pos_index](s_tmp)
+            cost += 20*(opti_xvar[5, j] - ey_bezier)**2 #40
+            cost += 20*(opti_xvar[4, j] - s_tmp)**2     #40
+        option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
+        solution_xvar = np.zeros((X_DIM, num_horizon + 1))
+        for j in range (num_horizon):
+            s_j = j*ego.xcurv[0]*0.1 + ego.xcurv[4]
+            # set initial value of s
+            opti.set_initial(opti_xvar[4, j], s_j)
+            # when the reference Bezier curve is across the start line and ego's position is on the next lap
+            if (bezier_xcurvs[pos_index, -1, 0]>track.lap_length and s_j < bezier_xcurvs[pos_index, 0, 0]):
+                s_j = s_j + track.lap_length
+            # when the reference Bezier curve is accross the start line and ego's position is on the previous lap
+            if (bezier_xcurvs[pos_index, 0, 0] < 0 and s_j - track.lap_length >= bezier_xcurvs[pos_index, 0, 0]):
+                s_j = s_j - track.lap_length               
+            s_j = np.clip(s_j, bezier_xcurvs[pos_index, 0, 0], bezier_xcurvs[pos_index, -1, 0])
+            # set initial value of ey
+            ey_j = bezier_funcs[pos_index](s_j)
+            opti.set_initial(opti_xvar[5, j], ey_j)
+            opti.set_initial(opti_xvar[0, j], ego.xcurv[0])
+        start_time = datetime.datetime.now()
+        opti.minimize(cost)
+        opti.solver("ipopt",option)
+        try:
+            sol = opti.solve()
+            solution_xvar = sol.value(opti_xvar)
+            cost = sol.value(cost)
+        except RuntimeError:
+            for j in range(0, num_horizon+1):
+                stmp = xcurv_ego[4] + 1.1*j* 0.1 * xcurv_ego[0]
+                solution_xvar[0, j] = 1.1*xcurv_ego[0]
+                solution_xvar[4, j] = stmp
+                stmp = np.clip(stmp, bezier_xcurvs[pos_index, 0, 0], bezier_xcurvs[pos_index, -1, 0])
+                solution_xvar[5, j] = bezier_funcs[pos_index](stmp)
+            cost = float("inf")
+        end_time = datetime.datetime.now()
+        solve_time =  (end_time-start_time).total_seconds()
+        dict_traj[pos_index] = solution_xvar
+        dict_solve_time[pos_index] = solve_time
+        dict_cost[pos_index] = cost
