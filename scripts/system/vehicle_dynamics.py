@@ -31,23 +31,19 @@ def vehicle_dynamics(dynamics_param, curv, xglob, xcurv, delta_t, u):
 
     # Propagate the dynamics of delta_t
     xglob_next[0] = vx + delta_t * (a - 1 / m * Fyf * np.sin(delta) + wz * vy)
-    xglob_next[1] = vy + delta_t * \
-        (1 / m * (Fyf * np.cos(delta) + Fyr) - wz * vx)
-    xglob_next[2] = wz + delta_t * \
-        (1 / Iz * (lf * Fyf * np.cos(delta) - lr * Fyr))
+    xglob_next[1] = vy + delta_t * (1 / m * (Fyf * np.cos(delta) + Fyr) - wz * vx)
+    xglob_next[2] = wz + delta_t * (1 / Iz * (lf * Fyf * np.cos(delta) - lr * Fyr))
     xglob_next[3] = psi + delta_t * (wz)
     xglob_next[4] = X + delta_t * ((vx * np.cos(psi) - vy * np.sin(psi)))
     xglob_next[5] = Y + delta_t * (vx * np.sin(psi) + vy * np.cos(psi))
 
     xcurv_next[0] = vx + delta_t * (a - 1 / m * Fyf * np.sin(delta) + wz * vy)
-    xcurv_next[1] = vy + delta_t * \
-        (1 / m * (Fyf * np.cos(delta) + Fyr) - wz * vx)
-    xcurv_next[2] = wz + delta_t * \
-        (1 / Iz * (lf * Fyf * np.cos(delta) - lr * Fyr))
-    xcurv_next[3] = epsi + delta_t * \
-        (wz - (vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - curv * ey) * curv)
-    xcurv_next[4] = s + delta_t * \
-        ((vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - curv * ey))
+    xcurv_next[1] = vy + delta_t * (1 / m * (Fyf * np.cos(delta) + Fyr) - wz * vx)
+    xcurv_next[2] = wz + delta_t * (1 / Iz * (lf * Fyf * np.cos(delta) - lr * Fyr))
+    xcurv_next[3] = epsi + delta_t * (
+        wz - (vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - curv * ey) * curv
+    )
+    xcurv_next[4] = s + delta_t * ((vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - curv * ey))
     xcurv_next[5] = ey + delta_t * (vx * np.sin(epsi) + vy * np.cos(epsi))
 
     return xglob_next, xcurv_next

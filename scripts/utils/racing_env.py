@@ -37,16 +37,8 @@ def get_global_position(lap_length, width, point_and_tangent, s, ey):
         reltaL = s - point_and_tangent[i, 3]
 
         # Do the linear combination
-        x = (
-            (1 - reltaL / deltaL) * xs
-            + reltaL / deltaL * xf
-            + ey * np.cos(psi + np.pi / 2)
-        )
-        y = (
-            (1 - reltaL / deltaL) * ys
-            + reltaL / deltaL * yf
-            + ey * np.sin(psi + np.pi / 2)
-        )
+        x = (1 - reltaL / deltaL) * xs + reltaL / deltaL * xf + ey * np.cos(psi + np.pi / 2)
+        y = (1 - reltaL / deltaL) * ys + reltaL / deltaL * yf + ey * np.sin(psi + np.pi / 2)
     else:
         r = 1 / point_and_tangent[i, 5]  # Extract curvature
         # Extract angle of the tangent at the initial point (i-1)
@@ -103,16 +95,8 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
         deltaL = point_and_tangent[i, 4]
         reltaL = s - point_and_tangent[i, 3]
         # Do the linear combination
-        x = (
-            (1 - reltaL / deltaL) * xs
-            + reltaL / deltaL * xf
-            + ey * np.cos(psi + np.pi / 2)
-        )
-        y = (
-            (1 - reltaL / deltaL) * ys
-            + reltaL / deltaL * yf
-            + ey * np.sin(psi + np.pi / 2)
-        )
+        x = (1 - reltaL / deltaL) * xs + reltaL / deltaL * xf + ey * np.cos(psi + np.pi / 2)
+        y = (1 - reltaL / deltaL) * ys + reltaL / deltaL * yf + ey * np.sin(psi + np.pi / 2)
     else:
         r = 1 / point_and_tangent[i, 5]  # Extract curvature
         # Extract angle of the tangent at the initial point (i-1)
@@ -305,7 +289,6 @@ def plot_track(ax, lap_length, width, point_and_tangent, center_line):
     points_out = np.zeros((num_track_points, 2))
     points_center = np.zeros((num_track_points, 2))
     points_in = np.zeros((num_track_points, 2))
-    
 
     for i in range(0, num_track_points):
         points_out[i, :] = get_global_position(
@@ -331,9 +314,8 @@ def plot_track(ax, lap_length, width, point_and_tangent, center_line):
         )
     if center_line:
         ax.plot(points_center[:, 0], points_center[:, 1], "--r")
-    ax.plot(points_in[:, 0], points_in[:, 1], "-b", linewidth =2)
-    ax.plot(points_out[:, 0], points_out[:, 1], "-b", linewidth = 2)
-
+    ax.plot(points_in[:, 0], points_in[:, 1], "-b", linewidth=2)
+    ax.plot(points_out[:, 0], points_out[:, 1], "-b", linewidth=2)
 
 
 class ClosedTrack:
@@ -344,7 +326,7 @@ class ClosedTrack:
         get_local_position: get (s, ey, epsi, CompletedFlag) from (X, Y, psi)
     """
 
-    def __init__(self, spec, track_width = 0.8):
+    def __init__(self, spec, track_width=0.8):
         """Initialization
         spec: geometry of the track
         track_width: track width
@@ -375,9 +357,7 @@ class ClosedTrack:
                     x = point_and_tangent[i - 1, 0] + l * np.cos(ang)
                     # y coordinate of the last point of the segment
                     y = point_and_tangent[i - 1, 1] + l * np.sin(ang)
-                psi = (
-                    ang  # Angle of the tangent vector at the last point of the segment
-                )
+                psi = ang  # Angle of the tangent vector at the last point of the segment
 
                 if i == 0:
                     newline = np.array([x, y, psi, point_and_tangent[i, 3], l, 0])
@@ -477,15 +457,11 @@ class ClosedTrack:
         self.lap_length = point_and_tangent[-1, 3] + point_and_tangent[-1, 4]
 
     def get_global_position(self, s, ey):
-        x, y = get_global_position(
-            self.lap_length, self.width, self.point_and_tangent, s, ey
-        )
+        x, y = get_global_position(self.lap_length, self.width, self.point_and_tangent, s, ey)
         return x, y
 
     def get_orientation(self, s, ey):
-        psi = get_orientation(
-            self.lap_length, self.width, self.point_and_tangent, s, ey
-        )
+        psi = get_orientation(self.lap_length, self.width, self.point_and_tangent, s, ey)
         return psi
 
     def get_local_position(self, x, y, psi):
@@ -498,5 +474,5 @@ class ClosedTrack:
         curv = get_curvature(self.lap_length, self.point_and_tangent, s)
         return curv
 
-    def plot_track(self, ax, center_line = True):
+    def plot_track(self, ax, center_line=True):
         plot_track(ax, self.lap_length, self.width, self.point_and_tangent, center_line)

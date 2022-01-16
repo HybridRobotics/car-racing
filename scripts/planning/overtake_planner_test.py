@@ -8,15 +8,13 @@ from scripts.utils import base, racing_env
 from scripts.utils.constants import *
 
 
-def lmpc_racing(args, file_number):
+def racing_overtake(args, file_number):
     if args["save_trajectory"]:
         save_lmpc_traj = True
     else:
         save_lmpc_traj = False
     track_layout = args["track_layout"]
-    track_spec = np.genfromtxt(
-        "data/track_layout/" + track_layout + ".csv", delimiter=","
-    )
+    track_spec = np.genfromtxt("data/track_layout/" + track_layout + ".csv", delimiter=",")
     lap_number = args["lap_number"]
     opti_traj_xcurv = np.genfromtxt(
         "data/optimal_traj/xcurv_" + track_layout + ".csv", delimiter=","
@@ -79,15 +77,13 @@ def lmpc_racing(args, file_number):
                     veh_name = "car" + str(index + 1)
                     vehicles[index].set_state_curvilinear_func(
                         t_symbol,
-                        0.1 * random.randint(0, 10) * t_symbol
-                        + 3
-                        + random.randint(0, 14),
+                        0.1 * random.randint(0, 10) * t_symbol + 3 + random.randint(0, 14),
                         0.7 - 0.1 * random.randint(0, 14) + 0.0 * t_symbol,
                     )
                     vehicles[index].start_logging()
                     simulator.add_vehicle(vehicles[index])
             else:
-                vehicles = set_up_other_vehicles(track, num_veh)   
+                vehicles = set_up_other_vehicles(track, num_veh)
             if args["direct_lmpc"]:
                 pass
             else:
@@ -102,9 +98,7 @@ def lmpc_racing(args, file_number):
                     if args["direct_lmpc"]:
                         pass
                     else:
-                        simulator.sim(
-                            sim_time=90, one_lap=True, one_lap_name="ego"
-                        )
+                        simulator.sim(sim_time=90, one_lap=True, one_lap_name="ego")
                 elif iter == 1:
                     if args["direct_lmpc"]:
                         pass
@@ -116,9 +110,7 @@ def lmpc_racing(args, file_number):
                             one_lap=True,
                             one_lap_name="ego",
                         )
-                        with open(
-                            "data/ego/ego_" + track_layout + ".obj", "wb"
-                        ) as handle:
+                        with open("data/ego/ego_" + track_layout + ".obj", "wb") as handle:
                             pickle.dump(ego, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 elif iter == 2:
                     if args["direct_lmpc"]:
@@ -146,17 +138,20 @@ def lmpc_racing(args, file_number):
                             pass
                         elif iter == 5:
                             if save_lmpc_traj:
-                                with open("data/ego/ego_" + track_layout + "_multi_laps.obj", "wb") as handle:
+                                with open(
+                                    "data/ego/ego_" + track_layout + "_multi_laps.obj",
+                                    "wb",
+                                ) as handle:
                                     pickle.dump(ego, handle, protocol=pickle.HIGHEST_PROTOCOL)
                         elif iter == 6:
                             # change the paramter in the following part will result in different initial setup for other vehicles
                             for index in range(0, num_veh):
                                 veh_name = "car" + str(index + 1)
                                 vehicles[index].set_state_curvilinear_func(
-                                        t_symbol,
-                                        (1.2 + index * 0.02) * t_symbol + 10.5 + index * 1.5,
-                                        -0.5 + index * 0.3 + 0.0 * t_symbol,
-                                    )
+                                    t_symbol,
+                                    (1.2 + index * 0.02) * t_symbol + 10.5 + index * 1.5,
+                                    -0.5 + index * 0.3 + 0.0 * t_symbol,
+                                )
                                 vehicles[index].start_logging()
                                 simulator.add_vehicle(vehicles[index])
                             lmpc_controller.add_trajectory(
@@ -193,7 +188,10 @@ def lmpc_racing(args, file_number):
                         )
                         if iter == 5:
                             if save_lmpc_traj:
-                                with open("data/ego/ego_" + track_layout + "_multi_laps.obj", "wb") as handle:
+                                with open(
+                                    "data/ego/ego_" + track_layout + "_multi_laps.obj",
+                                    "wb",
+                                ) as handle:
                                     pickle.dump(ego, handle, protocol=pickle.HIGHEST_PROTOCOL)
             # print the lap timing infomation
             for i in range(0, lmpc_controller.iter):
@@ -209,7 +207,7 @@ def lmpc_racing(args, file_number):
             elif args["random_other_agents"]:
                 file_name = "data/simulator/racing_game_random.obj"
             elif args["multi_tests"]:
-                file_name = "data/simulator/test_results/racing_game" +str(file_number) +".obj"
+                file_name = "data/simulator/test_results/racing_game" + str(file_number) + ".obj"
             else:
                 file_name = "data/simulator/racing_game.obj"
             with open(file_name, "wb") as handle:
@@ -222,12 +220,8 @@ def lmpc_racing(args, file_number):
             simulator.plot_state("ego")
             simulator.plot_input("ego")
         if args["save_trajectory"]:
-            ego_xcurv = np.stack(
-                simulator.vehicles["ego"].xcurvs[lap_number - 1], axis=0
-            )
-            ego_xglob = np.stack(
-                simulator.vehicles["ego"].xglobs[lap_number - 1], axis=0
-            )
+            ego_xcurv = np.stack(simulator.vehicles["ego"].xcurvs[lap_number - 1], axis=0)
+            ego_xglob = np.stack(simulator.vehicles["ego"].xglobs[lap_number - 1], axis=0)
             np.savetxt(
                 "data/optimal_traj/xcurv_" + track_layout + ".csv",
                 ego_xcurv,
@@ -237,7 +231,7 @@ def lmpc_racing(args, file_number):
                 "data/optimal_traj/xglob_" + track_layout + ".csv",
                 ego_xglob,
                 delimiter=",",
-            )    
+            )
         if args["animation"]:
             if args["diff_alpha"]:
                 file_name = "racing_game_alpha_" + str(alpha)
@@ -249,9 +243,7 @@ def lmpc_racing(args, file_number):
 
 
 def set_up_ego(timestep, track):
-    ego = offboard.DynamicBicycleModel(
-        name="ego", param=base.CarParam(edgecolor="black")
-    )
+    ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"))
     ego.set_timestep(timestep)
     # run the pid controller for the first lap to collect data
     pid_controller = offboard.PIDTracking(vt=0.7, eyt=0.0)
@@ -272,19 +264,13 @@ def set_up_ego(timestep, track):
 
 def set_up_lmpc(timestep, track, lap_number, alpha, opti_traj_xcurv, opti_traj_xglob):
     time_lmpc = 10000 * timestep
-    lmpc_param = base.LMPCRacingParam(
-        timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc
-    )
-    racing_game_param = base.RacingGameParam(timestep=timestep, alpha=alpha, num_horizon_planner = 10)
-    lmpc_controller = offboard.LMPCRacingGame(
-        lmpc_param, racing_game_param=racing_game_param
-    )
+    lmpc_param = base.LMPCRacingParam(timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc)
+    racing_game_param = base.RacingGameParam(timestep=timestep, alpha=alpha, num_horizon_planner=10)
+    lmpc_controller = offboard.LMPCRacingGame(lmpc_param, racing_game_param=racing_game_param)
     lmpc_controller.set_track(track)
     lmpc_controller.set_timestep(timestep)
     lmpc_controller.set_opti_traj(opti_traj_xcurv, opti_traj_xglob)
-    lmpc_controller.openloop_prediction = LMPCPrediction(
-        lap_number=lap_number
-    )
+    lmpc_controller.openloop_prediction = LMPCPrediction(lap_number=lap_number)
     return lmpc_controller, time_lmpc
 
 
@@ -293,9 +279,7 @@ def set_up_other_vehicles(track, num_veh):
     for index in range(0, num_veh):
         veh_name = "car" + str(index + 1)
         vehicles.append(
-            offboard.NoDynamicsModel(
-                name=veh_name, param=base.CarParam(edgecolor="orange")
-            )
+            offboard.NoDynamicsModel(name=veh_name, param=base.CarParam(edgecolor="orange"))
         )
         vehicles[index].set_track(track)
     return vehicles
@@ -303,6 +287,7 @@ def set_up_other_vehicles(track, num_veh):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--track-layout", type=str)
     parser.add_argument("--lap-number", type=int)
@@ -316,10 +301,10 @@ if __name__ == "__main__":
     parser.add_argument("--random-other-agents", action="store_true")
     parser.add_argument("--number-other-agents", type=int)
     parser.add_argument("--save-trajectory", action="store_true")
-    parser.add_argument("--multi-tests",action="store_true")
+    parser.add_argument("--multi-tests", action="store_true")
     args = vars(parser.parse_args())
     if args["multi_tests"]:
-        for index in range(1,101):
-            lmpc_racing(args, index)
+        for index in range(1, 101):
+            racing_overtake(args, index)
     else:
-        lmpc_racing(args, 0)
+        racing_overtake(args, 0)

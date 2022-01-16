@@ -21,9 +21,7 @@ def set_controller(args):
     matrix_B = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=",")
     matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
     matrix_R = np.diag([0.1, 0.1])
-    mpc_lti_param = base.MPCTrackingParam(
-        matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8
-    )
+    mpc_lti_param = base.MPCTrackingParam(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
     if ctrl_policy == "mpc-lti":
         ctrl = realtime.MPCTracking(mpc_lti_param)
         ctrl.set_subscriber_track()
@@ -31,9 +29,7 @@ def set_controller(args):
         ctrl = realtime.PIDTracking(vt=0.8)
         ctrl.set_subscriber_track()
     elif ctrl_policy == "mpc-cbf":
-        mpc_cbf_param = base.MPCCBFRacingParam(
-            matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8
-        )
+        mpc_cbf_param = base.MPCCBFRacingParam(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
         ctrl = realtime.MPCCBFRacing(mpc_cbf_param)
         ctrl.agent_name = veh_name
         ctrl.set_subscriber_track()
@@ -85,15 +81,9 @@ def set_controller(args):
         mpc_lti_ctrl.u = np.zeros(2)
         veh_input_topic = veh_name + "/input"
         lmpc_ctrl.set_vehicles_track()
-        pid_ctrl.__pub_input = rospy.Publisher(
-            veh_input_topic, VehicleControl, queue_size=10
-        )
-        mpc_lti_ctrl.__pub_input = rospy.Publisher(
-            veh_input_topic, VehicleControl, queue_size=10
-        )
-        lmpc_ctrl.__pub_input = rospy.Publisher(
-            veh_input_topic, VehicleControl, queue_size=10
-        )
+        pid_ctrl.__pub_input = rospy.Publisher(veh_input_topic, VehicleControl, queue_size=10)
+        mpc_lti_ctrl.__pub_input = rospy.Publisher(veh_input_topic, VehicleControl, queue_size=10)
+        lmpc_ctrl.__pub_input = rospy.Publisher(veh_input_topic, VehicleControl, queue_size=10)
         current_lap = 0
     else:
         pass
@@ -104,19 +94,13 @@ def set_controller(args):
         ctrl.set_subscriber_optimal_traj()
         ctrl.set_timestep(timestep)
         ctrl.set_state(
-            np.zeros((
-                X_DIM, 
-            )),
-            np.zeros((
-                X_DIM, 
-            )),
+            np.zeros((X_DIM,)),
+            np.zeros((X_DIM,)),
         )
-        ctrl.u = np.zeros((U_DIM, ))
+        ctrl.u = np.zeros((U_DIM,))
         ctrl.set_subscriber_state(veh_name)
         veh_input_topic = veh_name + "/input"
-        ctrl.__pub_input = rospy.Publisher(
-            veh_input_topic, VehicleControl, queue_size=10
-        )
+        ctrl.__pub_input = rospy.Publisher(veh_input_topic, VehicleControl, queue_size=10)
     r = rospy.Rate(loop_rate)
     start_timer = datetime.datetime.now()
     tmp = 0

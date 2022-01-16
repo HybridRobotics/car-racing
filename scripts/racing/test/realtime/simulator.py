@@ -54,9 +54,7 @@ def get_msg_optimal_traj(traj_xglob, traj_xcurv):
 def start_simulator(track_layout):
     rospy.init_node("simulator", anonymous=True)
     # get race track
-    track_spec = np.genfromtxt(
-        "../../data/track_layout/" + track_layout + ".csv", delimiter=","
-    )
+    track_spec = np.genfromtxt("../../data/track_layout/" + track_layout + ".csv", delimiter=",")
     track_width = 0.5
     track = racing_env.ClosedTrack(track_spec, track_width)
     sim = realtime.CarRacingSim()
@@ -72,16 +70,10 @@ def start_simulator(track_layout):
         sim.num_vehicle = 0
         vehicles = []
         for name in sim.vehicles:
-            sim.vehicles[name].msg_state.state_curv = get_msg_xcurv(
-                sim.vehicles[name].xcurv
-            )
-            sim.vehicles[name].msg_state.state_glob = get_msg_xglob(
-                sim.vehicles[name].xglob
-            )
+            sim.vehicles[name].msg_state.state_curv = get_msg_xcurv(sim.vehicles[name].xcurv)
+            sim.vehicles[name].msg_state.state_glob = get_msg_xglob(sim.vehicles[name].xglob)
             tmp = "simulator/" + name + "/state"
-            sim.vehicles[name].__pub_state = rospy.Publisher(
-                tmp, VehicleState, queue_size=10
-            )
+            sim.vehicles[name].__pub_state = rospy.Publisher(tmp, VehicleState, queue_size=10)
             sim.vehicles[name].__pub_state.publish(sim.vehicles[name].msg_state)
             vehicles.append(name)
             sim.num_vehicle = sim.num_vehicle + 1

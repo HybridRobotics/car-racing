@@ -24,7 +24,12 @@ class OvertakePathPlanner:
         vehicles_interest = {}
         for name in list(self.vehicles):
             if name != self.agent_name:
-                if check_ego_agent_distance(self.vehicles[self.agent_name], self.vehicles[name], self.racing_game_param, self.track.lap_length):
+                if check_ego_agent_distance(
+                    self.vehicles[self.agent_name],
+                    self.vehicles[name],
+                    self.racing_game_param,
+                    self.track.lap_length,
+                ):
                     overtake_flag = True
                     vehicles_interest[name] = self.vehicles[name]
         return overtake_flag, vehicles_interest
@@ -45,13 +50,9 @@ class OvertakePathPlanner:
         for name in list(vehicles_interest):
             if num == 0:
                 sorted_vehicles.append(name)
-            elif (
-                vehicles_interest[name].xcurv[5] >= vehicles_interest[sorted_vehicles[0]].xcurv[5]
-            ):
+            elif vehicles_interest[name].xcurv[5] >= vehicles_interest[sorted_vehicles[0]].xcurv[5]:
                 sorted_vehicles.insert(0, name)
-            elif (
-                vehicles_interest[name].xcurv[5] <= vehicles_interest[sorted_vehicles[0]].xcurv[5]
-            ):
+            elif vehicles_interest[name].xcurv[5] <= vehicles_interest[sorted_vehicles[0]].xcurv[5]:
                 sorted_vehicles.append(name)
             num += 1
         # get maximum and minimum infos of agent(s)
@@ -65,14 +66,25 @@ class OvertakePathPlanner:
                     num_horizon + 1,
                 )
             else:
-                obs_traj, _ = vehicles[name].get_trajectory_nsteps(
-                    num_horizon + 1
-                )
+                obs_traj, _ = vehicles[name].get_trajectory_nsteps(num_horizon + 1)
             # save the position information of other agent
-            obs_traj_infos[index, :] = vehicles[name].xcurv[4], max(obs_traj.T[:, 5]), min(obs_traj.T[:, 5])
+            obs_traj_infos[index, :] = (
+                vehicles[name].xcurv[4],
+                max(obs_traj.T[:, 5]),
+                min(obs_traj.T[:, 5]),
+            )
         func_optimal_ey = interp1d(optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 5])
         func_optimal_vx = interp1d(optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 0])
-        bezier_control_points = get_bezier_control_points(vehicles_interest, obs_traj_infos, agent_infos, self.racing_game_param, track, self.opti_traj_xcurv,sorted_vehicles, xcurv_ego)
+        bezier_control_points = get_bezier_control_points(
+            vehicles_interest,
+            obs_traj_infos,
+            agent_infos,
+            self.racing_game_param,
+            track,
+            self.opti_traj_xcurv,
+            sorted_vehicles,
+            xcurv_ego,
+        )
         bezier_xcurvs = np.zeros((num_veh + 1, num_horizon + 1, 2))
         bezier_funcs = []
         for index in range(num_veh + 1):
@@ -87,7 +99,17 @@ class OvertakePathPlanner:
                 )
             )
         agents_front_ranges, agents_rear_ranges = self.get_agents_range(num_veh, obs_traj_infos)
-        best_ey, direction_flag = self.solve_optimization_problem(sorted_vehicles, bezier_xcurvs, bezier_funcs, agent_infos, obs_traj_infos, agents_front_ranges, agents_rear_ranges, func_optimal_ey, bezier_control_points)
+        best_ey, direction_flag = self.solve_optimization_problem(
+            sorted_vehicles,
+            bezier_xcurvs,
+            bezier_funcs,
+            agent_infos,
+            obs_traj_infos,
+            agents_front_ranges,
+            agents_rear_ranges,
+            func_optimal_ey,
+            bezier_control_points,
+        )
         target_traj_xcurv = np.zeros((num_horizon + 1, X_DIM))
         bezier_xglob = np.zeros((num_horizon + 1, X_DIM))
         for index in range(num_horizon + 1):
@@ -104,17 +126,17 @@ class OvertakePathPlanner:
                 / num_horizon
             )
             target_traj_xcurv[index, 5] = best_ey[index]
-        if target_traj_xcurv[-1, 4] >=track.lap_length:
-            if target_traj_xcurv[-1, 4] - track.lap_length <optimal_traj_xcurv[0, 4]:
+        if target_traj_xcurv[-1, 4] >= track.lap_length:
+            if target_traj_xcurv[-1, 4] - track.lap_length < optimal_traj_xcurv[0, 4]:
                 vx_target = func_optimal_vx(optimal_traj_xcurv[0, 4])
-            else:    
+            else:
                 vx_target = func_optimal_vx(target_traj_xcurv[-1, 4] - track.lap_length)
-        elif target_traj_xcurv[-1, 4] <optimal_traj_xcurv[0, 4]:
+        elif target_traj_xcurv[-1, 4] < optimal_traj_xcurv[0, 4]:
             vx_target = func_optimal_vx(optimal_traj_xcurv[0, 4])
         else:
             vx_target = func_optimal_vx(target_traj_xcurv[-1, 4])
-        delta_t = 2*(target_traj_xcurv[-1, 4] - xcurv_ego[4])/(vx_target + xcurv_ego[0])
-        a_target = (vx_target - xcurv_ego[0])/delta_t
+        delta_t = 2 * (target_traj_xcurv[-1, 4] - xcurv_ego[4]) / (vx_target + xcurv_ego[0])
+        a_target = (vx_target - xcurv_ego[0]) / delta_t
         # the desired acc should under constraints
         a_target = np.clip(a_target, -1.5, 1.5)
         # refine the path, add vx information
@@ -126,17 +148,15 @@ class OvertakePathPlanner:
         bezier_line_xcurv = np.zeros((num_horizon + 1, X_DIM))
         bezier_line_xcurv[:, 4:6] = bezier_xcurvs[direction_flag, :, :]
         bezier_xglob = get_traj_xglob(bezier_line_xcurv, track)
-        
 
-        all_bezier_xcurv = np.zeros((num_veh+1, num_horizon+1,X_DIM))
-        all_local_traj_xcurv = np.zeros((num_veh+1, num_horizon+1, X_DIM))
-        all_bezier_xcurv[:,:,4:6] = bezier_xcurvs[:,:,:]
-        
+        all_bezier_xcurv = np.zeros((num_veh + 1, num_horizon + 1, X_DIM))
+        all_local_traj_xcurv = np.zeros((num_veh + 1, num_horizon + 1, X_DIM))
+        all_bezier_xcurv[:, :, 4:6] = bezier_xcurvs[:, :, :]
 
-        all_local_traj_xglob = np.zeros((num_veh+1, num_horizon+1, X_DIM))
-        all_bezier_xglob = np.zeros((num_veh+1,num_horizon+1, X_DIM))        
-        for index in range(num_veh+1):
-            all_bezier_xglob[index,:,:] = get_traj_xglob(all_bezier_xcurv[index,:,:],track)
+        all_local_traj_xglob = np.zeros((num_veh + 1, num_horizon + 1, X_DIM))
+        all_bezier_xglob = np.zeros((num_veh + 1, num_horizon + 1, X_DIM))
+        for index in range(num_veh + 1):
+            all_bezier_xglob[index, :, :] = get_traj_xglob(all_bezier_xcurv[index, :, :], track)
 
         # debug_plot(track, vehicles, target_traj_xglob)
         return (
@@ -147,16 +167,18 @@ class OvertakePathPlanner:
             bezier_xglob,
             solver_time,
             all_bezier_xglob,
-            all_local_traj_xglob
+            all_local_traj_xglob,
         )
 
-    def get_speed_info(self, target_traj_xcurv, xcurv, a_target):        
+    def get_speed_info(self, target_traj_xcurv, xcurv, a_target):
         num_horizon = self.racing_game_param.num_horizon_planner
         traj_xcurv = np.zeros((num_horizon + 1, 6))
         traj_xcurv = target_traj_xcurv
-        traj_xcurv[0,:] = xcurv
-        for index in range (num_horizon):
-            traj_xcurv[index, 0] = (xcurv[0]**2 + 2*a_target*(traj_xcurv[index, 4] - xcurv[4]))**0.5
+        traj_xcurv[0, :] = xcurv
+        for index in range(num_horizon):
+            traj_xcurv[index, 0] = (
+                xcurv[0] ** 2 + 2 * a_target * (traj_xcurv[index, 4] - xcurv[4])
+            ) ** 0.5
         return traj_xcurv
 
     def get_agents_range(self, num_veh, obs_traj_infos):
@@ -166,23 +188,26 @@ class OvertakePathPlanner:
         agents_front_ranges = np.zeros((num_veh, 1))
         agents_rear_ranges = np.zeros((num_veh, 1))
         for index in range(num_veh):
-            agents_front_ranges[index, 0] = (
-                obs_traj_infos[index, 0] + safety_factor * veh_length
-            )
-            agents_rear_ranges[index, 0] = (
-                obs_traj_infos[index, 0] - safety_factor * veh_length
-            )
+            agents_front_ranges[index, 0] = obs_traj_infos[index, 0] + safety_factor * veh_length
+            agents_rear_ranges[index, 0] = obs_traj_infos[index, 0] - safety_factor * veh_length
             while agents_front_ranges[index, 0] > track.lap_length:
-                agents_front_ranges[index, 0] = (
-                    agents_front_ranges[index, 0] - track.lap_length
-                )
+                agents_front_ranges[index, 0] = agents_front_ranges[index, 0] - track.lap_length
             while agents_rear_ranges[index, 0] > track.lap_length:
-                agents_rear_ranges[index, 0] = (
-                    agents_rear_ranges[index, 0] - track.lap_length
-                )
+                agents_rear_ranges[index, 0] = agents_rear_ranges[index, 0] - track.lap_length
         return agents_front_ranges, agents_rear_ranges
-    
-    def solve_optimization_problem(self, sorted_vehicles, bezier_xucrvs, bezier_funcs, agent_infos, obs_traj_infos, agents_front_ranges, agents_rear_ranges, func_optimal_ey, bezier_control_points):
+
+    def solve_optimization_problem(
+        self,
+        sorted_vehicles,
+        bezier_xucrvs,
+        bezier_funcs,
+        agent_infos,
+        obs_traj_infos,
+        agents_front_ranges,
+        agents_rear_ranges,
+        func_optimal_ey,
+        bezier_control_points,
+    ):
         num_horizon = self.racing_game_param.num_horizon_planner
         num_veh = len(sorted_vehicles)
         ego = self.vehicles[self.agent_name]
@@ -221,18 +246,12 @@ class OvertakePathPlanner:
             # add cost
             for j in range(num_veh + 1):
                 # compared with optimal trajectory
-                costs[j] += (1 - alpha) * (
-                    (opti_vars[j][index] - func_optimal_ey(s_tmp)) ** 2
-                )
+                costs[j] += (1 - alpha) * ((opti_vars[j][index] - func_optimal_ey(s_tmp)) ** 2)
                 # compared with reference Bezier curve
-                costs[j] += alpha * (
-                    (opti_vars[j][index] - bezier_funcs[j](s_tmp)) ** 2
-                )
+                costs[j] += alpha * ((opti_vars[j][index] - bezier_funcs[j](s_tmp)) ** 2)
                 # changing rate
                 if index >= 1:
-                    costs[j] += 100 * (
-                        (opti_vars[j][index] - opti_vars[j][index - 1]) ** 2
-                    )
+                    costs[j] += 100 * ((opti_vars[j][index] - opti_vars[j][index - 1]) ** 2)
             # constraint for optimization
             for j in range(num_veh + 1):
                 # initial state constraint
@@ -240,10 +259,7 @@ class OvertakePathPlanner:
                     optis[j].subject_to(opti_vars[j][0] == ego.xcurv[5])
                 # final state constraint
                 if index == num_horizon:
-                    optis[j].subject_to(
-                        opti_vars[j][num_horizon]
-                        == bezier_control_points[j, 3, 1]
-                    )
+                    optis[j].subject_to(opti_vars[j][num_horizon] == bezier_control_points[j, 3, 1])
                 # track boundary constraint
                 optis[j].subject_to(opti_vars[j][index] <= track.width)
                 optis[j].subject_to(opti_vars[j][index] >= -track.width)
@@ -263,18 +279,13 @@ class OvertakePathPlanner:
                         else:
                             optis[j].subject_to(
                                 opti_vars[j][index]
-                                < (
-                                    obs_traj_infos[j - 1, 2]
-                                    - safety_factor * veh_width
-                                )
+                                < (obs_traj_infos[j - 1, 2] - safety_factor * veh_width)
                             )
                 # constraint on the right, last line is the track boundary
                 if j == num_veh:
                     pass
                 else:
-                    if (s_tmp < agents_rear_ranges[j, 0]) or (
-                        s_tmp > agents_front_ranges[j, 0]
-                    ):
+                    if (s_tmp < agents_rear_ranges[j, 0]) or (s_tmp > agents_front_ranges[j, 0]):
                         pass
                     else:
                         if index == 0 and ego.xcurv[5] <= (

@@ -16,6 +16,7 @@ from scripts.racing import realtime
 from car_racing.srv import AddNewVehicle
 from scripts.utils.constants import *
 
+
 def get_msg_xglob(state):
     return VehicleStateGlob(state[0], state[1], state[2], state[3], state[4], state[5])
 
@@ -72,11 +73,9 @@ def set_vehicle(args):
     s0 = initial_xcurv[4]
     ey0 = initial_xcurv[5]
     veh.realtime_flag = True
-    xglob0 = np.zeros((X_DIM, ))
+    xglob0 = np.zeros((X_DIM,))
     xglob0[0:3] = initial_xcurv[0:3]
-    psi0 = racing_env.get_orientation(
-        veh.lap_length, veh.lap_width, veh.point_and_tangent, s0, ey0
-    )
+    psi0 = racing_env.get_orientation(veh.lap_length, veh.lap_width, veh.point_and_tangent, s0, ey0)
     x0, y0 = racing_env.get_global_position(
         veh.lap_length, veh.lap_width, veh.point_and_tangent, s0, ey0
     )

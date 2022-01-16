@@ -8,18 +8,14 @@ from scripts.utils.constants import *
 
 def racing(args):
     track_layout = args["track_layout"]
-    track_spec = np.genfromtxt(
-        "data/track_layout/" + track_layout + ".csv", delimiter=","
-    )
+    track_spec = np.genfromtxt("data/track_layout/" + track_layout + ".csv", delimiter=",")
     if args["simulation"]:
-        track = racing_env.ClosedTrack(track_spec, track_width = 1.0)
+        track = racing_env.ClosedTrack(track_spec, track_width=1.0)
         # setup ego car
-        ego = offboard.DynamicBicycleModel(
-            name="ego", param=base.CarParam(edgecolor="black")
-        )
+        ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"))
         mpc_cbf_param = base.MPCCBFRacingParam(vt=0.8)
-        ego.set_state_curvilinear(np.zeros((X_DIM, )))
-        ego.set_state_global(np.zeros((X_DIM, )))
+        ego.set_state_curvilinear(np.zeros((X_DIM,)))
+        ego.set_state_global(np.zeros((X_DIM,)))
         ego.start_logging()
         ego.set_ctrl_policy(offboard.MPCCBFRacing(mpc_cbf_param))
         ego.ctrl_policy.set_timestep(0.1)
@@ -27,21 +23,13 @@ def racing(args):
         # setup surrounding cars
         t_symbol = sp.symbols("t")
 
-        car1 = offboard.NoDynamicsModel(
-            name="car1", param=base.CarParam(edgecolor="orange")
-        )
+        car1 = offboard.NoDynamicsModel(name="car1", param=base.CarParam(edgecolor="orange"))
         car1.set_track(track)
-        car1.set_state_curvilinear_func(
-            t_symbol, 0.2 * t_symbol + 4.0, 0.1 + 0.0 * t_symbol
-        )
+        car1.set_state_curvilinear_func(t_symbol, 0.2 * t_symbol + 4.0, 0.1 + 0.0 * t_symbol)
         car1.start_logging()
-        car2 = offboard.NoDynamicsModel(
-            name="car2", param=base.CarParam(edgecolor="orange")
-        )
+        car2 = offboard.NoDynamicsModel(name="car2", param=base.CarParam(edgecolor="orange"))
         car2.set_track(track)
-        car2.set_state_curvilinear_func(
-            t_symbol, 0.2 * t_symbol + 10.0, -0.1 + 0.0 * t_symbol
-        )
+        car2.set_state_curvilinear_func(t_symbol, 0.2 * t_symbol + 10.0, -0.1 + 0.0 * t_symbol)
         car2.start_logging()
         # setup simulation
         simulator = offboard.CarRacingSim()

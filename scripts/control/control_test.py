@@ -7,17 +7,13 @@ from scripts.utils.constants import *
 
 def tracking(args):
     track_layout = args["track_layout"]
-    track_spec = np.genfromtxt(
-        "data/track_layout/" + track_layout + ".csv", delimiter=","
-    )
+    track_spec = np.genfromtxt("data/track_layout/" + track_layout + ".csv", delimiter=",")
     if args["simulation"]:
-        track = racing_env.ClosedTrack(track_spec, track_width = 0.8)
+        track = racing_env.ClosedTrack(track_spec, track_width=0.8)
         # setup ego car
-        ego = offboard.DynamicBicycleModel(
-            name="ego", param=base.CarParam(edgecolor="black")
-        )
-        ego.set_state_curvilinear(np.zeros((X_DIM, )))
-        ego.set_state_global(np.zeros((X_DIM, )))
+        ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"))
+        ego.set_state_curvilinear(np.zeros((X_DIM,)))
+        ego.set_state_global(np.zeros((X_DIM,)))
         ego.start_logging()
         if args["ctrl_policy"] == "pid":
             ego.set_ctrl_policy(offboard.PIDTracking(vt=0.8))

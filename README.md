@@ -24,9 +24,9 @@ This repository provides a toolkit to test control and planning problems for car
 ## References
 If you find this project useful in your work, please consider citing following papers:
 
-* J. Zeng, B. Zhang and K. Sreenath. "Safety-Critical Model Predictive Control with Discrete-Time Control Barrier Function." 2021 American Control Conference (ACC). [[PDF]](https://arxiv.org/pdf/2007.11718.pdf)
+* S. He, J. Zeng, K. Sreenath. "Competitive Car Racing with Multiple Vehicles using a Parallelized Optimization with Safety Guarantee." *submitted to 2022 IEEE International Conference on Robotics and Automation (ICRA)*. [[arXiv]](https://arxiv.org/pdf/2112.06435.pdf)
 
-* S. He, J. Zeng, K. Sreenath. "Competitive Car Racing with Multiple Vehicles using a Parallelized Optimization with Safety Guarantee."[[PDF]](https://arxiv.org/pdf/2112.06435.pdf)
+* J. Zeng, B. Zhang and K. Sreenath. "Safety-Critical Model Predictive Control with Discrete-Time Control Barrier Function." *2021 American Control Conference (ACC)*. [[IEEE]](https://ieeexplore.ieee.org/abstract/document/9483029) [[arXiv]](https://arxiv.org/pdf/2007.11718.pdf)
 
 ## Features
 
@@ -36,6 +36,7 @@ If you find this project useful in your work, please consider citing following p
 ```
 export PYTHONPATH=$PYTHONPATH:`pwd`
 ```
+* Execute `pre-commit install` to install git hooks in your `.git/` directory, which allows auto-formatting if you are willing to contribute to this repository.
 ## Usage
 ### Offboard
 #### System Identification
@@ -44,10 +45,10 @@ Run
 python scripts/system/identification_test.py
 ``` 
 This allows to identify the linearized dynamics of the racing car by regression.
-#### Tracking
+#### Tracking performance with controllers
 Run
 ```
-python scripts/control/tracking_test.py --ctrl-policy mpc-lti --track-layout l_shape --simulation --plotting --animation 
+python scripts/control/control_test.py --ctrl-policy mpc-lti --track-layout l_shape --simulation --plotting --animation 
 ```
 This allows to test algorithm for tracking. The argparse arguments are listed as follow,
 | name | type | choices | description |
@@ -58,10 +59,10 @@ This allows to test algorithm for tracking. The argparse arguments are listed as
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
 
-#### Racing
+#### Racing competition with ego controller
 Run
 ```
-python scripts/control/racing_mpc_cbf_test.py --track-layout l_shape --simulation --plotting --animation
+python scripts/control/mpccbf_test.py --track-layout l_shape --simulation --plotting --animation
 ```
 This allows to test algorithm for MPC-CBF controller. The argparse arguments are listed as follow,
 | name | type | choices | description |
@@ -71,16 +72,18 @@ This allows to test algorithm for MPC-CBF controller. The argparse arguments are
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
 
-#### Racing Game
+#### Racing competition with ego planner and controller
 To save the historic states and inputs used for learning-based MPC, run the following command for each track layout firstly:
 ```
-python scripts/planning/racing_game_test.py --track-layout l_shape --lap-number 7 --simulation --number-other-agents 0 --save-trajectory
+python scripts/planning/overtake_planner_test.py \
+--track-layout l_shape --lap-number 7 --simulation --number-other-agents 0 --save-trajectory
 ```
 Then you can run the following command: 
 ```
-python scripts/planning/racing_game_test.py --track-layout l_shape --lap-number 10 --simulation --direct-lmpc --animation --plotting --number-other-agents 3
+python scripts/planning/overtake_planner_test.py \
+--track-layout l_shape --lap-number 10 --simulation --direct-lmpc --animation --plotting --number-other-agents 3
 ```
-This allows to test algorithm for racing game. The argparse arguments are listed as follow,
+This allows to test algorithm for racing competition. The argparse arguments are listed as follow,
 | name | type | choices | description |
 | :---: | :---: | :---: | :---: |
 | `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
@@ -97,7 +100,7 @@ This allows to test algorithm for racing game. The argparse arguments are listed
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
 Currently, path planner and trajecotry planner are available for the overtaking maneuver. Changing the varibale `self.path_planner` in `base.py` to `True` allows the controller to simulate with path planner, 
-### Realtime
+### Realtime (under development)
 To start the simulator, run the following command in terminal:
 ```
 roslaunch car_racing car_racing_sim.launch track_layout:=goggle
@@ -117,6 +120,4 @@ These allow to start nodes for the vehicle and corresponding controller. The arg
 | `vs`, `vy`, `wz`, `epsi`, `s`, `ey` | float | initial states |vehicle's initial states in Frenet coordinates |
 | `ctrl_policy` | string | `pid`, `mpc-lti`, `mpc-cbf` , `lmpc`| vehicle's controller type| 
 ## Author
-- [Suiyi He](https://github.com/hesuieins)
-- [Jun Zeng](https://github.com/junzengx14)
-## Contributing
+[Suiyi He](https://github.com/hesuieins), [Jun Zeng](https://github.com/junzengx14)

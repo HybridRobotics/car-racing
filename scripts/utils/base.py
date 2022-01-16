@@ -24,7 +24,7 @@ class ControlBase:
         self.u = None
         self.realtime_flag = False
         # store the information (e.g. states, inputs) of current lap
-        self.lap_times, self.lap_xcurvs, self.lap_xglobs, self.lap_inputs = [], [], [],[]
+        self.lap_times, self.lap_xcurvs, self.lap_xglobs, self.lap_inputs = [], [], [], []
         self.lap_times.append(self.time)
         # store the information (e.g. state, inputs) of the whole simulation
         self.times, self.xglobs, self.xcurvs, self.inputs = [], [], [], []
@@ -127,7 +127,7 @@ class MPCTrackingParam:
         matrix_R=np.diag([0.1, 0.1]),
         vt=0.6,
         eyt=0.0,
-        num_horizon = 10
+        num_horizon=10,
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -147,9 +147,7 @@ class MPCTracking(ControlBase):
 
     def calc_input(self):
         xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(X_DIM, 1)
-        self.u = control.mpc_lti(
-            self.x,  xtarget, self.mpc_lti_param, self.track
-        )
+        self.u = control.mpc_lti(self.x, xtarget, self.mpc_lti_param, self.track)
         if self.agent_name == "ego":
             if self.realtime_flag == False:
                 vehicles = self.racing_sim.vehicles
@@ -175,7 +173,7 @@ class MPCCBFRacingParam:
         vt=0.6,
         eyt=0.0,
         num_horizon=10,
-        alpha=0.6
+        alpha=0.6,
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -274,13 +272,13 @@ class RacingGameParam:
         matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
         matrix_Q=np.diag([10.0, 0.0, 0.0, 5.0, 0.0, 50.0]),
         matrix_R=np.diag([0.1, 0.1]),
-        matrix_R_planner = 1 * np.diag([5, 0.10]),
-        matrix_dR_planner = 5 * np.diag([1.8, 0.0]),
+        matrix_R_planner=1 * np.diag([5, 0.10]),
+        matrix_dR_planner=5 * np.diag([1.8, 0.0]),
         bezier_order=3,
         safety_factor=4.5,
         num_horizon_ctrl=10,
         num_horizon_planner=10,
-        planning_prediction_factor=0.5, #2.0,
+        planning_prediction_factor=0.5,  # 2.0,
         alpha=0.98,
         timestep=None,
     ):
@@ -380,28 +378,22 @@ class LMPCRacingGame(ControlBase):
             self.old_ey = None
             self.old_direction_flag = None
             iter = self.iter
-            self.openloop_prediction.predicted_xcurv[
-                :, :, self.time_in_iter, iter
-            ] = self.x_pred
-            self.openloop_prediction.predicted_u[
-                :, :, self.time_in_iter, iter
-            ] = self.u_pred
+            self.openloop_prediction.predicted_xcurv[:, :, self.time_in_iter, iter] = self.x_pred
+            self.openloop_prediction.predicted_u[:, :, self.time_in_iter, iter] = self.u_pred
             self.openloop_prediction.ss_used[
                 :, :, self.time_in_iter, iter
             ] = self.ss_point_selected_tot
-            self.openloop_prediction.Qfun_used[
-                :, self.time_in_iter, iter
-            ] = self.Qfun_selected_tot
+            self.openloop_prediction.Qfun_used[:, self.time_in_iter, iter] = self.Qfun_selected_tot
             self.add_point(self.x, self.u, self.time_in_iter)
             self.time_in_iter = self.time_in_iter + 1
-            x_pred_xglob = np.zeros((12+1,X_DIM))
-            for jjj in range(0,12+1):
-                xxx, yyy = self.track.get_global_position(self.x_pred[jjj,4], self.x_pred[jjj,5])
-                psipsi = self.track.get_orientation(self.x_pred[jjj,4],self.x_pred[jjj,5])
-                x_pred_xglob[jjj,0:3] = self.x_pred[jjj,0:3]
-                x_pred_xglob[jjj,3] = psipsi
-                x_pred_xglob[jjj,4] = xxx
-                x_pred_xglob[jjj,5] = yyy
+            x_pred_xglob = np.zeros((12 + 1, X_DIM))
+            for jjj in range(0, 12 + 1):
+                xxx, yyy = self.track.get_global_position(self.x_pred[jjj, 4], self.x_pred[jjj, 5])
+                psipsi = self.track.get_orientation(self.x_pred[jjj, 4], self.x_pred[jjj, 5])
+                x_pred_xglob[jjj, 0:3] = self.x_pred[jjj, 0:3]
+                x_pred_xglob[jjj, 3] = psipsi
+                x_pred_xglob[jjj, 4] = xxx
+                x_pred_xglob[jjj, 5] = yyy
             self.overtake_planner.vehicles["ego"].local_trajs.append(None)
             self.overtake_planner.vehicles["ego"].vehicles_interest.append(None)
             self.overtake_planner.vehicles["ego"].splines.append(None)
@@ -420,7 +412,7 @@ class LMPCRacingGame(ControlBase):
                     bezier_xglob,
                     solve_time,
                     all_bezier_xglob,
-                    all_traj_xglob
+                    all_traj_xglob,
                 ) = self.overtake_planner.get_local_path(x, self.time, vehicles_interest)
             else:
                 (
@@ -431,16 +423,21 @@ class LMPCRacingGame(ControlBase):
                     bezier_xglob,
                     solve_time,
                     all_bezier_xglob,
-                    all_traj_xglob
-                ) = self.overtake_planner.get_local_traj(x, self.time, vehicles_interest, matrix_Atv, matrix_Btv, matrix_Ctv, self.old_ey, self.old_direction_flag)
+                    all_traj_xglob,
+                ) = self.overtake_planner.get_local_traj(
+                    x,
+                    self.time,
+                    vehicles_interest,
+                    matrix_Atv,
+                    matrix_Btv,
+                    matrix_Ctv,
+                    self.old_ey,
+                    self.old_direction_flag,
+                )
             self.old_ey = overtake_traj_xcurv[-1, 5]
             self.old_direction_flag = direction_flag
-            self.overtake_planner.vehicles["ego"].local_trajs.append(
-                overtake_traj_xglob
-            )
-            self.overtake_planner.vehicles["ego"].vehicles_interest.append(
-                vehicles_interest
-            )
+            self.overtake_planner.vehicles["ego"].local_trajs.append(overtake_traj_xglob)
+            self.overtake_planner.vehicles["ego"].vehicles_interest.append(vehicles_interest)
             self.overtake_planner.vehicles["ego"].splines.append(bezier_xglob)
             self.overtake_planner.vehicles["ego"].solver_time.append(solve_time)
             self.overtake_planner.vehicles["ego"].all_splines.append(all_bezier_xglob)
@@ -453,20 +450,20 @@ class LMPCRacingGame(ControlBase):
                 matrix_Btv,
                 matrix_Ctv,
                 target_traj_xcurv=overtake_traj_xcurv,
-                vehicles = self.overtake_planner.vehicles,
+                vehicles=self.overtake_planner.vehicles,
                 agent_name=self.agent_name,
                 direction_flag=direction_flag,
                 target_traj_xglob=overtake_traj_xglob,
                 sorted_vehicles=sorted_vehicles,
             )
-            x_pred_xglob = np.zeros((10+1,X_DIM))
-            for jjj in range(0,10+1):
-                xxx, yyy = self.track.get_global_position(x_pred[jjj,4], x_pred[jjj,5])
-                psipsi = self.track.get_orientation(x_pred[jjj,4],x_pred[jjj,5])
-                x_pred_xglob[jjj,0:3] = x_pred[jjj,0:3]
-                x_pred_xglob[jjj,3] = psipsi
-                x_pred_xglob[jjj,4] = xxx
-                x_pred_xglob[jjj,5] = yyy
+            x_pred_xglob = np.zeros((10 + 1, X_DIM))
+            for jjj in range(0, 10 + 1):
+                xxx, yyy = self.track.get_global_position(x_pred[jjj, 4], x_pred[jjj, 5])
+                psipsi = self.track.get_orientation(x_pred[jjj, 4], x_pred[jjj, 5])
+                x_pred_xglob[jjj, 0:3] = x_pred[jjj, 0:3]
+                x_pred_xglob[jjj, 3] = psipsi
+                x_pred_xglob[jjj, 4] = xxx
+                x_pred_xglob[jjj, 5] = yyy
             self.overtake_planner.vehicles["ego"].lmpc_prediction.append(None)
             self.overtake_planner.vehicles["ego"].mpc_cbf_prediction.append(x_pred_xglob)
         self.time += self.timestep
@@ -486,7 +483,7 @@ class LMPCRacingGame(ControlBase):
         Btv = []
         Ctv = []
         index_used_list = []
-        lap_used_for_linearization = 2  
+        lap_used_for_linearization = 2
         used_iter = range(iter - lap_used_for_linearization, iter)
         max_num_point = 40
         for i in range(0, num_horizon):
@@ -517,18 +514,12 @@ class LMPCRacingGame(ControlBase):
         )
         self.u_ss[counter + i + 1, :, self.iter - 1] = u[:]
         if self.Qfun[counter + i + 1, self.iter - 1] == 0:
-            self.Qfun[counter + i + 1, self.iter - 1] == self.Qfun[
-                counter + i, self.iter - 1
-            ] - 1
+            self.Qfun[counter + i + 1, self.iter - 1] == self.Qfun[counter + i, self.iter - 1] - 1
 
-    def add_trajectory(
-        self, ego, lap_number
-    ):  
-        
+    def add_trajectory(self, ego, lap_number):
+
         iter = self.iter
-        end_iter = int(
-            round((ego.times[lap_number][-1] - ego.times[lap_number][0]) / ego.timestep)
-        )
+        end_iter = int(round((ego.times[lap_number][-1] - ego.times[lap_number][0]) / ego.timestep))
         times = np.stack(ego.times[lap_number], axis=0)
         self.time_ss[iter] = end_iter
         xcurvs = np.stack(ego.xcurvs[lap_number], axis=0)
@@ -546,9 +537,7 @@ class LMPCRacingGame(ControlBase):
             if self.Qfun[i, iter] == 0:
                 self.Qfun[i, iter] = self.Qfun[i - 1, iter] - 1
         if self.iter == 0:
-            self.lin_points = self.ss_xcurv[
-                1 : self.lmpc_param.num_horizon + 2, :, iter
-            ]
+            self.lin_points = self.ss_xcurv[1 : self.lmpc_param.num_horizon + 2, :, iter]
             self.lin_input = self.u_ss[1 : self.lmpc_param.num_horizon + 1, :, iter]
         self.iter = self.iter + 1
         self.time_in_iter = 0
@@ -646,12 +635,12 @@ class ModelBase:
 
     def set_state_global(self, xglob):
         self.xglob = xglob
-    
+
     def start_logging(self):
-        self.lap_xcurvs, self.lap_xglobs, self.lap_inputs = [], [], [] 
+        self.lap_xcurvs, self.lap_xglobs, self.lap_inputs = [], [], []
         self.lap_xcurvs.append(self.xcurv)
         self.lap_xglobs.append(self.xglob)
-        
+
     def set_track(self, track):
         self.track = track
         self.lap_length = track.lap_length
@@ -707,7 +696,7 @@ class ModelBase:
             self.lap_times.append(self.time)
             self.lap_xcurvs.append(self.xcurv)
             self.lap_inputs.append(self.u)
-    
+
     def get_vehicle_in_rectangle(self, vehicle_xglob):
         car_length = self.param.length
         car_width = self.param.width
@@ -732,7 +721,7 @@ class ModelBase:
             2 * car_dy,
             vehicle_xglob[3] * 180 / 3.14,
         )
-        
+
 
 class NoDynamicsModel(ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
@@ -743,13 +732,13 @@ class NoDynamicsModel(ModelBase):
         self.t_symbol = t_symbol
         self.s_func = s_func
         self.ey_func = ey_func
-        self.xcurv = np.zeros((X_DIM, ))
-        self.xglob = np.zeros((X_DIM, ))
+        self.xcurv = np.zeros((X_DIM,))
+        self.xglob = np.zeros((X_DIM,))
         self.xcurv, self.xglob = self.get_estimation(0)
 
     def get_estimation(self, t0):
         # position estimation in curvilinear coordinates
-        xcurv_est = np.zeros((X_DIM, ))
+        xcurv_est = np.zeros((X_DIM,))
         xcurv_est[0] = sp.diff(self.s_func, self.t_symbol).subs(self.t_symbol, t0)
         xcurv_est[1] = sp.diff(self.ey_func, self.t_symbol).subs(self.t_symbol, t0)
         xcurv_est[2] = 0
@@ -759,7 +748,7 @@ class NoDynamicsModel(ModelBase):
         # position estimation in global coordinates
         X, Y = self.track.get_global_position(xcurv_est[4], xcurv_est[5])
         psi = self.track.get_orientation(xcurv_est[4], xcurv_est[5])
-        xglob_est = np.zeros((X_DIM, ))
+        xglob_est = np.zeros((X_DIM,))
         xglob_est[0:3] = xcurv_est[0:3]
         xglob_est[3] = psi
         xglob_est[4] = X
@@ -789,8 +778,8 @@ class DynamicBicycleModel(ModelBase):
         # dt <= delta_t and ( dt / delta_t) = integer value
         # Discretization Parameters
         delta_t = 0.001
-        xglob_next = np.zeros((X_DIM, ))
-        xcurv_next = np.zeros((X_DIM, ))
+        xglob_next = np.zeros((X_DIM,))
+        xcurv_next = np.zeros((X_DIM,))
         xglob_next = self.xglob
         xcurv_next = self.xcurv
         vehicle_param = CarParam()
@@ -801,9 +790,7 @@ class DynamicBicycleModel(ModelBase):
             if realtime_flag == False:
                 curv = self.track.get_curvature(s)
             else:
-                curv = racing_env.get_curvature(
-                    self.lap_length, self.point_and_tangent, s
-                )
+                curv = racing_env.get_curvature(self.lap_length, self.point_and_tangent, s)
             # for realtime simulation, if no controller is set up, the model won't update
             if self.u is None:
                 pass

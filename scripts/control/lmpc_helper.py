@@ -172,9 +172,7 @@ def regression_and_linearization(
     ds_ey = -dt * (vx * np.cos(epsi) - vy * np.sin(epsi)) / (den * 2) * (-cur)
     Ai[4, :] = [ds_vx, ds_vy, ds_wz, ds_epsi, ds_s, ds_ey]
     Ci[4] = (
-        s
-        + dt * ((vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - cur * ey))
-        - np.dot(Ai[4, :], x0)
+        s + dt * ((vx * np.cos(epsi) - vy * np.sin(epsi)) / (1 - cur * ey)) - np.dot(Ai[4, :], x0)
     )
     # ===========================
     # ===== Linearize ey ========
@@ -249,11 +247,7 @@ def compute_Q_M(
             X0,
             np.hstack(
                 (
-                    np.squeeze(
-                        ss_xcurv[
-                            np.ix_(index_selected[counter], state_features, [iter])
-                        ]
-                    ),
+                    np.squeeze(ss_xcurv[np.ix_(index_selected[counter], state_features, [iter])]),
                     np.squeeze(
                         u_ss[np.ix_(index_selected[counter], input_features, [iter])],
                         axis=2,
@@ -280,12 +274,8 @@ def select_points(ss_xcurv, Qfun, iter, x0, num_ss_points, shift):
     norm = la.norm(diff, 1, axis=1)
     min_norm = np.argmin(norm)
     if min_norm + shift >= 0:
-        ss_points = xcurv[
-            int(shift + min_norm) : int(shift + min_norm + num_ss_points), :
-        ].T
-        sel_Qfun = Qfun[
-            int(shift + min_norm) : int(shift + min_norm + num_ss_points), iter
-        ]
+        ss_points = xcurv[int(shift + min_norm) : int(shift + min_norm + num_ss_points), :].T
+        sel_Qfun = Qfun[int(shift + min_norm) : int(shift + min_norm + num_ss_points), iter]
     else:
         ss_points = xcurv[int(min_norm) : int(min_norm + num_ss_Points), :].T
         sel_Qfun = Qfun[int(min_norm) : int(min_norm + num_ss_Points), iter]
@@ -344,9 +334,7 @@ class LMPCPrediction:
             points_lmpc: maximum simulation timesteps
             num_ss_points: number used to build safe set at each time step
         """
-        self.predicted_xcurv = np.zeros(
-            (num_horizon + 1, X_DIM, points_lmpc, lap_number)
-        )
+        self.predicted_xcurv = np.zeros((num_horizon + 1, X_DIM, points_lmpc, lap_number))
         self.predicted_u = np.zeros((num_horizon, U_DIM, points_lmpc, lap_number))
         self.ss_used = np.zeros((X_DIM, num_ss_points, points_lmpc, lap_number))
         self.Qfun_used = np.zeros((num_ss_points, points_lmpc, lap_number))
@@ -359,9 +347,7 @@ def compute_b(ss_xcurv, y_index, used_iter, matrix, M, index_selected, K):
     for iter in used_iter:
         y = np.append(
             y,
-            np.squeeze(
-                ss_xcurv[np.ix_(index_selected[counter] + 1, [y_index], [iter])]
-            ),
+            np.squeeze(ss_xcurv[np.ix_(index_selected[counter] + 1, [y_index], [iter])]),
         )
         Ktot = np.append(Ktot, K[counter])
         counter = counter + 1

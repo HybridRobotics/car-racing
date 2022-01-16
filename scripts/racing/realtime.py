@@ -151,11 +151,9 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
 
     # in this estimation, the vehicles is assumed to move with input is equal to zero
     def get_estimation(self, xglob, xcurv):
-        curv = racing_env.get_curvature(
-            self.lap_length, self.point_and_tangent, xcurv[4]
-        )
-        xcurv_est = np.zeros((X_DIM, ))
-        xglob_est = np.zeros((X_DIM, ))
+        curv = racing_env.get_curvature(self.lap_length, self.point_and_tangent, xcurv[4])
+        xcurv_est = np.zeros((X_DIM,))
+        xglob_est = np.zeros((X_DIM,))
         xcurv_est[0:3] = xcurv[0:3]
         xcurv_est[3] = xcurv[3] + self.timestep * (
             xcurv[2]
@@ -164,8 +162,7 @@ class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
             * curv
         )
         xcurv_est[4] = xcurv[4] + self.timestep * (
-            (xcurv[0] * np.cos(xcurv[3]) - xcurv[1] * np.sin(xcurv[3]))
-            / (1 - curv * xcurv[5])
+            (xcurv[0] * np.cos(xcurv[3]) - xcurv[1] * np.sin(xcurv[3])) / (1 - curv * xcurv[5])
         )
         xcurv_est[5] = xcurv[5] + self.timestep * (
             xcurv[0] * np.sin(xcurv[3]) + xcurv[1] * np.cos(xcurv[3])
@@ -216,7 +213,7 @@ class ControlBase:
         self.__pub_input = None
         # indicate the realtime simulator
         self.realtime_flag = True
-        self.xglob = np.zeros((X_DIM, ))
+        self.xglob = np.zeros((X_DIM,))
 
     def __track_cb(self, msg):
         size1 = msg.size
@@ -317,12 +314,8 @@ class ControlBase:
 
     def __state_cb(self, msg):
         if self.x is None:
-            self.x = np.zeros((
-                X_DIM, 
-            ))
-            self.xglob = np.zeros((
-                X_DIM, 
-            ))
+            self.x = np.zeros((X_DIM,))
+            self.xglob = np.zeros((X_DIM,))
             self.x[0] = msg.state_curv.vx
             self.x[1] = msg.state_curv.vy
             self.x[2] = msg.state_curv.wz
@@ -401,19 +394,15 @@ class MPCCBFRacing(base.MPCCBFRacing, ControlBase):
                 name = msg.vehicle_list[index]
                 # ego vehicle
                 if name == self.agent_name:
-                    self.vehicles[name] = DynamicBicycleModel(
-                        name=name, param=base.CarParam()
-                    )
+                    self.vehicles[name] = DynamicBicycleModel(name=name, param=base.CarParam())
                     self.vehicles[name].name = self.agent_name
-                    self.vehicles[name].xglob = np.zeros((X_DIM, ))
-                    self.vehicles[name].xcurv = np.zeros((X_DIM, ))
+                    self.vehicles[name].xglob = np.zeros((X_DIM,))
+                    self.vehicles[name].xcurv = np.zeros((X_DIM,))
                 # other vehicle
                 else:
-                    self.vehicles[name] = DynamicBicycleModel(
-                        name=name, param=base.CarParam()
-                    )
-                    self.vehicles[name].xglob = np.zeros((X_DIM, ))
-                    self.vehicles[name].xcurv = np.zeros((X_DIM, ))
+                    self.vehicles[name] = DynamicBicycleModel(name=name, param=base.CarParam())
+                    self.vehicles[name].xglob = np.zeros((X_DIM,))
+                    self.vehicles[name].xcurv = np.zeros((X_DIM,))
                     self.vehicles[name].timestep = self.timestep
                     self.vehicles[name].lap_length = self.lap_length
                     self.vehicles[name].lap_width = self.lap_width
@@ -421,12 +410,8 @@ class MPCCBFRacing(base.MPCCBFRacing, ControlBase):
                     self.vehicles[name].set_subscriber_ctrl(name)
 
     def set_subscriber_veh(self):
-        self.__sub_num_veh = rospy.Subscriber(
-            "vehicle_num", NumVehicle, self.__sub_num_veh_cb
-        )
-        self.__sub_veh_list = rospy.Subscriber(
-            "vehicle_list", VehicleList, self.__sub_veh_list_cb
-        )
+        self.__sub_num_veh = rospy.Subscriber("vehicle_num", NumVehicle, self.__sub_num_veh_cb)
+        self.__sub_veh_list = rospy.Subscriber("vehicle_list", VehicleList, self.__sub_veh_list_cb)
 
 
 # real-time simulator
@@ -444,11 +429,9 @@ class CarRacingSim(base.CarRacingSim):
 
     # add new vehicle in vehicle list
     def add_vehicle(self, req):
-        self.vehicles[req.name] = DynamicBicycleModel(
-            name=req.name, param=base.CarParam()
-        )
-        self.vehicles[req.name].xglob = np.zeros((X_DIM, ))
-        self.vehicles[req.name].xcurv = np.zeros((X_DIM, ))
+        self.vehicles[req.name] = DynamicBicycleModel(name=req.name, param=base.CarParam())
+        self.vehicles[req.name].xglob = np.zeros((X_DIM,))
+        self.vehicles[req.name].xcurv = np.zeros((X_DIM,))
         self.vehicles[req.name].msg_state.name = req.name
         self.vehicles[req.name].set_subscriber_sim(req.name)
         self.num_vehicle = self.num_vehicle + 1
@@ -520,22 +503,14 @@ class Visualization:
         self.ax = ax
 
     def add_vehicle(self, req):
-        self.vehicles[req.name] = DynamicBicycleModel(
-            name=req.name, param=base.CarParam()
-        )
+        self.vehicles[req.name] = DynamicBicycleModel(name=req.name, param=base.CarParam())
         self.vehicles[req.name].ax = self.ax
-        self.vehicles[req.name].xglob = np.zeros((X_DIM, ))
-        self.vehicles[req.name].xcurv = np.zeros((X_DIM, ))
+        self.vehicles[req.name].xglob = np.zeros((X_DIM,))
+        self.vehicles[req.name].xcurv = np.zeros((X_DIM,))
         self.num_vehicle = self.num_vehicle + 1
-        (
-            x_car,
-            y_car,
-            width_car,
-            height_car,
-            angle_car,
-        ) = self.vehicles[req.name].get_vehicle_in_rectangle(
-            self.vehicles[req.name].xglob
-        )
+        (x_car, y_car, width_car, height_car, angle_car,) = self.vehicles[
+            req.name
+        ].get_vehicle_in_rectangle(self.vehicles[req.name].xglob)
         self.vehicles[req.name].patch = patches.Rectangle(
             (x_car, y_car), width_car, height_car, angle_car, color=req.color
         )
