@@ -42,7 +42,7 @@ export PYTHONPATH=$PYTHONPATH:`pwd`
 #### System Identification
 Run
 ```
-python scripts/system/identification_test.py
+python scripts/system/system_identification_test.py
 ``` 
 This allows to identify the linearized dynamics of the racing car by regression.
 #### Tracking performance with controllers
