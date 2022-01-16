@@ -1,6 +1,6 @@
 **Status:** This repository is still under development, expecting new features/papers and a complete tutorial to explain it. Feel free to raise questions/suggestions through GitHub Issues, if you want to use the current version of this repository.
 
-Car Racing
+car-racing
 ==========
 
 This repository provides a toolkit to test control and planning problems for car racing simulation environment.
