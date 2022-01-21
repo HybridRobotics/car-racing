@@ -24,9 +24,21 @@ This repository provides a toolkit to test control and planning problems for car
 ## References
 If you find this project useful in your work, please consider citing following papers:
 
-* S. He, J. Zeng, K. Sreenath. "Competitive Car Racing with Multiple Vehicles using a Parallelized Optimization with Safety Guarantee." *submitted to 2022 IEEE International Conference on Robotics and Automation (ICRA)*. [[arXiv]](https://arxiv.org/pdf/2112.06435.pdf)
+* S. He, J. Zeng, K. Sreenath. "Competitive Car Racing with Multiple Vehicles using a Parallelized Optimization with Safety Guarantee using Control Barrier Functions." *submitted to 2022 IEEE International Conference on Robotics and Automation (ICRA)*. [[arXiv]](https://arxiv.org/pdf/2112.06435.pdf)
 
 * J. Zeng, B. Zhang and K. Sreenath. "Safety-Critical Model Predictive Control with Discrete-Time Control Barrier Function." *2021 American Control Conference (ACC)*. [[IEEE]](https://ieeexplore.ieee.org/abstract/document/9483029) [[arXiv]](https://arxiv.org/pdf/2007.11718.pdf)
+
+```
+@inproceedings{zeng2021mpccbf,
+  title={Safety-critical model predictive control with discrete-time control barrier function},
+  author={Zeng, Jun and Zhang, Bike and Sreenath, Koushil},
+  booktitle={2021 American Control Conference (ACC)},
+  year={2021},
+  volume={},
+  number={},
+  pages={3882-3889}
+}
+```
 
 ## Features
 
@@ -38,13 +50,16 @@ export PYTHONPATH=$PYTHONPATH:`pwd`
 ```
 * Execute `pre-commit install` to install git hooks in your `.git/` directory, which allows auto-formatting if you are willing to contribute to this repository.
 ## Usage
+
 ### Offboard
+
 #### System Identification
 Run
 ```
 python scripts/system/system_identification_test.py
-``` 
+```
 This allows to identify the linearized dynamics of the racing car by regression.
+
 #### Tracking performance with controllers
 Run
 ```
@@ -99,7 +114,8 @@ This allows to test algorithm for racing competition. The argparse arguments are
 | `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
-Currently, path planner and trajecotry planner are available for the overtaking maneuver. Changing the varibale `self.path_planner` in `base.py` to `True` allows the controller to simulate with path planner, 
+Currently, path planner and trajecotry planner are available for the overtaking maneuver. Changing the varibale `self.path_planner` in `base.py` to `True` allows the controller to simulate with path planner.
+
 ### Realtime (under development)
 To start the simulator, run the following command in terminal:
 ```
@@ -118,6 +134,7 @@ These allow to start nodes for the vehicle and corresponding controller. The arg
 | `veh_name` | string | a self-defined name | vehicle's name |
 | `color` | string | color's name | vehicle's color in animation |
 | `vs`, `vy`, `wz`, `epsi`, `s`, `ey` | float | initial states |vehicle's initial states in Frenet coordinates |
-| `ctrl_policy` | string | `pid`, `mpc-lti`, `mpc-cbf` , `lmpc`| vehicle's controller type| 
+| `ctrl_policy` | string | `pid`, `mpc-lti`, `mpc-cbf` , `lmpc`| vehicle's controller type|
+
 ## Author
 [Suiyi He](https://github.com/hesuieins), [Jun Zeng](https://github.com/junzengx14)
