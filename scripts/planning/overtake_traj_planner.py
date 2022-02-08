@@ -179,7 +179,7 @@ class OvertakeTrajPlanner:
         dict_solve_time = manager.dict()
         dict_cost = manager.dict()
         list_opti = []
-        for index in range(num_veh):
+        for index in range(num_veh+1):
             list_opti.append(
                 Process(
                     target=self.generate_traj_per_region,
@@ -191,14 +191,14 @@ class OvertakeTrajPlanner:
                     ),
                 )
             )
-        for index in range(num_veh):
+        for index in range(num_veh+1):
             list_opti[index].start()
-        for index in range(num_veh):
+        for index in range(num_veh+1):
             list_opti[index].join()
         costs = []
         solution_xvar = np.zeros((num_veh + 1, X_DIM, num_horizon + 1))
         solve_time = np.zeros(num_veh + 1)
-        for index in range(num_veh):
+        for index in range(num_veh+1):
             solution_xvar[index, :, :] = dict_traj[index]
             costs.append(dict_cost[index])
             solve_time[index] = dict_solve_time[index]
