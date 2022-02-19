@@ -11,20 +11,27 @@ This repository provides a toolkit to test control and planning problems for car
 - [References](#references)
 - [Features](#features)
 - [Installation](#installation)
-- [Usage](#usage)
+- [Contributing](#contributing)
+- [Quick-Demos](#quick-demos)
+- [Docs](#docs)
     - [Offboard](#offboard)
     - [Realtime](#realtime)
-- [Author](#author)
-- [Contributing](#contributing)
 </details>
 
 ## References
 If you find this project useful in your work, please consider citing following papers:
 
-* S. He, J. Zeng, K. Sreenath. "Competitive Car Racing with Multiple Vehicles using a Parallelized Optimization with Safety Guarantee using Control Barrier Functions." *submitted to 2022 IEEE International Conference on Robotics and Automation (ICRA)*. [[arXiv]](https://arxiv.org/pdf/2112.06435.pdf)
+Parallelized optimization for overtake behavior with multiple autonomous vehicles [[arXiv]](https://arxiv.org/pdf/2112.06435.pdf)
+```
+@inproceedings{he2022parallel,
+  title={Autonomous racing with multiple vehicles using a parallelized optimization with safety guarantee with control barrier functions}, 
+  author={He, Suiyi and Zeng, Jun and Sreenath, Koushil},
+  booktitle={2022 IEEE International Conference on Robotics and Automation (ICRA)},
+  year={2022}
+}
+```
 
-* J. Zeng, B. Zhang and K. Sreenath. "Safety-Critical Model Predictive Control with Discrete-Time Control Barrier Function." *2021 American Control Conference (ACC)*. [[IEEE]](https://ieeexplore.ieee.org/abstract/document/9483029) [[arXiv]](https://arxiv.org/pdf/2007.11718.pdf)
-
+Design model predictive control with control barrier functions for obstacle avoidance in car racing problems [[IEEE]](https://ieeexplore.ieee.org/abstract/document/9483029) [[arXiv]](https://arxiv.org/pdf/2007.11718.pdf)
 ```
 @inproceedings{zeng2021mpccbf,
   title={Safety-critical model predictive control with discrete-time control barrier function},
@@ -40,13 +47,26 @@ If you find this project useful in your work, please consider citing following p
 ## Features
 
 ## Installation
-* Create your environment via `conda env create -f environment.yml`. The default conda environment name is `car-racing`, and you could also choose that name with your own preferences by editing the .yml file.
-* Currently the repository is not created as standard package through setuptools. In order to run examples, run following command in terminal to add root folder into your `PYTHONPATH`.
+* We recommend creating a new conda environment:
+```
+conda env create -f environment.yml
+conda activate car-racing
+```
+
+Currently the repository is not created as standard package through setuptools. In order to run examples, run following command in terminal to add root folder into your `PYTHONPATH`.
 ```
 export PYTHONPATH=$PYTHONPATH:`pwd`
 ```
-* Execute `pre-commit install` to install git hooks in your `.git/` directory, which allows auto-formatting if you are willing to contribute to this repository.
-## Usage
+
+## Contributing
+Execute `pre-commit install` to install git hooks in your `.git/` directory, which allows auto-formatting if you are willing to contribute to this repository.
+
+Please contact major contributors of this repository for additional information.
+
+## Quick-Demos
+
+## Docs
+The following documentation contains documentation and common terminal commands for simulations and testing.
 
 ### Offboard
 
@@ -132,6 +152,3 @@ These allow to start nodes for the vehicle and corresponding controller. The arg
 | `color` | string | color's name | vehicle's color in animation |
 | `vs`, `vy`, `wz`, `epsi`, `s`, `ey` | float | initial states |vehicle's initial states in Frenet coordinates |
 | `ctrl_policy` | string | `pid`, `mpc-lti`, `mpc-cbf` , `lmpc`| vehicle's controller type|
-
-## Author
-[Suiyi He](https://github.com/hesuieins), [Jun Zeng](https://github.com/junzengx14)
