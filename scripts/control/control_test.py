@@ -11,7 +11,7 @@ def tracking(args):
     if args["simulation"]:
         track = racing_env.ClosedTrack(track_spec, track_width=0.8)
         # setup ego car
-        ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"))
+        ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
         ego.set_state_curvilinear(np.zeros((X_DIM,)))
         ego.set_state_global(np.zeros((X_DIM,)))
         ego.start_logging()
@@ -19,7 +19,7 @@ def tracking(args):
             ego.set_ctrl_policy(offboard.PIDTracking(vt=0.8))
         elif args["ctrl_policy"] == "mpc-lti":
             mpc_lti_param = base.MPCTrackingParam(vt=0.8)
-            ego.set_ctrl_policy(offboard.MPCTracking(mpc_lti_param))
+            ego.set_ctrl_policy(offboard.MPCTracking(mpc_lti_param, ego.system_param))
         else:
             raise NotImplementedError
         ego.ctrl_policy.set_timestep(0.1)

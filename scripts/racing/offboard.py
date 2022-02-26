@@ -16,26 +16,26 @@ class PIDTracking(base.PIDTracking):
 
 
 class MPCTracking(base.MPCTracking):
-    def __init__(self, mpc_lti_param):
-        base.MPCTracking.__init__(self, mpc_lti_param)
+    def __init__(self, mpc_lti_param, system_param):
+        base.MPCTracking.__init__(self, mpc_lti_param, system_param)
 
 
 class MPCCBFRacing(base.MPCCBFRacing):
-    def __init__(self, mpc_cbf_param):
-        base.MPCCBFRacing.__init__(self, mpc_cbf_param)
+    def __init__(self, mpc_cbf_param, system_param):
+        base.MPCCBFRacing.__init__(self, mpc_cbf_param, system_param)
         self.realtime_flag = False
 
 
 class LMPCRacingGame(base.LMPCRacingGame):
-    def __init__(self, lmpc_param, racing_game_param=None):
-        base.LMPCRacingGame.__init__(self, lmpc_param, racing_game_param=racing_game_param)
+    def __init__(self, lmpc_param, racing_game_param=None, system_param=None):
+        base.LMPCRacingGame.__init__(self, lmpc_param, racing_game_param=racing_game_param, system_param=system_param)
         self.realt = False
 
 
 # off-board dynamic model
 class DynamicBicycleModel(base.DynamicBicycleModel):
-    def __init__(self, name=None, param=None, xcurv=None, xglob=None):
-        base.DynamicBicycleModel.__init__(self, name=name, param=param)
+    def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
+        base.DynamicBicycleModel.__init__(self, name=name, param=param, system_param=system_param)
 
     # in this estimation, the vehicles is assumed to move with input is equal to zero
     def get_estimation(self, xglob, xcurv):

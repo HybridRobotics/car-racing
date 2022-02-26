@@ -91,7 +91,7 @@ This allows to test algorithm for tracking. The argparse arguments are listed as
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
 
-#### Racing competition with ego controller
+#### Racing competition with ego controller (MPC-CBF)
 Run
 ```
 python scripts/control/mpccbf_test.py --track-layout l_shape --simulation --plotting --animation
@@ -100,6 +100,29 @@ This allows to test algorithm for MPC-CBF controller. The argparse arguments are
 | name | type | choices | description |
 | :---: | :---: | :---: | :---: |
 | `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
+| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
+| `plotting` | action | `store_true` | save plotting if true |
+| `animation` | action | `store_true` | save animation if true |
+
+#### Racing competition with ego controller (LMPC)
+To save the historic states and inputs used for learning-based MPC, run the following command for each track layout firstly:
+```
+python scripts/control/lmpc_test.py \
+--track-layout l_shape --lap-number 7 --simulation --save-trajectory
+```
+Then you can run the following command: 
+```
+python scripts/control/lmpc_test.py \
+--track-layout l_shape --lap-number 10 --simulation --direct-lmpc --animation --plotting
+```
+This allows to test algorithm for learning-based MPC. The argparse arguments are listed as follow,
+| name | type | choices | description |
+| :---: | :---: | :---: | :---: |
+| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
+| `lap_number` | int | any number that is greater than `2` | number of laps that will be simulated |
+| `direct_lmpc` | action | `store_true` | if true, the simulator will begin the LMPC controller directly using store trajectories |
+| `zero_noise` | action | `store_true` | no noises in dynamic update if true |
+|`save_trajectory`| action |`store_true`|if true and when the controller is LMPC, simulator will store the history states and inputs|
 | `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |

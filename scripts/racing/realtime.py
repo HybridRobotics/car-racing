@@ -75,8 +75,8 @@ class ModelBase:
 
 
 class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
-    def __init__(self, name=None, param=None, xcurv=None, xglob=None):
-        base.DynamicBicycleModel.__init__(self, name=name, param=param)
+    def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
+        base.DynamicBicycleModel.__init__(self, name=name, param=param, system_param=system_param)
         ModelBase.__init__(self)
 
     # vehicle state call back function, get the vehicle's state
