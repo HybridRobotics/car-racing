@@ -24,7 +24,7 @@ If you find this project useful in your work, please consider citing following p
 Parallelized optimization for overtake behavior with multiple autonomous vehicles [[arXiv]](https://arxiv.org/pdf/2112.06435.pdf)
 ```
 @inproceedings{he2022parallel,
-  title={Autonomous racing with multiple vehicles using a parallelized optimization with safety guarantee with control barrier functions}, 
+  title={Autonomous racing with multiple vehicles using a parallelized optimization with safety guarantee using control barrier functions},
   author={He, Suiyi and Zeng, Jun and Sreenath, Koushil},
   booktitle={2022 IEEE International Conference on Robotics and Automation (ICRA)},
   year={2022}
