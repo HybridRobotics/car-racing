@@ -8,6 +8,7 @@ This repository provides a toolkit to test control and planning problems for car
  <summary>Click to open Table of Contents</summary>
 
 ## Table of Contents
+- [Preview](#preview)
 - [References](#references)
 - [Features](#features)
 - [Installation](#installation)
@@ -18,10 +19,13 @@ This repository provides a toolkit to test control and planning problems for car
     - [Realtime](#realtime)
 </details>
 
+## Preview
+<img src="/media/release/icra2022.gif?raw=true" width="800"/>
+
 ## References
 If you find this project useful in your work, please consider citing following papers:
 
-Parallelized optimization for overtake behavior with multiple autonomous vehicles [[arXiv]](https://arxiv.org/pdf/2112.06435.pdf)
+Parallelized optimization for overtake racing behavior with multiple autonomous vehicles [[arXiv]](https://arxiv.org/abs/2112.06435) [[Video]](https://youtu.be/1zTXfzdQ8w4)
 ```
 @inproceedings{he2022parallel,
   title={Autonomous racing with multiple vehicles using a parallelized optimization with safety guarantee using control barrier functions},
@@ -31,7 +35,7 @@ Parallelized optimization for overtake behavior with multiple autonomous vehicle
 }
 ```
 
-Design model predictive control with control barrier functions for obstacle avoidance in car racing problems [[IEEE]](https://ieeexplore.ieee.org/abstract/document/9483029) [[arXiv]](https://arxiv.org/pdf/2007.11718.pdf)
+Design model predictive control with control barrier functions for obstacle avoidance in car racing problems [[IEEE]](https://ieeexplore.ieee.org/abstract/document/9483029) [[arXiv]](https://arxiv.org/abs/2007.11718) [[NorCal Control Workshop Talk]](https://youtu.be/IfNgogcLSjE)
 ```
 @inproceedings{zeng2021mpccbf,
   title={Safety-critical model predictive control with discrete-time control barrier function},
