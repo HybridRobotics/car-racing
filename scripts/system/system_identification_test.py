@@ -36,10 +36,11 @@ def linear_time_invariant():
     ego.ctrl_policy.set_racing_sim(simulator)
     simulator.sim(sim_time=500.0)
     # calculate linearized dynamics
-    xdata = np.stack(simulator.vehicles["ego"].closedloop_xcurv, axis=0)
-    udata = np.stack(simulator.vehicles["ego"].closedloop_u, axis=0)
+    xdata = np.stack(simulator.vehicles["ego"].xcurv_log, axis=0)
+    udata = system_identification.get_udata(simulator.vehicles["ego"])
     lamb = 1e-9
-    matrix_A, matrix_B, error = system_id.linear_regression(xdata, udata, lamb)
+    matrix_A, matrix_B, error = system_identification.linear_regression(
+        xdata, udata, lamb)
     np.savetxt("data/track_layout/ellipse.csv", track_spec, delimiter=",")
     np.savetxt("data/sys/LTI/matrix_A.csv", matrix_A, delimiter=",")
     np.savetxt("data/sys/LTI/matrix_B.csv", matrix_B, delimiter=",")

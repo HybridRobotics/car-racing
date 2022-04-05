@@ -24,3 +24,20 @@ def linear_regression(x, u, lamb):
     error = np.vstack((error_max, error_min))
 
     return A, B, error
+
+def get_udata(ego):
+    laps = ego.laps
+    u = np.zeros((round(ego.time / ego.timestep), 2))
+    counter = 0
+    for i in range(0, laps):
+        lap_time_steps = round(
+            (ego.times[i][-1] - ego.times[i][0]) / ego.timestep)
+        for j in range(0, lap_time_steps):
+            u[counter, :] = ego.inputs[i][j][:]
+            counter = counter + 1
+    lap_time_steps = round(
+        (ego.lap_times[-1] - ego.lap_times[0]) / ego.timestep)
+    for i in range(0, lap_time_steps):
+        u[counter, :] = ego.lap_inputs[i][:]
+        counter = counter + 1
+    return u
