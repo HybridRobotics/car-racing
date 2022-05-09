@@ -29,7 +29,7 @@ class MPCCBFRacing(base.MPCCBFRacing):
 class LMPCRacingGame(base.LMPCRacingGame):
     def __init__(self, lmpc_param, racing_game_param=None, system_param=None):
         base.LMPCRacingGame.__init__(self, lmpc_param, racing_game_param=racing_game_param, system_param=system_param)
-        self.realt = False
+        self.realtime_flag = False
 
 
 # off-board dynamic model
