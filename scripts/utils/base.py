@@ -94,7 +94,7 @@ class ControlBase:
             self.lap_inputs.append(self.u)
 
 
-class PIDTracking(ControlBase):
+class PidTrackingBase(ControlBase):
     def __init__(self, vt=0.6, eyt=0.0):
         ControlBase.__init__(self)
         self.set_target_speed(vt)
@@ -118,7 +118,7 @@ class PIDTracking(ControlBase):
         self.time += self.timestep
 
 
-class MPCTrackingParam:
+class MpcTrackingParam:
     def __init__(
         self,
         matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
@@ -138,7 +138,7 @@ class MPCTrackingParam:
         self.num_horizon = num_horizon
 
 
-class MPCTracking(ControlBase):
+class MpcTrackingBase(ControlBase):
     def __init__(self, mpc_lti_param, system_param):
         ControlBase.__init__(self)
         self.set_target_speed(mpc_lti_param.vt)
@@ -165,7 +165,7 @@ class MPCTracking(ControlBase):
         self.time += self.timestep
 
 
-class MPCCBFRacingParam:
+class MpcCbfRacingParam:
     def __init__(
         self,
         matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
@@ -187,7 +187,7 @@ class MPCCBFRacingParam:
         self.alpha = alpha
 
 
-class MPCCBFRacing(ControlBase):
+class MpcCbfRacingBase(ControlBase):
     def __init__(self, mpc_cbf_param, system_param):
         ControlBase.__init__(self)
         self.set_target_speed(mpc_cbf_param.vt)
@@ -244,7 +244,7 @@ class MPCCBFRacing(ControlBase):
         self.time += self.timestep
 
 
-class LMPCRacingParam:
+class LmpcRacingParam:
     def __init__(
         self,
         matrix_Q=0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
@@ -304,7 +304,7 @@ class RacingGameParam:
         self.safety_factor = safety_factor
 
 
-class LMPCRacingGame(ControlBase):
+class LmpcRacingGameBase(ControlBase):
     def __init__(self, lmpc_param, racing_game_param=None, system_param=None):
         ControlBase.__init__(self)
         self.path_planner = False
@@ -767,7 +767,7 @@ class ModelBase:
         )
 
 
-class NoDynamicsModel(ModelBase):
+class NoDynamicsModelBase(ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
         ModelBase.__init__(self, name=name, param=param)
         self.no_dynamics = True
@@ -816,7 +816,7 @@ class NoDynamicsModel(ModelBase):
         self.xcurv, self.xglob = self.get_estimation(self.time)
 
 
-class DynamicBicycleModel(ModelBase):
+class DynamicBicycleModelBase(ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
         ModelBase.__init__(self, name=name, param=param,
                            system_param=system_param)
@@ -873,7 +873,7 @@ class DynamicBicycleModel(ModelBase):
 
 
 # Base Simulator
-class CarRacingSim:
+class CarRacingSimBase:
     def __init__(self):
         self.track = None
         self.vehicles = {}

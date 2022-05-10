@@ -57,7 +57,7 @@ def start_simulator(track_layout):
     track_spec = np.genfromtxt("../../data/track_layout/" + track_layout + ".csv", delimiter=",")
     track_width = 0.5
     track = racing_env.ClosedTrack(track_spec, track_width)
-    sim = realtime.CarRacingSim()
+    sim = realtime.CarRacingSimRealtime()
     sim.set_track(track)
     # determin if new vehicle is added
     s = rospy.Service("add_vehicle_simulator", AddNewVehicle, sim.add_vehicle)

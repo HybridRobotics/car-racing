@@ -22,14 +22,14 @@ def linear_time_invariant():
     )
     track = racing_env.ClosedTrack(track_spec, track_width=1.0)
     # setup ego car
-    ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"))
+    ego = offboard.DynamicBicycleModelOffboard(name="ego", param=base.CarParam(edgecolor="black"))
     ego.set_state_curvilinear(np.array([0.3, 0, 0, 0, 0, 0]))
     ego.set_state_global(np.array([0.3, 0, 0, 0, 0, 0]))
-    ego.set_ctrl_policy(offboard.PIDTracking(vt=0.5))
+    ego.set_ctrl_policy(offboard.PidTrackingOffboard(vt=0.5))
     ego.ctrl_policy.set_timestep(0.1)
     ego.set_track(track)
     # setup simulation
-    simulator = offboard.CarRacingSim()
+    simulator = offboard.CarRacingSimOffboard()
     simulator.set_timestep(0.1)
     simulator.set_track(track)
     simulator.add_vehicle(ego)

@@ -46,7 +46,7 @@ def lmpc_racing(args):
             ego.system_param
         )
         # define a simulator
-        simulator = offboard.CarRacingSim()
+        simulator = offboard.CarRacingSimOffboard()
         simulator.set_timestep(timestep)
         simulator.set_track(track)
         simulator.add_vehicle(ego)
@@ -199,11 +199,11 @@ def lmpc_racing(args):
 
 
 def set_up_ego(timestep, track):
-    ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(
+    ego = offboard.DynamicBicycleModelOffboard(name="ego", param=base.CarParam(
         edgecolor="black"), system_param=base.SystemParam())
     ego.set_timestep(timestep)
     # run the pid controller for the first lap to collect data
-    pid_controller = offboard.PIDTracking(vt=0.7, eyt=0.0)
+    pid_controller = offboard.PidTrackingOffboard(vt=0.7, eyt=0.0)
     pid_controller.set_timestep(timestep)
     ego.set_ctrl_policy(pid_controller)
     pid_controller.set_track(track)
@@ -212,8 +212,8 @@ def set_up_ego(timestep, track):
     ego.start_logging()
     ego.set_track(track)
     # run mpc-lti controller for the second lap to collect data
-    mpc_lti_param = base.MPCTrackingParam(vt=0.7, eyt=0.0)
-    mpc_lti_controller = offboard.MPCTracking(mpc_lti_param, ego.system_param)
+    mpc_lti_param = base.MpcTrackingParam(vt=0.7, eyt=0.0)
+    mpc_lti_controller = offboard.MpcTrackingOffboard(mpc_lti_param, ego.system_param)
     mpc_lti_controller.set_timestep(timestep)
     mpc_lti_controller.set_track(track)
     return ego, pid_controller, mpc_lti_controller
@@ -221,11 +221,11 @@ def set_up_ego(timestep, track):
 
 def set_up_lmpc(timestep, track, lap_number, opti_traj_xcurv, opti_traj_xglob, system_param):
     time_lmpc = 10000 * timestep
-    lmpc_param = base.LMPCRacingParam(
+    lmpc_param = base.LmpcRacingParam(
         timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc)
     racing_game_param = base.RacingGameParam(
         timestep=timestep, num_horizon_planner=10)
-    lmpc_controller = offboard.LMPCRacingGame(
+    lmpc_controller = offboard.LmpcRacingGameOffboard(
         lmpc_param, racing_game_param=racing_game_param, system_param=system_param)
     lmpc_controller.set_track(track)
     lmpc_controller.set_timestep(timestep)

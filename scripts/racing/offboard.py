@@ -10,32 +10,32 @@ from scripts.utils.constants import *
 import pickle
 
 # off-board controller
-class PIDTracking(base.PIDTracking):
+class PidTrackingOffboard(base.PidTrackingBase):
     def __init__(self, vt=0.6, eyt=0.0):
-        base.PIDTracking.__init__(self, vt, eyt)
+        base.PidTrackingBase.__init__(self, vt, eyt)
 
 
-class MPCTracking(base.MPCTracking):
+class MpcTrackingOffboard(base.MpcTrackingBase):
     def __init__(self, mpc_lti_param, system_param):
-        base.MPCTracking.__init__(self, mpc_lti_param, system_param)
+        base.MpcTrackingBase.__init__(self, mpc_lti_param, system_param)
 
 
-class MPCCBFRacing(base.MPCCBFRacing):
+class MpcCbfRacingOffboard(base.MpcCbfRacingBase):
     def __init__(self, mpc_cbf_param, system_param):
-        base.MPCCBFRacing.__init__(self, mpc_cbf_param, system_param)
+        base.MpcCbfRacingBase.__init__(self, mpc_cbf_param, system_param)
         self.realtime_flag = False
 
 
-class LMPCRacingGame(base.LMPCRacingGame):
+class LmpcRacingGameOffboard(base.LmpcRacingGameBase):
     def __init__(self, lmpc_param, racing_game_param=None, system_param=None):
-        base.LMPCRacingGame.__init__(self, lmpc_param, racing_game_param=racing_game_param, system_param=system_param)
+        base.LmpcRacingGameBase.__init__(self, lmpc_param, racing_game_param=racing_game_param, system_param=system_param)
         self.realtime_flag = False
 
 
 # off-board dynamic model
-class DynamicBicycleModel(base.DynamicBicycleModel):
+class DynamicBicycleModelOffboard(base.DynamicBicycleModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
-        base.DynamicBicycleModel.__init__(self, name=name, param=param, system_param=system_param)
+        base.DynamicBicycleModelBase.__init__(self, name=name, param=param, system_param=system_param)
 
     # in this estimation, the vehicles is assumed to move with input is equal to zero
     def get_estimation(self, xglob, xcurv):
@@ -84,15 +84,15 @@ class DynamicBicycleModel(base.DynamicBicycleModel):
         return xcurv_nsteps, xglob_nsteps
 
 
-class NoDynamicsModel(base.NoDynamicsModel):
+class NoDynamicsModelOffboard(base.NoDynamicsModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
-        base.NoDynamicsModel.__init__(self, name=name, param=param)
+        base.NoDynamicsModelBase.__init__(self, name=name, param=param)
 
 
 # off-board simulator
-class CarRacingSim(base.CarRacingSim):
+class CarRacingSimOffboard(base.CarRacingSimBase):
     def __init__(self):
-        base.CarRacingSim.__init__(self)
+        base.CarRacingSimBase.__init__(self)
         self.ax = None
         self.fig = None
 
