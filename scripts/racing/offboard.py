@@ -282,10 +282,12 @@ class CarRacingSimOffboard(base.CarRacingSimBase):
                 all_local_spline.append(local_spline_1)
                 all_local_traj.append(local_traj_1)
             horizon_planner = self.vehicles["ego"].ctrl_policy.racing_game_param.num_horizon_planner
+            horizon_mpc_cbf = self.vehicles["ego"].ctrl_policy.racing_game_param.num_horizon_ctrl
+            horizon_lmpc =  self.vehicles["ego"].ctrl_policy.lmpc_param.num_horizon
             local_traj_xglob = np.zeros((ani_time, horizon_planner + 1, X_DIM))
             local_spline_xglob = np.zeros((ani_time, horizon_planner + 1, X_DIM))
-            mpc_cbf_prediction = np.zeros((ani_time, 10 + 1, X_DIM))
-            lmpc_prediction = np.zeros((ani_time, 12 + 1, X_DIM))
+            mpc_cbf_prediction = np.zeros((ani_time, horizon_mpc_cbf + 1, X_DIM))
+            lmpc_prediction = np.zeros((ani_time, horizon_lmpc + 1, X_DIM))
             all_local_traj_xglob = []
             all_local_spline_xglob = []
         else:
@@ -390,7 +392,7 @@ class CarRacingSimOffboard(base.CarRacingSimBase):
                                 (horizon_planner + 1, X_DIM)
                             )
                             mpc_cbf_prediction[ani_time - 1 - counter, :, :] = np.zeros(
-                                (10 + 1, X_DIM)
+                                (horizon_mpc_cbf + 1, X_DIM)
                             )
                             lmpc_prediction[ani_time - 1 - counter, :, :] = self.vehicles[
                                 name
@@ -403,7 +405,7 @@ class CarRacingSimOffboard(base.CarRacingSimBase):
                                 name
                             ].mpc_cbf_prediction[-1 - j][:, :]
                             lmpc_prediction[ani_time - 1 - counter, :, :] = np.zeros(
-                                (12 + 1, X_DIM)
+                                (horizon_lmpc + 1, X_DIM)
                             )
                         if self.vehicles[name].vehicles_interest[-1 - j] is None:
                             vehicles_interest.insert(0, None)

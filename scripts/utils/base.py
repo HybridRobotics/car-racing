@@ -402,8 +402,8 @@ class LmpcRacingGameBase(ControlBase):
                                                self.time_in_iter, iter] = self.Qfun_selected_tot
             self.add_point(self.x, self.u, self.time_in_iter)
             self.time_in_iter = self.time_in_iter + 1
-            x_pred_xglob = np.zeros((12 + 1, X_DIM))
-            for jjj in range(0, 12 + 1):
+            x_pred_xglob = np.zeros((self.lmpc_param.num_horizon + 1, X_DIM))
+            for jjj in range(0, self.lmpc_param.num_horizon + 1):
                 xxx, yyy = self.track.get_global_position(
                     self.x_pred[jjj, 4], self.x_pred[jjj, 5])
                 psipsi = self.track.get_orientation(
@@ -483,8 +483,8 @@ class LmpcRacingGameBase(ControlBase):
                 target_traj_xglob=overtake_traj_xglob,
                 sorted_vehicles=sorted_vehicles,
             )
-            x_pred_xglob = np.zeros((10 + 1, X_DIM))
-            for jjj in range(0, 10 + 1):
+            x_pred_xglob = np.zeros((self.racing_game_param.num_horizon_planner + 1, X_DIM))
+            for jjj in range(0, self.racing_game_param.num_horizon_planner + 1):
                 xxx, yyy = self.track.get_global_position(
                     x_pred[jjj, 4], x_pred[jjj, 5])
                 psipsi = self.track.get_orientation(
@@ -513,7 +513,7 @@ class LmpcRacingGameBase(ControlBase):
         Btv = []
         Ctv = []
         index_used_list = []
-        lap_used_for_linearization = 2
+        lap_used_for_linearization = self.lmpc_param.num_ss_iter
         used_iter = range(iter - lap_used_for_linearization, iter)
         max_num_point = 40
         for i in range(0, num_horizon):
