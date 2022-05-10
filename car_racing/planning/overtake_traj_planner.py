@@ -1,8 +1,8 @@
 import datetime
 import numpy as np
 import casadi as ca
-from scripts.control import lmpc_helper
-from scripts.planning.planner_helper import *
+from control import lmpc_helper
+from planning.planner_helper import *
 from casadi import *
 from scipy.interpolate import interp1d
 from multiprocess import Process, Manager

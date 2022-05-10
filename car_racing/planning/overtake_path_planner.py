@@ -1,14 +1,14 @@
 import datetime
 import numpy as np
 import casadi as ca
-from scripts.utils import racing_env
-from scripts.control import lmpc_helper
-from scripts.planning.planner_helper import *
+from utils import racing_env
+from control import lmpc_helper
+from planning.planner_helper import *
 from casadi import *
 from scipy import sparse
 from scipy.sparse import vstack
 from scipy.interpolate import interp1d
-from scripts.utils.constants import *
+from utils.constants import *
 
 
 class OvertakePathPlanner:

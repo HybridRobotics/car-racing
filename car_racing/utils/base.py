@@ -1,11 +1,11 @@
 import datetime
 import numpy as np
 import sympy as sp
-from scripts.utils.constants import *
-from scripts.utils import racing_env
-from scripts.system import vehicle_dynamics
-from scripts.control import control, lmpc_helper
-from scripts.planning import overtake_path_planner, overtake_traj_planner
+from utils.constants import *
+from utils import racing_env
+from system import vehicle_dynamics
+from control import control, lmpc_helper
+from planning import overtake_path_planner, overtake_traj_planner
 from scipy.interpolate import interp1d
 from pathos.multiprocessing import ProcessingPool as Pool
 from cvxopt.solvers import qp
@@ -94,7 +94,7 @@ class ControlBase:
             self.lap_inputs.append(self.u)
 
 
-class PidTrackingBase(ControlBase):
+class PIDTracking(ControlBase):
     def __init__(self, vt=0.6, eyt=0.0):
         ControlBase.__init__(self)
         self.set_target_speed(vt)
@@ -118,7 +118,7 @@ class PidTrackingBase(ControlBase):
         self.time += self.timestep
 
 
-class MpcTrackingParam:
+class MPCTrackingParam:
     def __init__(
         self,
         matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
@@ -138,7 +138,7 @@ class MpcTrackingParam:
         self.num_horizon = num_horizon
 
 
-class MpcTrackingBase(ControlBase):
+class MPCTracking(ControlBase):
     def __init__(self, mpc_lti_param, system_param):
         ControlBase.__init__(self)
         self.set_target_speed(mpc_lti_param.vt)
@@ -165,7 +165,7 @@ class MpcTrackingBase(ControlBase):
         self.time += self.timestep
 
 
-class MpcCbfRacingParam:
+class MPCCBFRacingParam:
     def __init__(
         self,
         matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
@@ -187,7 +187,7 @@ class MpcCbfRacingParam:
         self.alpha = alpha
 
 
-class MpcCbfRacingBase(ControlBase):
+class MPCCBFRacing(ControlBase):
     def __init__(self, mpc_cbf_param, system_param):
         ControlBase.__init__(self)
         self.set_target_speed(mpc_cbf_param.vt)
@@ -244,7 +244,7 @@ class MpcCbfRacingBase(ControlBase):
         self.time += self.timestep
 
 
-class LmpcRacingParam:
+class LMPCRacingParam:
     def __init__(
         self,
         matrix_Q=0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
@@ -304,7 +304,7 @@ class RacingGameParam:
         self.safety_factor = safety_factor
 
 
-class LmpcRacingGameBase(ControlBase):
+class LMPCRacingGame(ControlBase):
     def __init__(self, lmpc_param, racing_game_param=None, system_param=None):
         ControlBase.__init__(self)
         self.path_planner = False
@@ -402,8 +402,8 @@ class LmpcRacingGameBase(ControlBase):
                                                self.time_in_iter, iter] = self.Qfun_selected_tot
             self.add_point(self.x, self.u, self.time_in_iter)
             self.time_in_iter = self.time_in_iter + 1
-            x_pred_xglob = np.zeros((self.lmpc_param.num_horizon + 1, X_DIM))
-            for jjj in range(0, self.lmpc_param.num_horizon + 1):
+            x_pred_xglob = np.zeros((12 + 1, X_DIM))
+            for jjj in range(0, 12 + 1):
                 xxx, yyy = self.track.get_global_position(
                     self.x_pred[jjj, 4], self.x_pred[jjj, 5])
                 psipsi = self.track.get_orientation(
@@ -483,8 +483,8 @@ class LmpcRacingGameBase(ControlBase):
                 target_traj_xglob=overtake_traj_xglob,
                 sorted_vehicles=sorted_vehicles,
             )
-            x_pred_xglob = np.zeros((self.racing_game_param.num_horizon_planner + 1, X_DIM))
-            for jjj in range(0, self.racing_game_param.num_horizon_planner + 1):
+            x_pred_xglob = np.zeros((10 + 1, X_DIM))
+            for jjj in range(0, 10 + 1):
                 xxx, yyy = self.track.get_global_position(
                     x_pred[jjj, 4], x_pred[jjj, 5])
                 psipsi = self.track.get_orientation(
@@ -513,7 +513,7 @@ class LmpcRacingGameBase(ControlBase):
         Btv = []
         Ctv = []
         index_used_list = []
-        lap_used_for_linearization = self.lmpc_param.num_ss_iter
+        lap_used_for_linearization = 2
         used_iter = range(iter - lap_used_for_linearization, iter)
         max_num_point = 40
         for i in range(0, num_horizon):
@@ -767,7 +767,7 @@ class ModelBase:
         )
 
 
-class NoDynamicsModelBase(ModelBase):
+class NoDynamicsModel(ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
         ModelBase.__init__(self, name=name, param=param)
         self.no_dynamics = True
@@ -816,7 +816,7 @@ class NoDynamicsModelBase(ModelBase):
         self.xcurv, self.xglob = self.get_estimation(self.time)
 
 
-class DynamicBicycleModelBase(ModelBase):
+class DynamicBicycleModel(ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
         ModelBase.__init__(self, name=name, param=param,
                            system_param=system_param)
@@ -873,7 +873,7 @@ class DynamicBicycleModelBase(ModelBase):
 
 
 # Base Simulator
-class CarRacingSimBase:
+class CarRacingSim:
     def __init__(self):
         self.track = None
         self.vehicles = {}

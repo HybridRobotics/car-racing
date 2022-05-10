@@ -3,8 +3,8 @@ import numpy as np
 import rospy
 import pylab
 import matplotlib.pyplot as plt
-from scripts.racing import realtime
-from scripts.utils import racing_env
+from racing import realtime
+from utils import racing_env
 from car_racing.msg import (
     VehicleControl,
     VehicleState,
@@ -16,7 +16,7 @@ from car_racing.msg import (
     OptimalTraj,
 )
 from car_racing.srv import AddNewVehicle
-from scripts.utils.constants import *
+from utils.constants import *
 
 
 def get_msg_xglob(state):
@@ -57,7 +57,7 @@ def start_simulator(track_layout):
     track_spec = np.genfromtxt("../../data/track_layout/" + track_layout + ".csv", delimiter=",")
     track_width = 0.5
     track = racing_env.ClosedTrack(track_spec, track_width)
-    sim = realtime.CarRacingSimRealtime()
+    sim = realtime.CarRacingSim()
     sim.set_track(track)
     # determin if new vehicle is added
     s = rospy.Service("add_vehicle_simulator", AddNewVehicle, sim.add_vehicle)

@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib import animation
 import time
-from scripts.utils import racing_env
-from scripts.racing import realtime
+from utils import racing_env
+from racing import realtime
 from car_racing.msg import VehicleControl, VehicleState
 from car_racing.srv import AddNewVehicle
 

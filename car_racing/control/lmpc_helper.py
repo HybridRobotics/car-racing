@@ -4,8 +4,8 @@ from numpy import linalg as la
 from scipy import linalg
 import datetime
 from cvxopt.solvers import qp
-from scripts.utils import racing_env
-from scripts.utils.constants import *
+from utils import racing_env
+from utils.constants import *
 
 
 def compute_cost(xcurv, u, lap_length):

@@ -4,10 +4,10 @@ import numpy as np
 import time
 import datetime
 from car_racing.msg import VehicleControl, VehicleState
-from scripts.utils import base
-from scripts.control import lmpc_helper
-from scripts.utils.constants import *
-from scripts.racing import realtime
+from utils import base
+from control import lmpc_helper
+from utils.constants import *
+from racing import realtime
 
 
 def set_controller(args):
@@ -21,16 +21,16 @@ def set_controller(args):
     matrix_B = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=",")
     matrix_Q = np.diag([10.0, 0.0, 0.0, 0.0, 0.0, 10.0])
     matrix_R = np.diag([0.1, 0.1])
-    mpc_lti_param = base.MpcTrackingParam(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
+    mpc_lti_param = base.MPCTrackingParam(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
     if ctrl_policy == "mpc-lti":
-        ctrl = realtime.MpcTrackingRealtime(mpc_lti_param)
+        ctrl = realtime.MPCTracking(mpc_lti_param)
         ctrl.set_subscriber_track()
     elif ctrl_policy == "pid":
-        ctrl = realtime.PidTrackingRealtime(vt=0.8)
+        ctrl = realtime.PIDTracking(vt=0.8)
         ctrl.set_subscriber_track()
     elif ctrl_policy == "mpc-cbf":
-        mpc_cbf_param = base.MpcCbfRacingParam(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
-        ctrl = realtime.MpcCbfRacingRealtime(mpc_cbf_param)
+        mpc_cbf_param = base.MPCCBFRacingParam(matrix_A, matrix_B, matrix_Q, matrix_R, vt=0.8)
+        ctrl = realtime.MPCCBFRacing(mpc_cbf_param)
         ctrl.agent_name = veh_name
         ctrl.set_subscriber_track()
         ctrl.set_subscriber_veh()
@@ -50,7 +50,7 @@ def set_controller(args):
         matrix_R_LMPC = 1 * np.diag([1.0, 1.0])
         # Input rate cost u
         matrix_dR_LMPC = 5 * np.diag([1.0, 1.0])
-        lmpc_param = base.LmpcRacingParam(
+        lmpc_param = base.LMPCRacingParam(
             num_ss_points,
             num_ss_it,
             N,
@@ -64,18 +64,18 @@ def set_controller(args):
             time_lmpc,
         )
 
-        lmpc_ctrl = realtime.LmpcRacingGameRealtime(lmpc_param)
+        lmpc_ctrl = realtime.LMPCRacingGame(lmpc_param)
         lmpc_ctrl.openloop_prediction_lmpc = lmpc_helper.lmpc_prediction(
             N, points_lmpc, num_ss_points, laps_number
         )
         lmpc_ctrl.set_subscriber_track()
         lmpc_ctrl.set_timestep(timestep)
         lmpc_ctrl.u = np.zeros(2)
-        pid_ctrl = realtime.PidTrackingRealtime(vt=0.8)
+        pid_ctrl = realtime.PIDTracking(vt=0.8)
         pid_ctrl.set_subscriber_track()
         pid_ctrl.set_timestep(timestep)
         pid_ctrl.u = np.zeros(2)
-        mpc_lti_ctrl = realtime.MpcTrackingRealtime(mpc_lti_param)
+        mpc_lti_ctrl = realtime.MPCTracking(mpc_lti_param)
         mpc_lti_ctrl.set_subscriber_track()
         mpc_lti_ctrl.set_timestep(timestep)
         mpc_lti_ctrl.u = np.zeros(2)

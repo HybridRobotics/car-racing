@@ -3,39 +3,39 @@ import sympy as sp
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.animation as anim
-from scripts.utils import base, racing_env
-from scripts.system import vehicle_dynamics
+from utils import base, racing_env
+from system import vehicle_dynamics
 from matplotlib import animation
-from scripts.utils.constants import *
+from utils.constants import *
 import pickle
 
 # off-board controller
-class PidTrackingOffboard(base.PidTrackingBase):
+class PIDTracking(base.PIDTracking):
     def __init__(self, vt=0.6, eyt=0.0):
-        base.PidTrackingBase.__init__(self, vt, eyt)
+        base.PIDTracking.__init__(self, vt, eyt)
 
 
-class MpcTrackingOffboard(base.MpcTrackingBase):
+class MPCTracking(base.MPCTracking):
     def __init__(self, mpc_lti_param, system_param):
-        base.MpcTrackingBase.__init__(self, mpc_lti_param, system_param)
+        base.MPCTracking.__init__(self, mpc_lti_param, system_param)
 
 
-class MpcCbfRacingOffboard(base.MpcCbfRacingBase):
+class MPCCBFRacing(base.MPCCBFRacing):
     def __init__(self, mpc_cbf_param, system_param):
-        base.MpcCbfRacingBase.__init__(self, mpc_cbf_param, system_param)
+        base.MPCCBFRacing.__init__(self, mpc_cbf_param, system_param)
         self.realtime_flag = False
 
 
-class LmpcRacingGameOffboard(base.LmpcRacingGameBase):
+class LMPCRacingGame(base.LMPCRacingGame):
     def __init__(self, lmpc_param, racing_game_param=None, system_param=None):
-        base.LmpcRacingGameBase.__init__(self, lmpc_param, racing_game_param=racing_game_param, system_param=system_param)
+        base.LMPCRacingGame.__init__(self, lmpc_param, racing_game_param=racing_game_param, system_param=system_param)
         self.realtime_flag = False
 
 
 # off-board dynamic model
-class DynamicBicycleModelOffboard(base.DynamicBicycleModelBase):
+class DynamicBicycleModel(base.DynamicBicycleModel):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
-        base.DynamicBicycleModelBase.__init__(self, name=name, param=param, system_param=system_param)
+        base.DynamicBicycleModel.__init__(self, name=name, param=param, system_param=system_param)
 
     # in this estimation, the vehicles is assumed to move with input is equal to zero
     def get_estimation(self, xglob, xcurv):
@@ -84,15 +84,15 @@ class DynamicBicycleModelOffboard(base.DynamicBicycleModelBase):
         return xcurv_nsteps, xglob_nsteps
 
 
-class NoDynamicsModelOffboard(base.NoDynamicsModelBase):
+class NoDynamicsModel(base.NoDynamicsModel):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
-        base.NoDynamicsModelBase.__init__(self, name=name, param=param)
+        base.NoDynamicsModel.__init__(self, name=name, param=param)
 
 
 # off-board simulator
-class CarRacingSimOffboard(base.CarRacingSimBase):
+class CarRacingSim(base.CarRacingSim):
     def __init__(self):
-        base.CarRacingSimBase.__init__(self)
+        base.CarRacingSim.__init__(self)
         self.ax = None
         self.fig = None
 
@@ -282,12 +282,10 @@ class CarRacingSimOffboard(base.CarRacingSimBase):
                 all_local_spline.append(local_spline_1)
                 all_local_traj.append(local_traj_1)
             horizon_planner = self.vehicles["ego"].ctrl_policy.racing_game_param.num_horizon_planner
-            horizon_mpc_cbf = self.vehicles["ego"].ctrl_policy.racing_game_param.num_horizon_ctrl
-            horizon_lmpc =  self.vehicles["ego"].ctrl_policy.lmpc_param.num_horizon
             local_traj_xglob = np.zeros((ani_time, horizon_planner + 1, X_DIM))
             local_spline_xglob = np.zeros((ani_time, horizon_planner + 1, X_DIM))
-            mpc_cbf_prediction = np.zeros((ani_time, horizon_mpc_cbf + 1, X_DIM))
-            lmpc_prediction = np.zeros((ani_time, horizon_lmpc + 1, X_DIM))
+            mpc_cbf_prediction = np.zeros((ani_time, 10 + 1, X_DIM))
+            lmpc_prediction = np.zeros((ani_time, 12 + 1, X_DIM))
             all_local_traj_xglob = []
             all_local_spline_xglob = []
         else:
@@ -392,7 +390,7 @@ class CarRacingSimOffboard(base.CarRacingSimBase):
                                 (horizon_planner + 1, X_DIM)
                             )
                             mpc_cbf_prediction[ani_time - 1 - counter, :, :] = np.zeros(
-                                (horizon_mpc_cbf + 1, X_DIM)
+                                (10 + 1, X_DIM)
                             )
                             lmpc_prediction[ani_time - 1 - counter, :, :] = self.vehicles[
                                 name
@@ -405,7 +403,7 @@ class CarRacingSimOffboard(base.CarRacingSimBase):
                                 name
                             ].mpc_cbf_prediction[-1 - j][:, :]
                             lmpc_prediction[ani_time - 1 - counter, :, :] = np.zeros(
-                                (horizon_lmpc + 1, X_DIM)
+                                (12 + 1, X_DIM)
                             )
                         if self.vehicles[name].vehicles_interest[-1 - j] is None:
                             vehicles_interest.insert(0, None)

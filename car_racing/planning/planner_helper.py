@@ -3,7 +3,7 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import copy
-from scripts.utils.constants import *
+from utils.constants import *
 
 
 def get_agent_range(s_agent, ey_agent, epsi_agent, length, width):

@@ -57,9 +57,9 @@ conda env create -f environment.yml
 conda activate car-racing
 ```
 
-Currently the repository is not created as standard package through setuptools. In order to run examples, run following command in terminal to add root folder into your `PYTHONPATH`.
+Run following command in terminal to install the car racing simulator package.
 ```
-export PYTHONPATH=$PYTHONPATH:`pwd`
+pip install -e .
 ```
 
 ## Contributing
@@ -77,14 +77,14 @@ The following documentation contains documentation and common terminal commands 
 #### System Identification
 Run
 ```
-python scripts/system/system_identification_test.py
+python car_racing/tests/system_identification_test.py
 ```
 This allows to identify the linearized dynamics of the racing car by regression.
 
 #### Tracking performance with controllers
 Run
 ```
-python scripts/control/control_test.py --ctrl-policy mpc-lti --track-layout l_shape --simulation --plotting --animation 
+python car_racing/tests/control_test.py --ctrl-policy mpc-lti --track-layout l_shape --simulation --plotting --animation 
 ```
 This allows to test algorithm for tracking. The argparse arguments are listed as follow,
 | name | type | choices | description |
@@ -98,7 +98,7 @@ This allows to test algorithm for tracking. The argparse arguments are listed as
 #### Racing competition with ego controller (MPC-CBF)
 Run
 ```
-python scripts/control/mpccbf_test.py --track-layout l_shape --simulation --plotting --animation
+python car_racing/tests/mpccbf_test.py --track-layout l_shape --simulation --plotting --animation
 ```
 This allows to test algorithm for MPC-CBF controller. The argparse arguments are listed as follow,
 | name | type | choices | description |
@@ -111,12 +111,12 @@ This allows to test algorithm for MPC-CBF controller. The argparse arguments are
 #### Racing competition with ego controller (LMPC)
 To save the historic states and inputs used for learning-based MPC, run the following command for each track layout firstly:
 ```
-python scripts/control/lmpc_test.py \
+python car_racing/tests/lmpc_test.py \
 --track-layout l_shape --lap-number 7 --simulation --save-trajectory
 ```
 Then you can run the following command: 
 ```
-python scripts/control/lmpc_test.py \
+python car_racing/tests/lmpc_test.py \
 --track-layout l_shape --lap-number 10 --simulation --direct-lmpc --animation --plotting
 ```
 This allows to test algorithm for learning-based MPC. The argparse arguments are listed as follow,
@@ -134,12 +134,12 @@ This allows to test algorithm for learning-based MPC. The argparse arguments are
 #### Racing competition with ego planner and controller
 To save the historic states and inputs used for learning-based MPC, run the following command for each track layout firstly:
 ```
-python scripts/planning/overtake_planner_test.py \
+python car_racing/tests/overtake_planner_test.py \
 --track-layout l_shape --lap-number 7 --simulation --number-other-agents 0 --save-trajectory
 ```
 Then you can run the following command: 
 ```
-python scripts/planning/overtake_planner_test.py \
+python car_racing/tests/overtake_planner_test.py \
 --track-layout l_shape --lap-number 10 --simulation --direct-lmpc --animation --plotting --number-other-agents 3
 ```
 This allows to test algorithm for racing competition. The argparse arguments are listed as follow,

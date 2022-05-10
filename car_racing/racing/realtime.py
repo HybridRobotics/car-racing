@@ -12,15 +12,15 @@ from car_racing.msg import (
     TrackInfo,
     OptimalTraj,
 )
-from scripts.utils import base, racing_env
-from scripts.system import vehicle_dynamics
-from scripts.control import control
+from utils import base, racing_env
+from system import vehicle_dynamics
+from control import control
 import copy
-from scripts.utils.constants import *
+from utils.constants import *
 
 
 # real-time dynamic model
-class ModelRealtimeBase:
+class ModelBase:
     def __init__(self):
         # track relevant attributes
         self.lap_length = None
@@ -74,10 +74,10 @@ class ModelRealtimeBase:
         self.__sub_input = rospy.Subscriber(tmp, VehicleControl, self.__input_cb)
 
 
-class DynamicBicycleModelRealtime(base.DynamicBicycleModelBase, ModelRealtimeBase):
+class DynamicBicycleModel(base.DynamicBicycleModel, ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
-        base.DynamicBicycleModelBase.__init__(self, name=name, param=param, system_param=system_param)
-        ModelRealtimeBase.__init__(self)
+        base.DynamicBicycleModel.__init__(self, name=name, param=param, system_param=system_param)
+        ModelBase.__init__(self)
 
     # vehicle state call back function, get the vehicle's state
     def __state_cb(self, msg):
@@ -195,7 +195,7 @@ class DynamicBicycleModelRealtime(base.DynamicBicycleModelBase, ModelRealtimeBas
 
 
 # real-time controller
-class ControlRealtimeBase:
+class ControlBase:
     def __init__(self):
         # track information
         self.lap_length = None
@@ -354,28 +354,28 @@ class ControlRealtimeBase:
         self.__sub_state = rospy.Subscriber(tmp, VehicleState, self.__state_cb)
 
 
-class PidTrackingRealtime(base.PidTrackingBase, ControlRealtimeBase):
+class PIDTracking(base.PIDTracking, ControlBase):
     def __init__(self, vt=0.6, eyt=0.0):
-        base.PidTrackingBase.__init__(self, vt, eyt)
-        ControlRealtimeBase.__init__(self)
+        base.PIDTracking.__init__(self, vt, eyt)
+        ControlBase.__init__(self)
 
 
-class MpcTrackingRealtime(base.MpcTrackingBase, ControlRealtimeBase):
+class MPCTracking(base.MPCTracking, ControlBase):
     def __init__(self, mpc_lti_param):
-        base.MpcTrackingBase.__init__(self, mpc_lti_param)
-        ControlRealtimeBase.__init__(self)
+        base.MPCTracking.__init__(self, mpc_lti_param)
+        ControlBase.__init__(self)
 
 
-class LmpcRacingGameRealtime(base.LmpcRacingGameBase, ControlRealtimeBase):
+class LMPCRacingGame(base.LMPCRacingGame, ControlBase):
     def __init__(self, lmpc_param, racing_game_param=None):
-        base.LmpcRacingGameBase.__init__(self, lmpc_param, racing_game_param=racing_game_param)
-        ControlRealtimeBase.__init__(self)
+        base.LMPCRacing.__init__(self, lmpc_param, racing_game_param=racing_game_param)
+        ControlBase.__init__(self)
 
 
-class MpcCbfRacingRealtime(base.MpcCbfRacingBase, ControlRealtimeBase):
+class MPCCBFRacing(base.MPCCBFRacing, ControlBase):
     def __init__(self, mpc_cbf_param):
-        base.MpcCbfRacingBase.__init__(self, mpc_cbf_param)
-        ControlRealtimeBase.__init__(self)
+        base.MPCCBFRacing.__init__(self, mpc_cbf_param)
+        ControlBase.__init__(self)
         # vehicle's list
         self.vehicles = {}
         self.num_veh = None
@@ -417,9 +417,9 @@ class MpcCbfRacingRealtime(base.MpcCbfRacingBase, ControlRealtimeBase):
 # real-time simulator
 
 
-class CarRacingSimRealtime(base.CarRacingSimBase):
+class CarRacingSim(base.CarRacingSim):
     def __init__(self):
-        base.CarRacingSimBase.__init__(self)
+        base.CarRacingSim.__init__(self)
         self.num_vehicle = 0
         # publisher for vehicle's list and track information
         self.__pub_veh_list = None

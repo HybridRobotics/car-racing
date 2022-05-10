@@ -1,9 +1,9 @@
 import pickle
 import sympy as sp
 import numpy as np
-from scripts.racing import offboard
-from scripts.utils import base, racing_env
-from scripts.utils.constants import *
+from racing import offboard
+from utils import base, racing_env
+from utils.constants import *
 
 
 def racing(args):
@@ -12,27 +12,27 @@ def racing(args):
     if args["simulation"]:
         track = racing_env.ClosedTrack(track_spec, track_width=1.0)
         # setup ego car
-        ego = offboard.DynamicBicycleModelOffboard(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
-        mpc_cbf_param = base.MpcCbfRacingParam(vt=0.8)
+        ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
+        mpc_cbf_param = base.MPCCBFRacingParam(vt=0.8)
         ego.set_state_curvilinear(np.zeros((X_DIM,)))
         ego.set_state_global(np.zeros((X_DIM,)))
         ego.start_logging()
-        ego.set_ctrl_policy(offboard.MpcCbfRacingOffboard(mpc_cbf_param, ego.system_param))
+        ego.set_ctrl_policy(offboard.MPCCBFRacing(mpc_cbf_param, ego.system_param))
         ego.ctrl_policy.set_timestep(0.1)
         ego.set_track(track)
         ego.ctrl_policy.set_track(track)
         # setup surrounding cars
         t_symbol = sp.symbols("t")
-        car1 = offboard.NoDynamicsModelOffboard(name="car1", param=base.CarParam(edgecolor="orange"))
+        car1 = offboard.NoDynamicsModel(name="car1", param=base.CarParam(edgecolor="orange"))
         car1.set_track(track)
         car1.set_state_curvilinear_func(t_symbol, 0.2 * t_symbol + 4.0, 0.1 + 0.0 * t_symbol)
         car1.start_logging()
-        car2 = offboard.NoDynamicsModelOffboard(name="car2", param=base.CarParam(edgecolor="orange"))
+        car2 = offboard.NoDynamicsModel(name="car2", param=base.CarParam(edgecolor="orange"))
         car2.set_track(track)
         car2.set_state_curvilinear_func(t_symbol, 0.2 * t_symbol + 10.0, -0.1 + 0.0 * t_symbol)
         car2.start_logging()
         # setup simulation
-        simulator = offboard.CarRacingSimOffboard()
+        simulator = offboard.CarRacingSim()
         simulator.set_timestep(0.1)
         simulator.set_track(track)
         simulator.add_vehicle(ego)

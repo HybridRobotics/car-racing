@@ -10,11 +10,11 @@ from car_racing.msg import (
     VehicleStateGlob,
     TrackInfo,
 )
-from scripts.utils import racing_env, base
-from scripts.system import vehicle_dynamics
-from scripts.racing import realtime
+from utils import racing_env, base
+from system import vehicle_dynamics
+from racing import realtime
 from car_racing.srv import AddNewVehicle
-from scripts.utils.constants import *
+from utils.constants import *
 
 
 def get_msg_xglob(state):
@@ -63,7 +63,7 @@ def set_vehicle(args):
     # call ros service to add vehicle in simulator and visualization node
     add_vehicle_client_simulator(veh_name, veh_color)
     add_vehicle_client_visualization(veh_name, veh_color)
-    veh = realtime.DynamicBicycleModelRealtime(name=veh_name, param=base.CarParam())
+    veh = realtime.DynamicBicycleModel(name=veh_name, param=base.CarParam())
     veh.set_subscriber_track()
     veh.set_subscriber_input(veh_name)
     veh_state_topic = veh_name + "/state"
