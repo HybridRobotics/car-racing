@@ -62,6 +62,10 @@ Run following command in terminal to install the car racing simulator package.
 pip install -e .
 ```
 
+## Auto Testing
+
+In this project, `pytest` is used to test the code autonomously after pushing new code to the repository. Currently, three files in the `tests` folder are used for testing pid or mpc tracking controller, mpc-cbf controller and racing game planner, respectively. To test other features, add files to the `tests` folder and update the `tests.yml` file under the `.github/workflows` folder.
+
 ## Contributing
 Execute `pre-commit install` to install git hooks in your `.git/` directory, which allows auto-formatting if you are willing to contribute to this repository.
 

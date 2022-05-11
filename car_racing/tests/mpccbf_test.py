@@ -49,7 +49,7 @@ def racing(args):
         simulator.plot_simulation()
         simulator.plot_state("ego")
     if args["animation"]:
-        simulator.animate(filename="racing", mpc_cbf=True)
+        simulator.animate(filename="racing", imagemagick=True)
 
 
 if __name__ == "__main__":

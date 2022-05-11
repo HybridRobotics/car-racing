@@ -256,7 +256,7 @@ class CarRacingSim(base.CarRacingSim):
         plt.show()
 
     def animate(
-        self, filename="untitled", ani_time=400, lap_number=None, racing_game=False, mpc_cbf=False
+        self, filename="untitled", ani_time=400, lap_number=None, racing_game=False, imagemagick=False
     ):
         num_veh = len(self.vehicles) - 1
         if racing_game:
@@ -599,7 +599,7 @@ class CarRacingSim(base.CarRacingSim):
         media = anim.FuncAnimation(
             fig, update, frames=np.arange(0, trajglob.shape[0]), interval=100
         )
-        if mpc_cbf:
+        if imagemagick:
             media.save(
                 "media/animation/" + filename + ".gif",
                 dpi=80,
