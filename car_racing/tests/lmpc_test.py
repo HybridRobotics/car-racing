@@ -14,8 +14,7 @@ def lmpc_racing(args):
     else:
         save_lmpc_traj = False
     track_layout = args["track_layout"]
-    track_spec = np.genfromtxt(
-        "data/track_layout/" + track_layout + ".csv", delimiter=",")
+    track_spec = np.genfromtxt("data/track_layout/" + track_layout + ".csv", delimiter=",")
     lap_number = args["lap_number"]
     opti_traj_xcurv = np.genfromtxt(
         "data/optimal_traj/xcurv_" + track_layout + ".csv", delimiter=","
@@ -31,19 +30,13 @@ def lmpc_racing(args):
             with open("data/ego/ego_" + track_layout + "_multi_laps.obj", "rb") as handle:
                 ego = pickle.load(handle)
         else:
-            ego, pid_controller, mpc_lti_controller = set_up_ego(
-                timestep, track)
+            ego, pid_controller, mpc_lti_controller = set_up_ego(timestep, track)
         # this will remove the noise in dynamics update
         if args["zero_noise"]:
             ego.set_zero_noise()
         # lmpc controller
         lmpc_controller, time_lmpc = set_up_lmpc(
-            timestep,
-            track,
-            lap_number,
-            opti_traj_xcurv,
-            opti_traj_xglob,
-            ego.system_param
+            timestep, track, lap_number, opti_traj_xcurv, opti_traj_xglob, ego.system_param
         )
         # define a simulator
         simulator = offboard.CarRacingSim()
@@ -68,8 +61,7 @@ def lmpc_racing(args):
                 if args["direct_lmpc"]:
                     pass
                 else:
-                    simulator.sim(sim_time=90, one_lap=True,
-                                  one_lap_name="ego")
+                    simulator.sim(sim_time=90, one_lap=True, one_lap_name="ego")
             elif iter == 1:
                 if args["direct_lmpc"]:
                     pass
@@ -95,8 +87,7 @@ def lmpc_racing(args):
                     )
                     # change the controller to lmpc controller
                     ego.set_ctrl_policy(lmpc_controller)
-                    simulator.sim(sim_time=time_lmpc,
-                                  one_lap=True, one_lap_name="ego")
+                    simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                     ego.ctrl_policy.add_trajectory(
                         ego,
                         2,
@@ -112,8 +103,7 @@ def lmpc_racing(args):
                                 "data/ego/ego_" + track_layout + "_multi_laps.obj",
                                 "wb",
                             ) as handle:
-                                pickle.dump(
-                                    ego, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                                pickle.dump(ego, handle, protocol=pickle.HIGHEST_PROTOCOL)
                     elif iter == 6:
                         lmpc_controller.add_trajectory(
                             ego,
@@ -130,22 +120,19 @@ def lmpc_racing(args):
                         ego.xcurv_log = []
                         ego.lmpc_prediction = []
                         ego.mpc_cbf_prediction = []
-                        simulator.sim(sim_time=time_lmpc,
-                                      one_lap=True, one_lap_name="ego")
+                        simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                         ego.ctrl_policy.add_trajectory(
                             ego,
                             iter,
                         )
                     else:
-                        simulator.sim(sim_time=time_lmpc,
-                                      one_lap=True, one_lap_name="ego")
+                        simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                         ego.ctrl_policy.add_trajectory(
                             ego,
                             iter,
                         )
                 else:
-                    simulator.sim(sim_time=time_lmpc,
-                                  one_lap=True, one_lap_name="ego")
+                    simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                     ego.ctrl_policy.add_trajectory(
                         ego,
                         iter,
@@ -156,8 +143,7 @@ def lmpc_racing(args):
                                 "data/ego/ego_" + track_layout + "_multi_laps.obj",
                                 "wb",
                             ) as handle:
-                                pickle.dump(
-                                    ego, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                                pickle.dump(ego, handle, protocol=pickle.HIGHEST_PROTOCOL)
         # print the lap timing infomation
         for i in range(0, lmpc_controller.iter):
             print(
@@ -171,17 +157,15 @@ def lmpc_racing(args):
         with open(file_name, "wb") as handle:
             pickle.dump(simulator, handle, protocol=pickle.HIGHEST_PROTOCOL)
     else:
-        with open("data/simulator/racing_game.obj", "rb") as handle:
+        with open("data/simulator/lmpc_racing.obj", "rb") as handle:
             simulator = pickle.load(handle)
     if args["plotting"]:
         simulator.plot_simulation()
         simulator.plot_state("ego")
         simulator.plot_input("ego")
     if args["save_trajectory"]:
-        ego_xcurv = np.stack(
-            simulator.vehicles["ego"].xcurvs[lap_number - 1], axis=0)
-        ego_xglob = np.stack(
-            simulator.vehicles["ego"].xglobs[lap_number - 1], axis=0)
+        ego_xcurv = np.stack(simulator.vehicles["ego"].xcurvs[lap_number - 1], axis=0)
+        ego_xglob = np.stack(simulator.vehicles["ego"].xglobs[lap_number - 1], axis=0)
         np.savetxt(
             "data/optimal_traj/xcurv_" + track_layout + ".csv",
             ego_xcurv,
@@ -194,13 +178,14 @@ def lmpc_racing(args):
         )
     if args["animation"]:
 
-        file_name = "lmpc_racing" + track_layout
+        file_name = "lmpc_racing_" + track_layout
         simulator.animate(filename=file_name, ani_time=250, racing_game=True)
 
 
 def set_up_ego(timestep, track):
-    ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(
-        edgecolor="black"), system_param=base.SystemParam())
+    ego = offboard.DynamicBicycleModel(
+        name="ego", param=base.CarParam(edgecolor="black"), system_param=base.SystemParam()
+    )
     ego.set_timestep(timestep)
     # run the pid controller for the first lap to collect data
     pid_controller = offboard.PIDTracking(vt=0.7, eyt=0.0)
@@ -221,12 +206,11 @@ def set_up_ego(timestep, track):
 
 def set_up_lmpc(timestep, track, lap_number, opti_traj_xcurv, opti_traj_xglob, system_param):
     time_lmpc = 10000 * timestep
-    lmpc_param = base.LMPCRacingParam(
-        timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc)
-    racing_game_param = base.RacingGameParam(
-        timestep=timestep, num_horizon_planner=10)
+    lmpc_param = base.LMPCRacingParam(timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc)
+    racing_game_param = base.RacingGameParam(timestep=timestep, num_horizon_planner=10)
     lmpc_controller = offboard.LMPCRacingGame(
-        lmpc_param, racing_game_param=racing_game_param, system_param=system_param)
+        lmpc_param, racing_game_param=racing_game_param, system_param=system_param
+    )
     lmpc_controller.set_track(track)
     lmpc_controller.set_timestep(timestep)
     lmpc_controller.set_opti_traj(opti_traj_xcurv, opti_traj_xglob)
@@ -236,6 +220,7 @@ def set_up_lmpc(timestep, track, lap_number, opti_traj_xcurv, opti_traj_xglob, s
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--track-layout", type=str)
     parser.add_argument("--lap-number", type=int)
