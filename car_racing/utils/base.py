@@ -118,6 +118,53 @@ class PIDTracking(ControlBase):
         self.time += self.timestep
 
 
+class LQRTrackingParam:
+    def __init__(
+        self,
+        matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
+        matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
+        matrix_Q=np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
+        matrix_R=np.diag([0.1, 0.1]),
+        vt=0.6,
+        eyt=0.0,
+        max_iter=50,
+    ):
+        self.matrix_A = matrix_A
+        self.matrix_B = matrix_B
+        self.matrix_Q = matrix_Q
+        self.matrix_R = matrix_R
+        self.vt = vt
+        self.eyt = eyt
+        self.max_iter = max_iter
+
+
+class LQRTracking(ControlBase):
+    def __init__(self, lqr_param, system_param):
+        ControlBase.__init__(self)
+        self.set_target_speed(lqr_param.vt)
+        self.set_target_deviation(lqr_param.eyt)
+        self.system_param = system_param
+        self.lqr_param = lqr_param
+
+    def calc_input(self):
+        xtarget = np.array([self.vt, 0, 0, 0, 0, self.eyt]).reshape(X_DIM, 1)
+        self.u = control.lqr(self.x, xtarget, self.lqr_param
+            )
+        if self.agent_name == "ego":
+            if self.realtime_flag == False:
+                vehicles = self.racing_sim.vehicles
+            else:
+                vehicles = self.vehicles
+            vehicles["ego"].local_trajs.append(None)
+            vehicles["ego"].vehicles_interest.append(None)
+            vehicles["ego"].splines.append(None)
+            vehicles["ego"].all_splines.append(None)
+            vehicles["ego"].all_local_trajs.append(None)
+            vehicles["ego"].lmpc_prediction.append(None)
+            vehicles["ego"].mpc_cbf_prediction.append(None)
+        self.time += self.timestep
+
+
 class MPCTrackingParam:
     def __init__(
         self,

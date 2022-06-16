@@ -1,5 +1,6 @@
 import datetime
 import numpy as np
+import scipy
 import casadi as ca
 from control import lmpc_helper
 from planning.planner_helper import *
@@ -7,6 +8,7 @@ from utils.constants import *
 from casadi import *
 from scipy.sparse import vstack
 from scipy.interpolate import interp1d
+import scipy.linalg as la
 
 
 def pid(xcurv, xtarget):
@@ -16,6 +18,42 @@ def pid(xcurv, xtarget):
     eyt = xtarget[5]
     u_next[0] = -0.6 * (xcurv[5] - eyt) - 0.9 * xcurv[3]
     u_next[1] = 1.5 * (vt - xcurv[0])
+    end_timer = datetime.datetime.now()
+    solver_time = (end_timer - start_timer).total_seconds()
+    print("solver time: {}".format(solver_time))
+    return u_next
+
+
+def lqr(xcurv, xtarget, lqr_param):
+    vt = xtarget[0]
+    eyt = xtarget[5]
+    A = lqr_param.matrix_A
+    B = lqr_param.matrix_B
+    max_iter = lqr_param.max_iter
+    start_timer = datetime.datetime.now()
+    # define variables
+    xvar = np.zeros(X_DIM).reshape(X_DIM, 1)
+    xvar[:, 0] = xcurv
+    u_next = np.zeros((U_DIM,))
+    # solve a discrete time Algebraic Riccati equation
+    R = lqr_param.matrix_R
+    Q = lqr_param.matrix_Q
+    P = Q
+    P_iter = Q
+    eps = 0.01
+    # achieve convergence
+    for i in range(max_iter):
+        P_iter = A.T @ P @ A - A.T @ P @ B @ \
+                la.inv(R + B.T @ P @ B) @ B.T @ P @ A + Q
+        if abs(P_iter - P).max() < eps:
+            break
+        P = P_iter
+    # compute the gain K
+    K = la.inv(B.T @ P @ B + R) @ B.T @ P @ A
+    uvar = - K @ (xvar - xtarget)
+    # Optimal control input
+    u_next[0] = uvar[0, 0]
+    u_next[1] = uvar[1, 0]
     end_timer = datetime.datetime.now()
     solver_time = (end_timer - start_timer).total_seconds()
     print("solver time: {}".format(solver_time))

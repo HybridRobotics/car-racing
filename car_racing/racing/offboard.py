@@ -20,6 +20,11 @@ class MPCTracking(base.MPCTracking):
         base.MPCTracking.__init__(self, mpc_lti_param, system_param)
 
 
+class LQRTracking(base.LQRTracking):
+    def __init__(self, lqr_param, system_param):
+        base.LQRTracking.__init__(self, lqr_param, system_param)
+
+
 class MPCCBFRacing(base.MPCCBFRacing):
     def __init__(self, mpc_cbf_param, system_param):
         base.MPCCBFRacing.__init__(self, mpc_cbf_param, system_param)

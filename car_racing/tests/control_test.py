@@ -19,6 +19,9 @@ def tracking(args):
         elif args["ctrl_policy"] == "mpc-lti":
             mpc_lti_param = base.MPCTrackingParam(vt=0.8)
             ego.set_ctrl_policy(offboard.MPCTracking(mpc_lti_param, ego.system_param))
+        elif args["ctrl_policy"] == "lqr":
+            lqr_param = base.LQRTrackingParam(vt=0.8)
+            ego.set_ctrl_policy(offboard.LQRTracking(lqr_param, ego.system_param))
         else:
             raise NotImplementedError
         ego.ctrl_policy.set_timestep(0.1)
