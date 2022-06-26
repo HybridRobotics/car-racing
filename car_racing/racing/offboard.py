@@ -25,6 +25,11 @@ class LQRTracking(base.LQRTracking):
         base.LQRTracking.__init__(self, lqr_param, system_param)
 
 
+class iLQRRacing(base.iLQRRacing):
+    def __init__(self, ilqr_param, system_param):
+        base.iLQRRacing.__init__(self, ilqr_param, system_param)
+
+
 class MPCCBFRacing(base.MPCCBFRacing):
     def __init__(self, mpc_cbf_param, system_param):
         base.MPCCBFRacing.__init__(self, mpc_cbf_param, system_param)

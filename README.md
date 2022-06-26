@@ -112,6 +112,22 @@ This allows to test algorithm for MPC-CBF controller. The argparse arguments are
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
 
+#### Racing competition with ego controller (iLQR)
+Run
+
+```
+python car_racing/tests/ilqr_test.py --track-layout l_shape --simulation --plotting --animation
+```
+
+This allows to test algorithm for iLQR controller. The argparse arguments are listed as follow,
+
+|      name      |  type  |                  choices                  |                         description                          |
+| :------------: | :----: | :---------------------------------------: | :----------------------------------------------------------: |
+| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` |                        track layouts                         |
+|  `simulation`  | action |               `store_true`                | generate simulation data if true, otherwise read simulation data from existing files |
+|   `plotting`   | action |               `store_true`                |                    save plotting if true                     |
+|  `animation`   | action |               `store_true`                |                    save animation if true                    |
+
 #### Racing competition with ego controller (LMPC)
 To save the historic states and inputs used for learning-based MPC, run the following command for each track layout firstly:
 ```

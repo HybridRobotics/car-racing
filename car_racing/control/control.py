@@ -60,6 +60,193 @@ def lqr(xcurv, xtarget, lqr_param):
     return u_next
 
 
+def ilqr(
+    xcurv, 
+    xtarget, 
+    ilqr_param,
+    vehicles,
+    agent_name,
+    lap_length,
+    time,
+    timestep,
+    track,
+    system_param,
+    ):
+    matrix_A = ilqr_param.matrix_A
+    matrix_B = ilqr_param.matrix_B
+    max_iter = ilqr_param.max_iter
+    num_horizen = ilqr_param.num_horizen
+    eps = 0.01
+    lamb = 1
+    lamb_factor = 10
+    max_lamb = 1000
+    start_timer = datetime.datetime.now()
+    # define variables
+    uvar = np.zeros((U_DIM, num_horizen))
+    xvar = np.zeros((X_DIM, num_horizen+1))
+    xvar[:, 0] = xcurv
+    matrix_Q = ilqr_param.matrix_Q
+    matrix_R = ilqr_param.matrix_R
+    dX = np.zeros((X_DIM, num_horizen+1))
+    dX[:, 0] = xvar[:, 0] - xtarget
+    #get other vehicles' state estimations
+    safety_time = 2.0
+    dist_margin_front = xcurv[0] * safety_time
+    dist_margin_behind = xcurv[0] * safety_time
+    num_cycle_ego = int(xcurv[4] / lap_length)
+    dist_ego = xcurv[4] - num_cycle_ego * lap_length
+    obs_infos = {}
+    for name in list(vehicles):
+        if name != agent_name:
+            # get predictions from other vehicles
+            obs_traj, _ = vehicles[name].get_trajectory_nsteps(
+                time, timestep, ilqr_param.num_horizen + 1
+            )
+    # get ego agent and obstacles' dimensions
+    l_agent = vehicles[agent_name].param.length / 2
+    w_agent = vehicles[agent_name].param.width / 2
+    l_obs = vehicles["car1"].param.length / 2
+    w_obs = vehicles["car1"].param.width / 2
+    for i in range(max_iter):
+        # Forward simulation
+        cost = 0
+        for k in range(num_horizen):
+            xvar[:, k+1] = matrix_A @ xvar[:, k] + matrix_B @ uvar[:, k]
+            dX[:, k+1] = xvar[:, k+1] - xtarget.T
+            l_state = (xvar[:, k] - xtarget).T @ matrix_Q @ (xvar[:, k] - xtarget)
+            l_ctrl = uvar[:, k].T @ matrix_R @ uvar[:, k]
+            cost = cost + l_state + l_ctrl
+        l_state_final = (xvar[:, num_horizen] - xtarget).T @ \
+             matrix_Q @ (xvar[:, num_horizen] - xtarget)
+        cost = cost + l_state_final
+        # Backward pass
+        # System derivation
+        f_x = matrix_A
+        f_u = matrix_B
+        # cost derivation
+        l_u, l_uu, l_x, l_xx = get_cost_derivation(
+            uvar, 
+            dX, 
+            matrix_Q, 
+            matrix_R, 
+            num_horizen,xvar, 
+            obs_traj, 
+            lap_length,
+            num_cycle_ego,
+            l_agent,
+            w_agent,
+            l_obs,
+            w_obs
+        )
+        # Value function at last timestep
+        matrix_Vx = l_x[:, -1]
+        matrix_Vxx = l_xx[:, :, -1]
+        # define control modification k and K
+        K = np.zeros((U_DIM, X_DIM, num_horizen))
+        k = np.zeros((U_DIM, num_horizen))
+        for i in range(num_horizen-1, -1, -1):
+            matrix_Qx = l_x[:,i] + f_x.T @ matrix_Vx
+            matrix_Qu = l_u[:,i] + f_u.T @ matrix_Vx
+            matrix_Qxx = l_xx[:,:,i] + f_x.T @ matrix_Vxx @ f_x
+            matrix_Quu = l_uu[:,:,i] + f_u.T @ matrix_Vxx @ f_u
+            matrix_Qux = f_u.T @ matrix_Vxx @ f_x
+            # Improved Regularization
+            Q_uu_evals, Q_uu_evecs = np.linalg.eig(matrix_Quu)
+            Q_uu_evals[Q_uu_evals < 0] = 0.0
+            Q_uu_evals += lamb
+            matrix_Quu_inv = np.dot(Q_uu_evecs,np.dot(np.diag(1.0/Q_uu_evals), Q_uu_evecs.T))
+            # Calculate feedforward and feedback terms
+            k[:,i] = -matrix_Quu_inv @ matrix_Qu
+            K[:,:,i] = -matrix_Quu_inv @ matrix_Qux
+            # Update value function for next time step
+            matrix_Vx = matrix_Qx - K[:,:,i].T @ matrix_Quu @ k[:,i]
+            matrix_Vxx = matrix_Qxx - K[:,:,i].T @ matrix_Quu @ K[:,:,i]
+        # Forward pass
+        xvar_new = np.zeros((X_DIM, num_horizen + 1))
+        xvar_new[:, 0] = xcurv
+        uvar_new = np.zeros((U_DIM, num_horizen))
+        cost_new = 0
+        for i in range(num_horizen):
+            uvar_new[:, i] = uvar[:, i] + k[:, i] + K[:, :, i] @ \
+                (xvar_new[:, i] - xvar[:, i])    
+            xvar_new[:, i+1] = matrix_A @ xvar_new[:, i] + matrix_B @ uvar_new[:, i]
+            l_state_new = (xvar_new[:, i] - xtarget).T @ \
+                matrix_Q @ (xvar_new[:, i] - xtarget)        
+            l_ctrl_new = uvar_new[:, i].T @ matrix_R @ uvar_new[:, i]
+            cost_new = cost_new + l_state_new + l_ctrl_new
+        l_state_final_new = (xvar_new[:, num_horizen] - xtarget).T @ \
+             matrix_Q @ (xvar_new[:, num_horizen] - xtarget)
+        cost_new = cost_new + l_state_final_new
+        if cost_new < cost:
+            xvar = xvar_new
+            uvar = uvar_new
+            lamb /= lamb_factor
+            if abs((cost_new - cost)/cost) < eps:
+                print("Convergence achieved")
+                break
+        else:
+            lamb *= lamb_factor
+            if lamb > max_lamb:
+                break
+    end_timer = datetime.datetime.now()
+    solver_time = (end_timer - start_timer).total_seconds()
+    print("solver time: {}".format(solver_time))
+    return uvar[:, 0]
+
+def get_cost_derivation(
+    ctrl_U, 
+    dX, 
+    matrix_Q, 
+    matrix_R, 
+    num_horizen, 
+    xvar, 
+    obs_traj, 
+    lap_length,
+    num_cycle_ego,
+    l_agent,
+    w_agent,
+    l_obs,
+    w_obs
+    ):
+    # define control cost derivation
+    l_u = np.zeros((U_DIM, num_horizen))
+    l_uu = np.zeros((U_DIM, U_DIM, num_horizen))
+    l_x = np.zeros((X_DIM, num_horizen))
+    l_xx = np.zeros((X_DIM, X_DIM, num_horizen))
+    # obstacle avoidance
+    safety_margin = 0.15
+    q1 = 2.5
+    q2 = 2.5
+    for i in range(num_horizen):
+        l_u[:, i] = 2 * matrix_R @ ctrl_U[:, i]
+        l_uu[:, :, i] = 2 * matrix_R
+        l_x_i = 2 * matrix_Q @ dX[:, i]
+        l_xx_i = 2 * matrix_Q
+        # calculate control barrier functions for each obstacle at timestep
+        degree = 2
+        num_cycle_obs = int(obs_traj[4, 0] / lap_length)
+        diffs = xvar[4, i] - obs_traj[4, i] - \
+            (num_cycle_ego - num_cycle_obs) * lap_length
+        diffey = xvar[5, i] - obs_traj[5, i]
+        matrix_P1 = np.diag([0, 0, 0, 0, 1/((l_agent + l_obs) ** degree), 1/((w_agent + w_obs) ** degree)])
+        diff = np.array([0, 0, 0, 0, diffs, diffey]).reshape(-1,1)
+        h = 1 + safety_margin - diff.T @ matrix_P1 @ diff
+        h_dot = -2 * matrix_P1 @ diff
+        _, b_dot_obs, b_ddot_obs = repelling_cost_function(q1, q2, h, h_dot)
+        l_x_i += b_dot_obs.squeeze()
+        l_xx_i += b_ddot_obs
+        l_xx[:, :, i] = l_xx_i
+        l_x[:, i] = l_x_i
+    return l_u, l_uu, l_x, l_xx
+
+
+def repelling_cost_function(q1, q2, c, c_dot):
+    b = q1*np.exp(q2*c)
+    b_dot = q1*q2*np.exp(q2*c)*c_dot
+    b_ddot = q1*(q2**2)*np.exp(q2*c)*np.matmul(c_dot, c_dot.T)
+    return b, b_dot, b_ddot
+
+
 def mpc_lti(xcurv, xtarget, mpc_lti_param, system_param, track):
     vt = xtarget[0]
     eyt = xtarget[5]
