@@ -175,7 +175,7 @@ class iLQRRacingParam:
         vt=0.6,
         eyt=0.0,
         max_iter=150,
-        num_horizen = 50,
+        num_horizon = 50,
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -184,7 +184,7 @@ class iLQRRacingParam:
         self.vt = vt
         self.eyt = eyt
         self.max_iter = max_iter
-        self.num_horizen = num_horizen
+        self.num_horizon = num_horizon
 
 
 class iLQRRacing(ControlBase):
