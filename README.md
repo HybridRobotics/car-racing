@@ -25,7 +25,7 @@ This repository provides a toolkit to test control and planning problems for car
 ## References
 If you find this project useful in your work, please consider citing following papers:
 
-Parallelized optimization for overtake racing behavior with multiple autonomous vehicles [[arXiv]](https://arxiv.org/abs/2112.06435) [[Video]](https://youtu.be/1zTXfzdQ8w4)
+Parallelized optimization for overtake racing behavior with multiple autonomous vehicles [[IEEE]](https://ieeexplore.ieee.org/document/9811969) [[arXiv]](https://arxiv.org/abs/2112.06435) [[Video]](https://youtu.be/1zTXfzdQ8w4)
 ```
 @inproceedings{he2022parallel,
   title={Autonomous racing with multiple vehicles using a parallelized optimization with safety guarantee using control barrier functions},
@@ -178,6 +178,8 @@ This allows to test algorithm for racing competition. The argparse arguments are
 | `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
 | `plotting` | action | `store_true` | save plotting if true |
 | `animation` | action | `store_true` | save animation if true |
+
+
 Currently, path planner and trajecotry planner are available for the overtaking maneuver. Changing the varibale `self.path_planner` in `base.py` to `True` allows the controller to simulate with path planner.
 
 ### Realtime (under development)
