@@ -1,0 +1,11 @@
+{
+	"cmake.configureOnOpen": false,
+    "python.analysis.include": [
+        "../../devel/lib/python3.9/site-packages/",
+        "../../devel/lib/python3/dist-packages/"
+    ],
+    "python.analysis.extraPaths": [
+        "../../devel/lib/python3.9/site-packages/",
+        "../../devel/lib/python3/dist-packages/"
+    ]
+}
