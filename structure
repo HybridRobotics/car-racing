@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2023-04-25T04:48:34.801Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36 Edg/111.0.1661.44" etag="C2rOI2u0ZquPAYXHAlNN" version="21.2.1" type="github" pages="2">
+<mxfile host="app.diagrams.net" modified="2023-04-25T04:54:55.471Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36 Edg/111.0.1661.44" etag="fBi6FwXNL2Odn5TWc0fp" version="21.2.1" type="github" pages="2">
   <diagram name="Packages" id="8OmCAme0Esdqmg-NAgWp">
-    <mxGraphModel dx="956" dy="531" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1912" dy="1061" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -165,7 +165,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="UbhwdgVO11Jb5h0_f-8E" name="classes 4 sim">
-    <mxGraphModel dx="2049" dy="2237" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1195" dy="1763" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -463,8 +463,8 @@
         <mxCell id="aLHz-7ABJECwHSIZWCSi-110" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0;exitDx=225;exitDy=60;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=none;endFill=0;dashed=1;" edge="1" parent="1" source="aLHz-7ABJECwHSIZWCSi-109" target="aLHz-7ABJECwHSIZWCSi-101">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="aLHz-7ABJECwHSIZWCSi-109" value="call &lt;b&gt;calc_ctrl_input&lt;/b&gt;&amp;nbsp;first to run the controller, then &lt;b&gt;forward_dyanmics &lt;/b&gt;and finally &lt;b&gt;update_memeory &lt;/b&gt;to log and update animation/plotting" style="shape=note;size=20;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="555" y="-410" width="225" height="90" as="geometry" />
+        <mxCell id="aLHz-7ABJECwHSIZWCSi-109" value="call &lt;b&gt;calc_ctrl_input&lt;/b&gt;&amp;nbsp;first to run the controller, then &lt;b&gt;forward_dyanmics &lt;/b&gt;and finally &lt;b&gt;update_memeory &lt;/b&gt;to log and update animation/plotting" style="shape=note;size=20;whiteSpace=wrap;html=1;strokeColor=#CCCCCC;fillColor=#E6E6E6;" vertex="1" parent="1">
+          <mxGeometry x="580" y="-356" width="225" height="90" as="geometry" />
         </mxCell>
         <mxCell id="aLHz-7ABJECwHSIZWCSi-111" value="Extends" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="aLHz-7ABJECwHSIZWCSi-108" target="aLHz-7ABJECwHSIZWCSi-95">
           <mxGeometry x="-0.6667" width="160" relative="1" as="geometry">
@@ -504,15 +504,29 @@
           <mxGeometry x="1290" y="-75" width="430" height="60" as="geometry" />
         </mxCell>
         <mxCell id="aLHz-7ABJECwHSIZWCSi-123" value="Extends" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="aLHz-7ABJECwHSIZWCSi-115" target="aLHz-7ABJECwHSIZWCSi-108">
-          <mxGeometry width="160" relative="1" as="geometry">
+          <mxGeometry x="-0.4545" width="160" relative="1" as="geometry">
             <mxPoint x="1220" y="-130" as="sourcePoint" />
             <mxPoint x="1430" y="70" as="targetPoint" />
+            <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
         <mxCell id="aLHz-7ABJECwHSIZWCSi-124" value="Extends" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="aLHz-7ABJECwHSIZWCSi-122" target="aLHz-7ABJECwHSIZWCSi-112">
-          <mxGeometry width="160" relative="1" as="geometry">
+          <mxGeometry x="-0.4545" width="160" relative="1" as="geometry">
             <mxPoint x="1300" y="-130" as="sourcePoint" />
             <mxPoint x="1190" y="-130" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="4wKH9FGj4mNGgr71FHFA-1" value="1" style="endArrow=open;html=1;endSize=12;startArrow=diamondThin;startSize=14;startFill=0;edgeStyle=orthogonalEdgeStyle;align=left;verticalAlign=bottom;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="aLHz-7ABJECwHSIZWCSi-69" target="aLHz-7ABJECwHSIZWCSi-95">
+          <mxGeometry x="-1" y="3" relative="1" as="geometry">
+            <mxPoint x="180" y="-250" as="sourcePoint" />
+            <mxPoint x="340" y="-250" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="380" y="-129" />
+              <mxPoint x="380" y="-500" />
+              <mxPoint x="800" y="-500" />
+              <mxPoint x="800" y="-390" />
+            </Array>
           </mxGeometry>
         </mxCell>
       </root>
