@@ -22,7 +22,8 @@ def get_global_position(lap_length, width, point_and_tangent, s, ey):
         ],
         axis=0,
     )
-    i = np.asscalar(np.where(np.squeeze(index))[0][0])
+    # i = np.asscalar(np.where(np.squeeze(index))[0][0])
+    i = np.where(np.squeeze(index))[0][0]
 
     if point_and_tangent[i, 5] == 0.0:  # If segment is a straight line
         # Extract the first final and initial point of the segment
@@ -83,7 +84,8 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
         ],
         axis=0,
     )
-    i = np.asscalar(np.where(np.squeeze(index))[0][0])
+    # i = np.asscalar(np.where(np.squeeze(index))[0][0])
+    i = np.where(np.squeeze(index))[0][0]
     if point_and_tangent[i, 5] == 0.0:  # If segment is a straight line
         # Extract the first final and initial point of the segment
         xf = point_and_tangent[i, 0]
