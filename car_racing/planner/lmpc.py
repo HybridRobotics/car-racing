@@ -1,5 +1,6 @@
 import copy
 import datetime
+from typing import List, Tuple
 from pathos.multiprocessing import ProcessingPool as Pool
 
 import casadi as ca
@@ -8,10 +9,12 @@ from cvxopt import matrix
 import numpy as np
 from numpy import linalg as la
 
-from planner.base import PlannerBase, get_agent_range, ego_agent_overlap_checker
+from planner.base import PlannerBase, get_agent_range, ego_agent_overlap_checker, RacingGameParam
 from planner.overtake import OvertakePathPlanner, OvertakeTrajPlanner
-from racing_env import X_DIM, U_DIM, get_curvature
+from racing_env import X_DIM, U_DIM, get_curvature, SystemParam, ModelBase
 
+
+# ---------------- HELPER FUNCTIONS FOR LMPC ----------------
 
 def _compute_cost(xcurv, u, lap_length):
     # The cost has the same elements of the vector x --> time +1
@@ -98,7 +101,7 @@ def _regression_and_linearization(
         K,
     )
     y_index = 0
-    b = compute_b(ss_xcurv, y_index, used_iter, matrix, M_vx, index_selected, K)
+    b = _compute_b(ss_xcurv, y_index, used_iter, matrix, M_vx, index_selected, K)
     (
         Ai[y_index, state_features],
         Bi[y_index, input_features],
@@ -120,14 +123,14 @@ def _regression_and_linearization(
         K,
     )
     y_index = 1  # vy
-    b = compute_b(ss_xcurv, y_index, used_iter, matrix, M_lat, index_selected, K)
+    b = _compute_b(ss_xcurv, y_index, used_iter, matrix, M_lat, index_selected, K)
     (
         Ai[y_index, state_features],
         Bi[y_index, input_features],
         Ci[y_index],
     ) = _lmpc_loc_lin_reg(Q_lat, b, state_features, input_features, qp)
     y_index = 2  # wz
-    b = compute_b(ss_xcurv, y_index, used_iter, matrix, M_lat, index_selected, K)
+    b = _compute_b(ss_xcurv, y_index, used_iter, matrix, M_lat, index_selected, K)
     (
         Ai[y_index, state_features],
         Bi[y_index, input_features],
@@ -287,7 +290,7 @@ def _select_points(ss_xcurv, Qfun, iter, x0, num_ss_points, shift):
     return ss_points, sel_Qfun
 
 
-def compute_b(ss_xcurv, y_index, used_iter, matrix, M, index_selected, K):
+def _compute_b(ss_xcurv, y_index, used_iter, matrix, M, index_selected, K):
     counter = 0
     y = np.empty((0))
     Ktot = np.empty((0))
@@ -312,21 +315,23 @@ def _lmpc_loc_lin_reg(Q, b, state_features, input_features, qp):
     C = result[-1]
     return A, B, C
 
+# ---------------- END OF HELPER FUNCTIONS ----------------
 
 class LMPCRacingParam:
+    """Tunable parameters for LMPC"""
     def __init__(
         self,
-        matrix_Q=0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-        matrix_R=1 * np.diag([1.0, 0.25]),
-        matrix_Qslack=5 * np.diag([10, 0, 0, 1, 10, 0]),
-        matrix_dR=5 * np.diag([0.8, 0.0]),
-        num_ss_points=32 + 12,
-        num_ss_iter=2,
-        num_horizon=12,
-        shift=0,
-        timestep=None,
-        lap_number=None,
-        time_lmpc=None,
+        matrix_Q: np.ndarray = 0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        matrix_R: np.ndarray = 1 * np.diag([1.0, 0.25]),
+        matrix_Qslack: np.ndarray = 5 * np.diag([10, 0, 0, 1, 10, 0]),
+        matrix_dR: np.ndarray = 5 * np.diag([0.8, 0.0]),
+        num_ss_points: int = 32 + 12,
+        num_ss_iter: int = 2,
+        num_horizon: int = 12,
+        shift: int = 0,
+        timestep: float = None,
+        lap_number: int = None,
+        time_lmpc: float = None,
     ):
         self.matrix_Q = matrix_Q
         self.matrix_R = matrix_R
@@ -340,60 +345,36 @@ class LMPCRacingParam:
         self.lap_number = lap_number
         self.time_lmpc = time_lmpc
 
-class RacingGameParam:
-    def __init__(
-        self,
-        matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
-        matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
-        matrix_Q=np.diag([10.0, 0.0, 0.0, 5.0, 0.0, 50.0]),
-        matrix_R=np.diag([0.1, 0.1]),
-        matrix_R_planner=1 * np.diag([5, 0.10]),
-        matrix_dR_planner=5 * np.diag([1.8, 0.0]),
-        bezier_order=3,
-        safety_factor=4.5,
-        num_horizon_ctrl=10,
-        num_horizon_planner=10,
-        planning_prediction_factor=0.5,  # 2.0,
-        alpha=0.98,
-        timestep=None,
-    ):
-        self.matrix_A = matrix_A
-        self.matrix_B = matrix_B
-        self.matrix_Q = matrix_Q
-        self.matrix_R = matrix_R
-        self.matrix_R_planner = matrix_R_planner
-        self.matrix_dR_planner = matrix_dR_planner
-        self.num_horizon_ctrl = num_horizon_ctrl
-        self.num_horizon_planner = num_horizon_planner
-        self.planning_prediction_factor = planning_prediction_factor
-        self.alpha = alpha
-        self.timestep = timestep
-        self.bezier_order = bezier_order
-        self.safety_factor = safety_factor
-
 class LMPCPrediction:
-    """Object collecting the predictions and SS at eath time step"""
+    """Object collecting the predictions and SS at eath time step
+
+    Params
+    ------
+    num_horizon: horizon length
+    points_lmpc: maximum simulation timesteps
+    num_ss_points: number used to build safe set at each time step
+    """
 
     def __init__(
         self,
-        num_horizon=12,
-        points_lmpc=5000,
-        num_ss_points=32 + 12,
-        lap_number=None,
+        num_horizon: int = 12,
+        points_lmpc: int = 5000,
+        num_ss_points: int = 32 + 12,
+        lap_number: int = None
     ):
-        """
-        Initialization:
-            num_horizon: horizon length
-            points_lmpc: maximum simulation timesteps
-            num_ss_points: number used to build safe set at each time step
-        """
-        self.predicted_xcurv = np.zeros((num_horizon + 1, X_DIM, points_lmpc, lap_number))
-        self.predicted_u = np.zeros((num_horizon, U_DIM, points_lmpc, lap_number))
-        self.ss_used = np.zeros((X_DIM, num_ss_points, points_lmpc, lap_number))
-        self.Qfun_used = np.zeros((num_ss_points, points_lmpc, lap_number))
+        self.predicted_xcurv: np.ndarray = np.zeros((num_horizon + 1, X_DIM, points_lmpc, lap_number))
+        self.predicted_u: np.ndarray = np.zeros((num_horizon, U_DIM, points_lmpc, lap_number))
+        self.ss_used: np.ndarray = np.zeros((X_DIM, num_ss_points, points_lmpc, lap_number))
+        self.Qfun_used: np.ndarray = np.zeros((num_ss_points, points_lmpc, lap_number))
 
 class LMPCRacingGame(PlannerBase):
-    def __init__(self, lmpc_param, racing_game_param=None, system_param=None, realtime_flag=False):
+    """LMPC as planner"""
+    def __init__(self,
+        lmpc_param: LMPCRacingParam,
+        racing_game_param: RacingGameParam = None,
+        system_param: SystemParam = None,
+        realtime_flag: bool = False
+    ):
         PlannerBase.__init__(self)
         self.realtime_flag = realtime_flag
         self.path_planner = False
@@ -431,22 +412,81 @@ class LMPCRacingGame(PlannerBase):
         self.old_direction_flag = None
 
     def set_vehicles_track(self):
+        """Set the self's track to the overtake planner"""
         if self.realtime_flag == False:
-            vehicles = self.racing_sim.vehicles
+            vehicles = self.racing_env.vehicles
             self.overtake_planner.track = self.track
         else:
             vehicles = self.vehicles
         self.overtake_planner.vehicles = vehicles
 
-    def _lmpc(self, xcurv, matrix_Atv, matrix_Btv, matrix_Ctv, u_old):
+    def _estimate_ABC(self) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray], List[List[int]]]:
+        """Estimate the matrix A, B and C. The last returned the value is the list of selected indices"""
+        lin_points = self.lin_points
+        lin_input = self.lin_input
+        num_horizon = self.lmpc_param.num_horizon
+        ss_xcurv = self.ss_xcurv
+        u_ss = self.u_ss
+        time_ss = self.time_ss
+        point_and_tangent = self.point_and_tangent
+        timestep = self.timestep
+        iter = self.iter
+        p = self.p
+        Atv = []
+        Btv = []
+        Ctv = []
+        index_used_list = []
+        lap_used_for_linearization = 2
+        used_iter = range(iter - lap_used_for_linearization, iter)
+        max_num_point = 40
+        for i in range(0, num_horizon):
+            (Ai, Bi, Ci, index_selected,) = _regression_and_linearization(
+                lin_points,
+                lin_input,
+                used_iter,
+                ss_xcurv,
+                u_ss,
+                time_ss,
+                max_num_point,
+                qp,
+                matrix,
+                point_and_tangent,
+                timestep,
+                i,
+            )
+            Atv.append(Ai)
+            Btv.append(Bi)
+            Ctv.append(Ci)
+            index_used_list.append(index_selected)
+        return Atv, Btv, Ctv, index_used_list
+
+    def _lmpc(self,
+        xcurv: np.ndarray,
+        matrix_Atv: List[np.ndarray],
+        matrix_Btv: List[np.ndarray],
+        matrix_Ctv: List[np.ndarray],
+        u_old: np.ndarray
+    ) -> np.ndarray:
+        """The core to LMPC controller
+        
+        Params
+        ------
+        xcurv: the local state regarded as the current state
+        matrix_Atv, matrix_Btv, matrix_Ctv: estimated matrix A, B, and C
+        u_old: last time control inputs
+
+        Return
+        ------
+        control inputs
+        """
         start_timer = datetime.datetime.now()
         ss_point_selected_tot = np.empty((X_DIM, 0))
         Qfun_selected_tot = np.empty((0))
         for jj in range(0, self.lmpc_param.num_ss_iter):
             ss_point_selected, Qfun_selected = _select_points(
-                self.ss_curv,
+                self.ss_xcurv,
                 self.Qfun,
-                iter - jj - 1,
+                self.iter - jj - 1,
                 xcurv,
                 self.lmpc_param.num_ss_points / self.lmpc_param.num_ss_iter,
                 self.lmpc_param.shift,
@@ -547,13 +587,12 @@ class LMPCRacingGame(PlannerBase):
             lin_input,
         )
 
-
     def _mpc_multi_agents(
         self,
-        xcurv,
-        target_traj_xcurv=None,
-        direction_flag=None,
-        sorted_vehicles=None,
+        xcurv: np.ndarray,
+        target_traj_xcurv: np.ndarray = None,
+        direction_flag: int = None,
+        sorted_vehicles: List[ModelBase] = None,
         time=None,
     ):
         print("overtaking")
@@ -764,10 +803,17 @@ class LMPCRacingGame(PlannerBase):
         print("solver time: {}".format(solver_time))
         return u_pred[0, :], x_pred
 
+    def _add_point(self, x: np.ndarray, u: np.ndarray, i: int):
+        counter = self.time_ss[self.iter - 1]
+        self.ss_xcurv[counter + i + 1, :, self.iter - 1] = x + np.array(
+            [0, 0, 0, 0, self.lap_length, 0]
+        )
+        self.u_ss[counter + i + 1, :, self.iter - 1] = u[:]
+
     def calc_input(self):
         self.overtake_planner.agent_name = self.agent_name
         self.overtake_planner.opti_traj_xcurv = self.opti_traj_xcurv
-        matrix_Atv, matrix_Btv, matrix_Ctv, _ = self.estimate_ABC()
+        matrix_Atv, matrix_Btv, matrix_Ctv, _ = self._estimate_ABC()
         x = copy.deepcopy(self.x)
         while x[4] > self.lap_length:
             x[4] = x[4] - self.lap_length
@@ -795,7 +841,7 @@ class LMPCRacingGame(PlannerBase):
                 :, :, self.time_in_iter, iter
             ] = self.ss_point_selected_tot
             self.openloop_prediction.Qfun_used[:, self.time_in_iter, iter] = self.Qfun_selected_tot
-            self.add_point(self.x, self.u, self.time_in_iter)
+            self._add_point(self.x, self.u, self.time_in_iter)
             self.time_in_iter = self.time_in_iter + 1
             x_pred_xglob = np.zeros((12 + 1, X_DIM))
             for jjj in range(0, 12 + 1):
@@ -872,54 +918,15 @@ class LMPCRacingGame(PlannerBase):
             self.overtake_planner.vehicles["ego"].mpc_cbf_prediction.append(x_pred_xglob)
         self.time += self.timestep
 
-    def estimate_ABC(self):
-        lin_points = self.lin_points
-        lin_input = self.lin_input
-        num_horizon = self.lmpc_param.num_horizon
-        ss_xcurv = self.ss_xcurv
-        u_ss = self.u_ss
-        time_ss = self.time_ss
-        point_and_tangent = self.point_and_tangent
-        timestep = self.timestep
-        iter = self.iter
-        p = self.p
-        Atv = []
-        Btv = []
-        Ctv = []
-        index_used_list = []
-        lap_used_for_linearization = 2
-        used_iter = range(iter - lap_used_for_linearization, iter)
-        max_num_point = 40
-        for i in range(0, num_horizon):
-            (Ai, Bi, Ci, index_selected,) = _regression_and_linearization(
-                lin_points,
-                lin_input,
-                used_iter,
-                ss_xcurv,
-                u_ss,
-                time_ss,
-                max_num_point,
-                qp,
-                matrix,
-                point_and_tangent,
-                timestep,
-                i,
-            )
-            Atv.append(Ai)
-            Btv.append(Bi)
-            Ctv.append(Ci)
-            index_used_list.append(index_selected)
-        return Atv, Btv, Ctv, index_used_list
+    def add_trajectory(self, ego: ModelBase, lap_number: int):
+        """ Include one lap's trajectory as the LMPC's reference, i.e.,
+        from which the LMPC will learn. 
 
-    def add_point(self, x, u, i):
-        counter = self.time_ss[self.iter - 1]
-        self.ss_xcurv[counter + i + 1, :, self.iter - 1] = x + np.array(
-            [0, 0, 0, 0, self.lap_length, 0]
-        )
-        self.u_ss[counter + i + 1, :, self.iter - 1] = u[:]
-
-    def add_trajectory(self, ego, lap_number):
-
+        Params
+        ------
+        ego: the ego vehicle
+        lap_number: the index of the lap to be used as the reference
+        """
         iter = self.iter
         end_iter = int(round((ego.times[lap_number][-1] - ego.times[lap_number][0]) / ego.timestep))
         times = np.stack(ego.times[lap_number], axis=0)

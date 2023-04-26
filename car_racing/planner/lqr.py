@@ -4,19 +4,21 @@ import numpy as np
 import scipy.linalg as la
 
 from planner.base import PlannerBase
-from racing_env import U_DIM, X_DIM
+from racing_env import U_DIM, X_DIM, SystemParam
 
 
 class LQRTrackingParam:
+    """ Collection of tunable LQR parameters
+    """
     def __init__(
         self,
-        matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
-        matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
-        matrix_Q=np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
-        matrix_R=np.diag([0.1, 0.1]),
-        vt=0.6,
-        eyt=0.0,
-        max_iter=50,
+        matrix_A: np.ndarray = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
+        matrix_B: np.ndarray = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
+        matrix_Q: np.ndarray = np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
+        matrix_R: np.ndarray = np.diag([0.1, 0.1]),
+        vt: float = 0.6,
+        eyt: float = 0.0,
+        max_iter: int = 50,
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -28,16 +30,18 @@ class LQRTrackingParam:
 
 
 class iLQRRacingParam:
+    """ Collection of tunable iLQR parameters
+    """
     def __init__(
         self,
-        matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
-        matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
-        matrix_Q=np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
-        matrix_R=np.diag([0.1, 0.1]),
-        vt=0.6,
-        eyt=0.0,
-        max_iter=150,
-        num_horizon=50,
+        matrix_A: np.ndarray = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
+        matrix_B: np.ndarray = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
+        matrix_Q: np.ndarray = np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
+        matrix_R: np.ndarray = np.diag([0.1, 0.1]),
+        vt: float = 0.6,
+        eyt: float = 0.0,
+        max_iter: int = 150,
+        num_horizon: int = 50,
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -50,14 +54,25 @@ class iLQRRacingParam:
 
 
 class LQRTracking(PlannerBase):
-    def __init__(self, lqr_param, system_param):
+    """LQR as the planner"""
+    def __init__(self, lqr_param: LQRTrackingParam, system_param: SystemParam):
         PlannerBase.__init__(self)
         self.set_target_speed(lqr_param.vt)
         self.set_target_deviation(lqr_param.eyt)
         self.system_param = system_param
         self.lqr_param = lqr_param
 
-    def _lqr(self, xtarget):
+    def _lqr(self, xtarget: np.ndarray):
+        """Run the LQR towards the target `xtarget`.
+        
+        Params
+        ------
+        xtarget: the target state
+
+        Returns
+        -------
+        the planned control inputs
+        """
         vt = xtarget[0]
         eyt = xtarget[5]
         A = self.lqr_param.matrix_A
@@ -97,7 +112,7 @@ class LQRTracking(PlannerBase):
         self.u = self._lqr(xtarget, self.lqr_param)
         if self.agent_name == "ego":
             if self.realtime_flag == False:
-                vehicles = self.racing_sim.vehicles
+                vehicles = self.racing_env.vehicles
             else:
                 vehicles = self.vehicles
             vehicles["ego"].local_trajs.append(None)
@@ -111,6 +126,7 @@ class LQRTracking(PlannerBase):
 
 
 class iLQRRacing(PlannerBase):
+    """iLQR as planner"""
     def __init__(self, ilqr_param, system_param):
         PlannerBase.__init__(self)
         self.set_target_speed(ilqr_param.vt)
@@ -118,6 +134,7 @@ class iLQRRacing(PlannerBase):
         self.system_param = system_param
         self.ilqr_param = ilqr_param
 
+    # ---------------- SOME HELPER FUNCTIONS ----------------
     @classmethod
     def _repelling_cost_function(cls, q1, q2, c, c_dot):
         b = q1*np.exp(q2*c)
@@ -172,7 +189,18 @@ class iLQRRacing(PlannerBase):
             l_x[:, i] = l_x_i
         return l_u, l_uu, l_x, l_xx
 
-    def _ilqr(self, xtarget):
+    def _ilqr(self, xtarget) -> np.ndarray:
+        """ Core of the iLQR alorithm, find the control inputs
+        to drive the system towards a target
+
+        Params
+        ------
+        xtarget: the target state (in local representation)
+
+        Returns
+        -------
+        Control inputs
+        """
         matrix_A = self.ilqr_param.matrix_A
         matrix_B = self.ilqr_param.matrix_B
         max_iter = self.ilqr_param.max_iter
@@ -194,20 +222,20 @@ class iLQRRacing(PlannerBase):
         safety_time = 2.0
         dist_margin_front = self.x[0] * safety_time
         dist_margin_behind = self.x[0] * safety_time
-        num_cycle_ego = int(self.x[4] / self.racing_sim.track.lap_length)
-        dist_ego = self.x[4] - num_cycle_ego * self.racing_sim.track.lap_length
+        num_cycle_ego = int(self.x[4] / self.racing_env.track.lap_length)
+        dist_ego = self.x[4] - num_cycle_ego * self.racing_env.track.lap_length
         obs_infos = {}
-        for name in list(self.racing_sim.vehicles):
+        for name in list(self.racing_env.vehicles):
             if name != self.agent_name:
                 # get predictions from other vehicles
-                obs_traj, _ = self.racing_sim.vehicles[name].get_trajectory_nsteps(
+                obs_traj, _ = self.racing_env.vehicles[name].get_trajectory_nsteps(
                     self.time, self.timestep, self.ilqr_param.num_horizon + 1
                 )
         # get ego agent and obstacles' dimensions
-        l_agent = self.racing_sim.vehicles[self.agent_name].param.length / 2
-        w_agent = self.racing_sim.vehicles[self.agent_name].param.width / 2
-        l_obs = self.racing_sim.vehicles["car1"].param.length / 2
-        w_obs = self.racing_sim.vehicles["car1"].param.width / 2
+        l_agent = self.racing_env.vehicles[self.agent_name].param.length / 2
+        w_agent = self.racing_env.vehicles[self.agent_name].param.width / 2
+        l_obs = self.racing_env.vehicles["car1"].param.length / 2
+        w_obs = self.racing_env.vehicles["car1"].param.width / 2
         for i in range(max_iter):
             # Forward simulation
             cost = 0
@@ -232,7 +260,7 @@ class iLQRRacing(PlannerBase):
                 matrix_R, 
                 num_horizon,xvar, 
                 obs_traj, 
-                self.racing_sim.track.lap_length,
+                self.racing_env.track.lap_length,
                 num_cycle_ego,
                 l_agent,
                 w_agent,
@@ -300,9 +328,9 @@ class iLQRRacing(PlannerBase):
             self.x,
             xtarget,
             self.ilqr_param,
-            self.racing_sim.vehicles,
+            self.racing_env.vehicles,
             self.agent_name,
-            self.racing_sim.track.lap_length,
+            self.racing_env.track.lap_length,
             self.time,
             self.timestep,
             self.track,
@@ -310,7 +338,7 @@ class iLQRRacing(PlannerBase):
         )
         if self.agent_name == "ego":
             if self.realtime_flag == False:
-                vehicles = self.racing_sim.vehicles
+                vehicles = self.racing_env.vehicles
             else:
                 vehicles = self.vehicles
             vehicles["ego"].local_trajs.append(None)

@@ -7,12 +7,18 @@ from racing_env import U_DIM, X_DIM
 
 
 class PIDTracking(PlannerBase):
+    """ PID as the planner
+    """
     def __init__(self, vt=0.6, eyt=0.0):
         PlannerBase.__init__(self)
         self.set_target_speed(vt)
         self.set_target_deviation(eyt)
 
     def _pid(self, xtarget):
+        """The core to PID algorithm
+        
+        NOTE: the Kp, Ki, and Ki are hard coded
+        """
         start_timer = datetime.datetime.now()
         u_next = np.zeros((U_DIM,))
         vt = xtarget[0]
@@ -29,7 +35,7 @@ class PIDTracking(PlannerBase):
         self.u = self._pid(xtarget)
         if self.agent_name == "ego":
             if self.realtime_flag == False:
-                vehicles = self.racing_sim.vehicles
+                vehicles = self.racing_env.vehicles
             else:
                 vehicles = self.vehicles
             vehicles["ego"].local_trajs.append(None)

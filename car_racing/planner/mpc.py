@@ -4,18 +4,19 @@ import numpy as np
 import casadi as ca
 
 from planner.base import PlannerBase
-from racing_env.params import X_DIM, U_DIM
+from racing_env import X_DIM, U_DIM, SystemParam
 
 class MPCTrackingParam:
+    """Tunable parameters for MPC"""
     def __init__(
         self,
-        matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
-        matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
-        matrix_Q=np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
-        matrix_R=np.diag([0.1, 0.1]),
-        vt=0.6,
-        eyt=0.0,
-        num_horizon=10,
+        matrix_A: np.ndarray = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
+        matrix_B: np.ndarray = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
+        matrix_Q: np.ndarray = np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
+        matrix_R: np.ndarray = np.diag([0.1, 0.1]),
+        vt: float = 0.6,
+        eyt: float = 0.0,
+        num_horizon: int = 10,
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -27,14 +28,25 @@ class MPCTrackingParam:
 
 
 class MPCTracking(PlannerBase):
-    def __init__(self, mpc_lti_param, system_param):
+    """MPC as the planner"""
+    def __init__(self, mpc_lti_param: MPCTrackingParam, system_param: SystemParam):
         PlannerBase.__init__(self)
         self.set_target_speed(mpc_lti_param.vt)
         self.set_target_deviation(mpc_lti_param.eyt)
         self.mpc_lti_param = mpc_lti_param
         self.system_param = system_param
 
-    def _mpc_lti(self, xtarget):
+    def _mpc_lti(self, xtarget: np.ndarray) -> np.ndarray:
+        """The core MPC algorithm
+                
+        Params
+        ------
+        xtarget: the target state (in local representation)
+
+        Returns
+        -------
+        Control inputs
+        """
         vt = xtarget[0]
         eyt = xtarget[5]
         num_horizon = self.mpc_lti_param.num_horizon
@@ -91,7 +103,7 @@ class MPCTracking(PlannerBase):
         self.u = self._mpc_lti(xtarget)
         if self.agent_name == "ego":
             if self.realtime_flag == False:
-                vehicles = self.racing_sim.vehicles
+                vehicles = self.racing_env.vehicles
             else:
                 vehicles = self.vehicles
             vehicles["ego"].local_trajs.append(None)
@@ -105,16 +117,17 @@ class MPCTracking(PlannerBase):
 
 
 class MPCCBFRacingParam:
+    """Tunable parameters for MPC-CBF"""
     def __init__(
         self,
-        matrix_A=np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
-        matrix_B=np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
-        matrix_Q=np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
-        matrix_R=np.diag([0.1, 0.1]),
-        vt=0.6,
-        eyt=0.0,
-        num_horizon=10,
-        alpha=0.6,
+        matrix_A: np.ndarray = np.genfromtxt("data/sys/LTI/matrix_A.csv", delimiter=","),
+        matrix_B: np.ndarray = np.genfromtxt("data/sys/LTI/matrix_B.csv", delimiter=","),
+        matrix_Q: np.ndarray = np.diag([10.0, 0.0, 0.0, 4.0, 0.0, 40.0]),
+        matrix_R: np.ndarray = np.diag([0.1, 0.1]),
+        vt: float = 0.6,
+        eyt: float = 0.0,
+        num_horizon: int = 10,
+        alpha: float = 0.6,
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
@@ -127,7 +140,8 @@ class MPCCBFRacingParam:
 
 
 class MPCCBFRacing(PlannerBase):
-    def __init__(self, mpc_cbf_param, system_param, realtime_flag = False):
+    """MPC with control barrier function as planner"""
+    def __init__(self, mpc_cbf_param: MPCCBFRacingParam, system_param: SystemParam, realtime_flag = False):
         PlannerBase.__init__(self)
         self.set_target_speed(mpc_cbf_param.vt)
         self.set_target_deviation(mpc_cbf_param.eyt)
@@ -135,7 +149,17 @@ class MPCCBFRacing(PlannerBase):
         self.mpc_cbf_param = mpc_cbf_param
         self.system_param = system_param
 
-    def _mpccbf(self, xtarget):
+    def _mpccbf(self, xtarget: np.ndarray) -> np.ndarray:
+        """ The core MPC-CBF algorithm
+
+        Params
+        ------
+        xtarget: the target state (in local representation)
+
+        Returns
+        -------
+        Control inputs
+        """
         vt = xtarget[0]
         eyt = xtarget[5]
         start_timer = datetime.datetime.now()
@@ -149,8 +173,8 @@ class MPCCBFRacing(PlannerBase):
         safety_time = 2.0
         dist_margin_front = self.x[0] * safety_time
         dist_margin_behind = self.x[0] * safety_time
-        num_cycle_ego = int(self.x[4] / self.racing_sim.track.lap_length)
-        dist_ego = self.x[4] - num_cycle_ego * self.racing_sim.track.lap_length
+        num_cycle_ego = int(self.x[4] / self.racing_env.track.lap_length)
+        dist_ego = self.x[4] - num_cycle_ego * self.racing_env.track.lap_length
         obs_infos = {}
         for name in list(self.vehicles):
             if name != self.agent_name:
@@ -165,8 +189,8 @@ class MPCCBFRacing(PlannerBase):
                 else:
                     pass
                 # check whether the obstacle is nearby, not consider it if not
-                num_cycle_obs = int(obs_traj[4, 0] / self.racing_sim.track.lap_length)
-                dist_obs = obs_traj[4, 0] - num_cycle_obs * self.racing_sim.track.lap_length
+                num_cycle_obs = int(obs_traj[4, 0] / self.racing_env.track.lap_length)
+                dist_obs = obs_traj[4, 0] - num_cycle_obs * self.racing_env.track.lap_length
                 if (dist_ego > dist_obs - dist_margin_front) & (
                     dist_ego < dist_obs + dist_margin_behind
                 ):
@@ -185,9 +209,9 @@ class MPCCBFRacing(PlannerBase):
             w_obs = self.vehicles[obs_name].param.width / 2
             # calculate control barrier functions for each obstacle at timestep
             for i in range(self.mpc_cbf_param.num_horizon):
-                num_cycle_obs = int(obs_traj[4, 0] / self.racing_sim.track.lap_length)
+                num_cycle_obs = int(obs_traj[4, 0] / self.racing_env.track.lap_length)
                 diffs = xvar[4, i] - obs_traj[4, i] - \
-                    (num_cycle_ego - num_cycle_obs) * self.racing_sim.track.lap_length
+                    (num_cycle_ego - num_cycle_obs) * self.racing_env.track.lap_length
                 diffey = xvar[5, i] - obs_traj[5, i]
                 diffs_next = xvar[4, i + 1] - obs_traj[4, i + 1]
                 diffey_next = xvar[5, i + 1] - obs_traj[5, i + 1]
@@ -259,9 +283,9 @@ class MPCCBFRacing(PlannerBase):
                 self.x,
                 xtarget,
                 self.mpc_cbf_param,
-                self.racing_sim.vehicles,
+                self.racing_env.vehicles,
                 self.agent_name,
-                self.racing_sim.track.lap_length,
+                self.racing_env.track.lap_length,
                 self.time,
                 self.timestep,
                 self.realtime_flag,
@@ -274,7 +298,7 @@ class MPCCBFRacing(PlannerBase):
             pass
         if self.agent_name == "ego":
             if self.realtime_flag == False:
-                vehicles = self.racing_sim.vehicles
+                vehicles = self.racing_env.vehicles
             else:
                 vehicles = self.vehicles
             vehicles["ego"].local_trajs.append(None)

@@ -49,9 +49,9 @@ def lmpc_racing(args):
         if args["direct_lmpc"]:
             pass
         else:
-            pid_controller.set_racing_sim(simulator)
-            mpc_lti_controller.set_racing_sim(simulator)
-        lmpc_controller.set_racing_sim(simulator)
+            pid_controller.set_racing_env(simulator)
+            mpc_lti_controller.set_racing_env(simulator)
+        lmpc_controller.set_racing_env(simulator)
         lmpc_controller.set_vehicles_track()
         # start simulation
         for iter in range(lap_number):
@@ -182,7 +182,7 @@ def lmpc_racing(args):
 
 
 def set_up_ego(timestep, track):
-    ego = DynamicBicycleModel(
+    ego = OffboardDynamicBicycleModel(
         name="ego", param=CarParam(edgecolor="black"), system_param=SystemParam()
     )
     ego.set_timestep(timestep)

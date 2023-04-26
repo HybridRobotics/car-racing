@@ -1,24 +1,28 @@
+from typing import Dict
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.animation as anim
 
 from racing_env.params import X_DIM
+from racing_env.vehicle import ModelBase
+from racing_env.track import ClosedTrack
 
 
 class RacingEnv:
     def __init__(self):
-        self.track = None
-        self.vehicles = {}
-        self.opti_traj_xglob = None
+        self.track: ClosedTrack = None
+        self.vehicles: Dict[str, ModelBase] = {}
+        self.opti_traj_xglob: np.ndarray = None
 
-    def set_timestep(self, dt):
+    def set_timestep(self, dt: float):
         self.timestep = dt
 
-    def set_track(self, track):
+    def set_track(self, track: ClosedTrack):
         self.track = track
 
-    def set_opti_traj(self, opti_traj_xglob):
+    def set_opti_traj(self, opti_traj_xglob: np.ndarray):
         self.opti_traj_xglob = opti_traj_xglob
 
 class RacingSim(RacingEnv):
@@ -27,17 +31,17 @@ class RacingSim(RacingEnv):
         self.ax = None
         self.fig = None
 
-    def add_vehicle(self, vehicle):
+    def add_vehicle(self, vehicle: ModelBase):
         self.vehicles[vehicle.name] = vehicle
         self.vehicles[vehicle.name].set_track(self.track)
         self.vehicles[vehicle.name].set_timestep(self.timestep)
 
     def sim(
         self,
-        sim_time=50.0,
-        one_lap=False,
-        one_lap_name=None,
-        animating_flag=False,
+        sim_time: float = 50.0,
+        one_lap: bool = False,
+        one_lap_name: str = None,
+        animating_flag: bool =False,
     ):
         if one_lap == True:
             current_lap = self.vehicles[one_lap_name].laps
@@ -540,5 +544,5 @@ class RacingSim(RacingEnv):
             media.save(
                 "media/animation/" + filename + ".gif",
                 dpi=80,
-                writer=anim.writers["ffmpeg"](fps=10),
+                writer=anim.writers["pillow"](fps=10),
             )

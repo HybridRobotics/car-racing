@@ -1,4 +1,6 @@
 from .base import (
+    AgentInfo,
+    RacingGameParam,
     PlannerBase
 )
 from .pid import (
@@ -22,7 +24,6 @@ from .overtake import (
 )
 from .lmpc import (
     LMPCRacingParam,
-    RacingGameParam,
     LMPCPrediction, 
     LMPCRacingGame
 )

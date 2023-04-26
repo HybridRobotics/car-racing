@@ -1,5 +1,5 @@
-
 import copy
+from typing import Tuple
 
 import numpy as np
 import sympy as sp
@@ -7,7 +7,14 @@ import sympy as sp
 from racing_env.params import *
 from racing_env.track import get_curvature
 
-def vehicle_dynamics(dynamics_param, curv, xglob, xcurv, delta_t, u):
+def vehicle_dynamics(
+        dynamics_param: BicycleDynamicsParam,
+        curv: np.ndarray,
+        xglob: np.ndarray,
+        xcurv: np.ndarray,
+        delta_t: float,
+        u: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
 
     m, lf, lr, Iz, Df, Cf, Bf, Dr, Cr, Br = dynamics_param.get_params()
 
@@ -55,7 +62,7 @@ def vehicle_dynamics(dynamics_param, curv, xglob, xcurv, delta_t, u):
     return xglob_next, xcurv_next
 
 class ModelBase:
-    def __init__(self, name=None, param=None, no_dynamics=False, system_param=None):
+    def __init__(self, name: str = None, param: CarParam = None, no_dynamics = False, system_param: SystemParam = None):
         self.name = name
         self.param = param
         self.system_param = system_param
@@ -89,13 +96,13 @@ class ModelBase:
     def set_zero_noise(self):
         self.zero_noise_flag = True
 
-    def set_timestep(self, dt):
+    def set_timestep(self, dt: float):
         self.timestep = dt
 
-    def set_state_curvilinear(self, xcurv):
+    def set_state_curvilinear(self, xcurv: np.ndarray):
         self.xcurv = xcurv
 
-    def set_state_global(self, xglob):
+    def set_state_global(self, xglob: np.ndarray):
         self.xglob = xglob
 
     def start_logging(self):
@@ -185,7 +192,7 @@ class ModelBase:
         )
 
 class NoDynamicsModel(ModelBase):
-    def __init__(self, name=None, param=None, xcurv=None, xglob=None):
+    def __init__(self, name: str = None, param: CarParam = None):
         ModelBase.__init__(self, name=name, param=param)
         self.no_dynamics = True
 
@@ -197,7 +204,7 @@ class NoDynamicsModel(ModelBase):
         self.xglob = np.zeros((X_DIM,))
         self.xcurv, self.xglob = self.get_estimation(0)
 
-    def get_estimation(self, t0):
+    def get_estimation(self, t0) -> Tuple[np.ndarray, np.ndarray]:
         # position estimation in curvilinear coordinates
         xcurv_est = np.zeros((X_DIM,))
         xcurv_est[0] = sp.diff(self.s_func, self.t_symbol).subs(self.t_symbol, t0)
@@ -216,7 +223,7 @@ class NoDynamicsModel(ModelBase):
         xglob_est[5] = Y
         return xcurv_est, xglob_est
 
-    def get_trajectory_nsteps(self, t0, delta_t, n):
+    def get_trajectory_nsteps(self, t0, delta_t: float, n: int):
         xcurv_est_nsteps = np.zeros((X_DIM, n))
         xglob_est_nsteps = np.zeros((X_DIM, n))
         for index in range(n):
@@ -230,7 +237,7 @@ class NoDynamicsModel(ModelBase):
         self.xcurv, self.xglob = self.get_estimation(self.time)
 
 class DynamicBicycleModel(ModelBase):
-    def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
+    def __init__(self, name: str = None, param: CarParam = None, system_param: SystemParam = None):
         ModelBase.__init__(self, name=name, param=param, system_param=system_param)
 
     def forward_dynamics(self, realtime_flag):
@@ -278,7 +285,7 @@ class DynamicBicycleModel(ModelBase):
         self.time += self.timestep
 
 class OffboardDynamicBicycleModel(DynamicBicycleModel):
-    def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
+    def __init__(self, name: str = None, param: CarParam = None, system_param: SystemParam = None):
         DynamicBicycleModel.__init__(self, name=name, param=param, system_param=system_param)
 
     # in this estimation, the vehicles is assumed to move with input is equal to zero
@@ -328,5 +335,5 @@ class OffboardDynamicBicycleModel(DynamicBicycleModel):
         return xcurv_nsteps, xglob_nsteps
 
 class OffboardNoDynamicsModel(NoDynamicsModel):
-    def __init__(self, name=None, param=None, xcurv=None, xglob=None):
+    def __init__(self, name: str = None, param: CarParam = None):
         NoDynamicsModel.__init__(self, name=name, param=param)

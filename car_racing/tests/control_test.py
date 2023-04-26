@@ -11,17 +11,17 @@ def tracking(args):
     if args["simulation"]:
         track = ClosedTrack(track_spec, track_width=0.8)
         # setup ego car
-        ego = OffboardDynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
+        ego = OffboardDynamicBicycleModel(name="ego", param=CarParam(edgecolor="black"), system_param = SystemParam())
         ego.set_state_curvilinear(np.zeros((X_DIM,)))
         ego.set_state_global(np.zeros((X_DIM,)))
         ego.start_logging()
         if args["ctrl_policy"] == "pid":
             ego.set_ctrl_policy(PIDTracking(vt=0.8))
         elif args["ctrl_policy"] == "mpc-lti":
-            mpc_lti_param = base.MPCTrackingParam(vt=0.8)
+            mpc_lti_param = MPCTrackingParam(vt=0.8)
             ego.set_ctrl_policy(MPCTracking(mpc_lti_param, ego.system_param))
         elif args["ctrl_policy"] == "lqr":
-            lqr_param = base.LQRTrackingParam(vt=0.8)
+            lqr_param = LQRTrackingParam(vt=0.8)
             ego.set_ctrl_policy(LQRTracking(lqr_param, ego.system_param))
         else:
             raise NotImplementedError

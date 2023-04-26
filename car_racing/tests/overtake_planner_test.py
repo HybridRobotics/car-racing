@@ -87,9 +87,9 @@ def racing_overtake(args, file_number):
             if args["direct_lmpc"]:
                 pass
             else:
-                pid_controller.set_racing_sim(simulator)
-                mpc_lti_controller.set_racing_sim(simulator)
-            lmpc_controller.set_racing_sim(simulator)
+                pid_controller.set_racing_env(simulator)
+                mpc_lti_controller.set_racing_env(simulator)
+            lmpc_controller.set_racing_env(simulator)
             lmpc_controller.set_vehicles_track()
             # start simulation
             for iter in range(lap_number):
@@ -243,7 +243,7 @@ def racing_overtake(args, file_number):
 
 
 def set_up_ego(timestep, track):
-    ego = OffboardDynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
+    ego = OffboardDynamicBicycleModel(name="ego", param=CarParam(edgecolor="black"), system_param = SystemParam())
     ego.set_timestep(timestep)
     # run the pid controller for the first lap to collect data
     pid_controller = PIDTracking(vt=0.7, eyt=0.0)
@@ -255,7 +255,7 @@ def set_up_ego(timestep, track):
     ego.start_logging()
     ego.set_track(track)
     # run mpc-lti controller for the second lap to collect data
-    mpc_lti_param = base.MPCTrackingParam(vt=0.7, eyt=0.0)
+    mpc_lti_param = MPCTrackingParam(vt=0.7, eyt=0.0)
     mpc_lti_controller = MPCTracking(mpc_lti_param, ego.system_param)
     mpc_lti_controller.set_timestep(timestep)
     mpc_lti_controller.set_track(track)
@@ -264,8 +264,8 @@ def set_up_ego(timestep, track):
 
 def set_up_lmpc(timestep, track, lap_number, alpha, opti_traj_xcurv, opti_traj_xglob, system_param):
     time_lmpc = 10000 * timestep
-    lmpc_param = base.LMPCRacingParam(timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc)
-    racing_game_param = base.RacingGameParam(timestep=timestep, alpha=alpha, num_horizon_planner=10)
+    lmpc_param = LMPCRacingParam(timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc)
+    racing_game_param = RacingGameParam(timestep=timestep, alpha=alpha, num_horizon_planner=10)
     lmpc_controller = LMPCRacingGame(lmpc_param, racing_game_param=racing_game_param, system_param = system_param)
     lmpc_controller.set_track(track)
     lmpc_controller.set_timestep(timestep)
@@ -279,7 +279,7 @@ def set_up_other_vehicles(track, num_veh):
     for index in range(0, num_veh):
         veh_name = "car" + str(index + 1)
         vehicles.append(
-            OffboardNoDynamicsModel(name=veh_name, param=base.CarParam(edgecolor="orange"))
+            OffboardNoDynamicsModel(name=veh_name, param=CarParam(edgecolor="orange"))
         )
         vehicles[index].set_track(track)
     return vehicles

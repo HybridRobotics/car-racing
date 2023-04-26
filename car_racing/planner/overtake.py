@@ -5,9 +5,10 @@ from multiprocess import Process, Manager
 import casadi as ca
 import numpy as np
 
-from planner.base import check_ego_agent_distance, get_agent_info, get_traj_xglob
+from planner.base import AgentInfo, check_ego_agent_distance, get_traj_xglob, RacingGameParam
 from racing_env.params import X_DIM, U_DIM
 
+# ---------------- HELPER FUNCTIONS FOR BEZIER CURVES ----------------
 
 def _get_bezier_control_points(
     vehicles_interest,
@@ -136,9 +137,10 @@ def _get_bezier_curve(bezier_control_point, t):
     )
     return [bezier_curve_s, bezier_curve_ey]
 
+# ---------------- END OF HELPER FUNCTIONS ----------------
 
 class OvertakePathPlanner:
-    def __init__(self, racing_game_param):
+    def __init__(self, racing_game_param: RacingGameParam):
         self.racing_game_param = racing_game_param
         self.vehicles = None
         self.agent_name = None
@@ -182,7 +184,7 @@ class OvertakePathPlanner:
                 sorted_vehicles.append(name)
             num += 1
         # get maximum and minimum infos of agent(s)
-        agent_infos = get_agent_info(vehicles, sorted_vehicles, track)
+        agent_infos = AgentInfo.get_agent_info(vehicles, sorted_vehicles, track)
         for index in range(num_veh):
             name = sorted_vehicles[index]
             if vehicles[name].no_dynamics:
@@ -445,7 +447,7 @@ class OvertakePathPlanner:
 
 
 class OvertakeTrajPlanner:
-    def __init__(self, racing_game_param):
+    def __init__(self, racing_game_param: RacingGameParam):
         self.racing_game_param = racing_game_param
         self.vehicles = None
         self.agent_name = None
@@ -527,7 +529,7 @@ class OvertakeTrajPlanner:
             )
             num += 1
         # get agents infos and reference Bezier curve
-        agent_info = get_agent_info(vehicles, sorted_vehicles, track)
+        agent_info = AgentInfo.get_agent_info(vehicles, sorted_vehicles, track)
         bezier_control_point = _get_bezier_control_points(
             vehicles_interest,
             veh_infos,
