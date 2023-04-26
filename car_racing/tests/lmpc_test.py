@@ -1,11 +1,10 @@
 import pickle
-import sympy as sp
+
 import numpy as np
-import random
-from control.lmpc_helper import LMPCPrediction
-from racing import offboard
-from utils import base, racing_env
-from utils.constants import *
+import sympy as sp
+
+from planner import *
+from racing_env import *
 
 
 def lmpc_racing(args):
@@ -22,7 +21,7 @@ def lmpc_racing(args):
     opti_traj_xglob = np.genfromtxt(
         "data/optimal_traj/xglob_" + track_layout + ".csv", delimiter=","
     )
-    track = racing_env.ClosedTrack(track_spec, track_width=1.0)
+    track = ClosedTrack(track_spec, track_width=1.0)
     if args["simulation"]:
         timestep = 1.0 / 10.0
         # load the trajectory generate from pid and mpc controller or build new ego and controller
@@ -39,7 +38,7 @@ def lmpc_racing(args):
             timestep, track, lap_number, opti_traj_xcurv, opti_traj_xglob, ego.system_param
         )
         # define a simulator
-        simulator = offboard.CarRacingSim()
+        simulator = CarRacingSim()
         simulator.set_timestep(timestep)
         simulator.set_track(track)
         simulator.add_vehicle(ego)
@@ -183,12 +182,12 @@ def lmpc_racing(args):
 
 
 def set_up_ego(timestep, track):
-    ego = offboard.DynamicBicycleModel(
-        name="ego", param=base.CarParam(edgecolor="black"), system_param=base.SystemParam()
+    ego = DynamicBicycleModel(
+        name="ego", param=CarParam(edgecolor="black"), system_param=SystemParam()
     )
     ego.set_timestep(timestep)
     # run the pid controller for the first lap to collect data
-    pid_controller = offboard.PIDTracking(vt=0.7, eyt=0.0)
+    pid_controller = PIDTracking(vt=0.7, eyt=0.0)
     pid_controller.set_timestep(timestep)
     ego.set_ctrl_policy(pid_controller)
     pid_controller.set_track(track)
@@ -197,8 +196,8 @@ def set_up_ego(timestep, track):
     ego.start_logging()
     ego.set_track(track)
     # run mpc-lti controller for the second lap to collect data
-    mpc_lti_param = base.MPCTrackingParam(vt=0.7, eyt=0.0)
-    mpc_lti_controller = offboard.MPCTracking(mpc_lti_param, ego.system_param)
+    mpc_lti_param = MPCTrackingParam(vt=0.7, eyt=0.0)
+    mpc_lti_controller = MPCTracking(mpc_lti_param, ego.system_param)
     mpc_lti_controller.set_timestep(timestep)
     mpc_lti_controller.set_track(track)
     return ego, pid_controller, mpc_lti_controller
@@ -206,9 +205,9 @@ def set_up_ego(timestep, track):
 
 def set_up_lmpc(timestep, track, lap_number, opti_traj_xcurv, opti_traj_xglob, system_param):
     time_lmpc = 10000 * timestep
-    lmpc_param = base.LMPCRacingParam(timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc)
-    racing_game_param = base.RacingGameParam(timestep=timestep, num_horizon_planner=10)
-    lmpc_controller = offboard.LMPCRacingGame(
+    lmpc_param = LMPCRacingParam(timestep=timestep, lap_number=lap_number, time_lmpc=time_lmpc)
+    racing_game_param = RacingGameParam(timestep=timestep, num_horizon_planner=10)
+    lmpc_controller = LMPCRacingGame(
         lmpc_param, racing_game_param=racing_game_param, system_param=system_param
     )
     lmpc_controller.set_track(track)

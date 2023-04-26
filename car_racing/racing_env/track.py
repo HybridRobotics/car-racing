@@ -158,11 +158,11 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
                 CompletedFlag = 1
             else:
                 if (
-                    np.abs(computeAngle([x, y], [xs, ys], [xf, yf])) <= np.pi / 2
-                    and np.abs(computeAngle([x, y], [xf, yf], [xs, ys])) <= np.pi / 2
+                    np.abs(compute_angle([x, y], [xs, ys], [xf, yf])) <= np.pi / 2
+                    and np.abs(compute_angle([x, y], [xf, yf], [xs, ys])) <= np.pi / 2
                 ):
                     v1 = np.array([x, y]) - np.array([xs, ys])
-                    angle = computeAngle([xf, yf], [xs, ys], [x, y])
+                    angle = compute_angle([xf, yf], [xs, ys], [x, y])
                     s_local = la.norm(v1) * np.cos(angle)
                     s = s_local + point_and_tangent[i, 3]
                     ey = la.norm(v1) * np.sin(angle)
@@ -201,7 +201,7 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
                 CompletedFlag = 1
             else:
                 arc1 = point_and_tangent[i, 4] * point_and_tangent[i, 5]
-                arc2 = computeAngle([xs, ys], [CenterX, CenterY], [x, y])
+                arc2 = compute_angle([xs, ys], [CenterX, CenterY], [x, y])
                 if np.sign(arc1) == np.sign(arc2) and np.abs(arc1) >= np.abs(arc2):
                     v = np.array([x, y]) - np.array([CenterX, CenterY])
                     s_local = np.abs(arc2) * np.abs(r)
@@ -249,7 +249,7 @@ def get_curvature(lap_length, point_and_tangent, s):
 
 
 # Internal Utilities Functions
-def computeAngle(point1, origin, point2):
+def compute_angle(point1, origin, point2):
     # The orientation of this angle matches that of the coordinate system. Tha is why a minus sign is needed
     v1 = np.array(point1) - np.array(origin)
     v2 = np.array(point2) - np.array(origin)
