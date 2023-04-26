@@ -5,6 +5,7 @@ import numpy as np
 import sympy as sp
 
 from racing_env.params import *
+from racing_env.track import get_curvature
 
 def vehicle_dynamics(dynamics_param, curv, xglob, xcurv, delta_t, u):
 
@@ -183,7 +184,6 @@ class ModelBase:
             vehicle_xglob[3] * 180 / 3.14,
         )
 
-
 class NoDynamicsModel(ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None):
         ModelBase.__init__(self, name=name, param=param)
@@ -228,7 +228,6 @@ class NoDynamicsModel(ModelBase):
     def forward_dynamics(self):
         self.time += self.timestep
         self.xcurv, self.xglob = self.get_estimation(self.time)
-
 
 class DynamicBicycleModel(ModelBase):
     def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
@@ -278,19 +277,56 @@ class DynamicBicycleModel(ModelBase):
         self.xglob = xglob_next
         self.time += self.timestep
 
+class OffboardDynamicBicycleModel(DynamicBicycleModel):
+    def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
+        DynamicBicycleModel.__init__(self, name=name, param=param, system_param=system_param)
 
-# Base Simulator
-class CarRacingSim:
-    def __init__(self):
-        self.track = None
-        self.vehicles = {}
-        self.opti_traj_xglob = None
+    # in this estimation, the vehicles is assumed to move with input is equal to zero
+    def get_estimation(self, xglob, xcurv):
+        curv = get_curvature(self.lap_length, self.point_and_tangent, xcurv[4])
+        xcurv_est = np.zeros((X_DIM,))
+        xglob_est = np.zeros((X_DIM,))
+        xcurv_est[0:3] = xcurv[0:3]
+        xcurv_est[3] = xcurv[3] + self.timestep * (
+            xcurv[2]
+            - (xcurv[0] * np.cos(xcurv[3]) - xcurv[1] * np.sin(xcurv[3]))
+            / (1 - curv * xcurv[5])
+            * curv
+        )
+        xcurv_est[4] = xcurv[4] + self.timestep * (
+            (xcurv[0] * np.cos(xcurv[3]) - xcurv[1] * np.sin(xcurv[3])) / (1 - curv * xcurv[5])
+        )
+        xcurv_est[5] = xcurv[5] + self.timestep * (
+            xcurv[0] * np.sin(xcurv[3]) + xcurv[1] * np.cos(xcurv[3])
+        )
+        xglob_est[0:3] = xglob[0:3]
+        xglob_est[3] = xglob[3] + self.timestep * (xglob[2])
+        xglob_est[4] = xglob[4] + self.timestep * (
+            xglob[0] * np.cos(xglob[3]) - xglob[1] * np.sin(xglob[3])
+        )
+        xglob_est[4] = xglob[4] + self.timestep * (
+            xglob[0] * np.sin(xglob[3]) + xglob[1] * np.cos(xglob[3])
+        )
 
-    def set_timestep(self, dt):
-        self.timestep = dt
+        return xcurv_est, xglob_est
 
-    def set_track(self, track):
-        self.track = track
+    # get prediction for mpc-cbf controller
+    def get_trajectory_nsteps(self, n):
+        xcurv_nsteps = np.zeros((X_DIM, n))
+        xglob_nsteps = np.zeros((X_DIM, n))
+        for index in range(n):
+            if index == 0:
+                xcurv_est, xglob_est = self.get_estimation(self.xglob, self.xcurv)
+            else:
+                xcurv_est, xglob_est = self.get_estimation(
+                    xglob_nsteps[:, index - 1], xcurv_nsteps[:, index - 1]
+                )
+            while xcurv_est[4] > self.lap_length:
+                xcurv_est[4] = xcurv_est[4] - self.lap_length
+            xcurv_nsteps[:, index] = xcurv_est
+            xglob_nsteps[:, index] = xglob_est
+        return xcurv_nsteps, xglob_nsteps
 
-    def set_opti_traj(self, opti_traj_xglob):
-        self.opti_traj_xglob = opti_traj_xglob
+class OffboardNoDynamicsModel(NoDynamicsModel):
+    def __init__(self, name=None, param=None, xcurv=None, xglob=None):
+        NoDynamicsModel.__init__(self, name=name, param=param)

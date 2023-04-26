@@ -393,8 +393,9 @@ class LMPCPrediction:
         self.Qfun_used = np.zeros((num_ss_points, points_lmpc, lap_number))
 
 class LMPCRacingGame(PlannerBase):
-    def __init__(self, lmpc_param, racing_game_param=None, system_param=None):
+    def __init__(self, lmpc_param, racing_game_param=None, system_param=None, realtime_flag=False):
         PlannerBase.__init__(self)
+        self.realtime_flag = realtime_flag
         self.path_planner = False
         self.lmpc_param = lmpc_param
         self.racing_game_param = racing_game_param

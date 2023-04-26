@@ -38,7 +38,7 @@ def lmpc_racing(args):
             timestep, track, lap_number, opti_traj_xcurv, opti_traj_xglob, ego.system_param
         )
         # define a simulator
-        simulator = CarRacingSim()
+        simulator = RacingSim()
         simulator.set_timestep(timestep)
         simulator.set_track(track)
         simulator.add_vehicle(ego)

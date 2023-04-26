@@ -127,11 +127,11 @@ class MPCCBFRacingParam:
 
 
 class MPCCBFRacing(PlannerBase):
-    def __init__(self, mpc_cbf_param, system_param):
+    def __init__(self, mpc_cbf_param, system_param, realtime_flag = False):
         PlannerBase.__init__(self)
         self.set_target_speed(mpc_cbf_param.vt)
         self.set_target_deviation(mpc_cbf_param.eyt)
-        self.realtime_flag = None
+        self.realtime_flag = realtime_flag
         self.mpc_cbf_param = mpc_cbf_param
         self.system_param = system_param
 

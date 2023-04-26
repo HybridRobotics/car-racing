@@ -13,7 +13,7 @@ def racing(args):
     if args["simulation"]:
         track = ClosedTrack(track_spec, track_width=1.0)
         # setup ego car
-        ego = DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
+        ego = OffboardDynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
         mpc_cbf_param = base.MPCCBFRacingParam(vt=0.8)
         ego.set_state_curvilinear(np.zeros((X_DIM,)))
         ego.set_state_global(np.zeros((X_DIM,)))
@@ -24,16 +24,16 @@ def racing(args):
         ego.ctrl_policy.set_track(track)
         # setup surrounding cars
         t_symbol = sp.symbols("t")
-        car1 = NoDynamicsModel(name="car1", param=base.CarParam(edgecolor="orange"))
+        car1 = OffboardNoDynamicsModel(name="car1", param=base.CarParam(edgecolor="orange"))
         car1.set_track(track)
         car1.set_state_curvilinear_func(t_symbol, 0.2 * t_symbol + 4.0, 0.1 + 0.0 * t_symbol)
         car1.start_logging()
-        car2 = NoDynamicsModel(name="car2", param=base.CarParam(edgecolor="orange"))
+        car2 = OffboardNoDynamicsModel(name="car2", param=base.CarParam(edgecolor="orange"))
         car2.set_track(track)
         car2.set_state_curvilinear_func(t_symbol, 0.2 * t_symbol + 10.0, -0.1 + 0.0 * t_symbol)
         car2.start_logging()
         # setup simulation
-        simulator = CarRacingSim()
+        simulator = RacingSim()
         simulator.set_timestep(0.1)
         simulator.set_track(track)
         simulator.add_vehicle(ego)

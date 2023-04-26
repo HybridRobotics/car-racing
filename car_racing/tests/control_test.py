@@ -11,7 +11,7 @@ def tracking(args):
     if args["simulation"]:
         track = ClosedTrack(track_spec, track_width=0.8)
         # setup ego car
-        ego = DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
+        ego = OffboardDynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
         ego.set_state_curvilinear(np.zeros((X_DIM,)))
         ego.set_state_global(np.zeros((X_DIM,)))
         ego.start_logging()
@@ -29,7 +29,7 @@ def tracking(args):
         ego.ctrl_policy.set_track(track)
         ego.set_track(track)
         # setup simulation
-        simulator = CarRacingSim()
+        simulator = RacingSim()
         simulator.set_timestep(0.1)
         simulator.set_track(track)
         simulator.add_vehicle(ego)

@@ -50,7 +50,7 @@ def racing_overtake(args, file_number):
                 ego.system_param
             )
             # define a simulator
-            simulator = CarRacingSim()
+            simulator = RacingSim()
             simulator.set_timestep(timestep)
             simulator.set_track(track)
             simulator.add_vehicle(ego)
@@ -243,7 +243,7 @@ def racing_overtake(args, file_number):
 
 
 def set_up_ego(timestep, track):
-    ego = DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
+    ego = OffboardDynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
     ego.set_timestep(timestep)
     # run the pid controller for the first lap to collect data
     pid_controller = PIDTracking(vt=0.7, eyt=0.0)
@@ -279,7 +279,7 @@ def set_up_other_vehicles(track, num_veh):
     for index in range(0, num_veh):
         veh_name = "car" + str(index + 1)
         vehicles.append(
-            NoDynamicsModel(name=veh_name, param=base.CarParam(edgecolor="orange"))
+            OffboardNoDynamicsModel(name=veh_name, param=base.CarParam(edgecolor="orange"))
         )
         vehicles[index].set_track(track)
     return vehicles

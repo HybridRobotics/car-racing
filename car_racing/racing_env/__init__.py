@@ -5,12 +5,17 @@ from .params import (
     SystemParam,
     CarParam
 )
-from .simulator import (
+from .vehicle import (
     vehicle_dynamics,
     ModelBase,
     NoDynamicsModel,
     DynamicBicycleModel,
-    CarRacingSim
+    OffboardDynamicBicycleModel,
+    OffboardNoDynamicsModel
+)
+from .env import (
+    RacingEnv,
+    RacingSim
 )
 from .track import (
     get_curvature,
