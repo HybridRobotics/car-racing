@@ -1,5 +1,6 @@
 import copy
 import datetime
+from enum import Enum
 from typing import List, Tuple
 from pathos.multiprocessing import ProcessingPool as Pool
 
@@ -12,7 +13,7 @@ from scipy.interpolate import interp1d
 
 from planner.base import PlannerBase, get_agent_range, ego_agent_overlap_checker, RacingGameParam
 from planner.overtake import OvertakePathPlanner, OvertakeTrajPlanner
-from racing_env import X_DIM, U_DIM, get_curvature, SystemParam, ModelBase
+from racing_env import X_DIM, U_DIM, get_curvature, SystemParam, ModelBase, NoDynamicsModel
 
 
 # ---------------- HELPER FUNCTIONS FOR LMPC ----------------
@@ -226,7 +227,7 @@ def _compute_index(
     diff = np.dot((DataMatrix - x0_vec), scaling)
     norm = la.norm(diff, 1, axis=1)
     index_tot = np.squeeze(np.where(norm < h))
-    if index_tot.shape[0] >= max_num_point:
+    if len(index_tot.shape) != 0 and index_tot.shape[0] >= max_num_point:
         index = np.argsort(norm)[0:max_num_point]
     else:
         index = index_tot
@@ -369,6 +370,10 @@ class LMPCPrediction:
         self.Qfun_used: np.ndarray = np.zeros((num_ss_points, points_lmpc, lap_number))
 
 class LMPCRacingGame(PlannerBase):
+    class Mode(Enum):
+        FOLLOW = 1
+        OVERTAKE = 2
+
     """LMPC as planner"""
     def __init__(self,
         lmpc_param: LMPCRacingParam,
@@ -378,7 +383,7 @@ class LMPCRacingGame(PlannerBase):
     ):
         PlannerBase.__init__(self)
         self.realtime_flag = realtime_flag
-        self.path_planner = False
+        self.path_planner = True
         self.lmpc_param = lmpc_param
         self.racing_game_param = racing_game_param
         self.system_param = system_param
@@ -411,6 +416,12 @@ class LMPCRacingGame(PlannerBase):
         self.openloop_prediction = None
         self.old_ey = None
         self.old_direction_flag = None
+
+        self._mode = LMPCRacingGame.Mode.FOLLOW
+        self.follow_vehicle: NoDynamicsModel = None
+
+    def trigger_overtaking(self):
+        self._mode = LMPCRacingGame.Mode.OVERTAKE
 
     def set_vehicles_track(self):
         """Set the self's track to the overtake planner"""
@@ -523,6 +534,12 @@ class LMPCRacingGame(PlannerBase):
             # min and max of a
             opti.subject_to(-self.system_param.a_max <= u[1, i])
             opti.subject_to(u[1, i] <= self.system_param.a_max)
+            if self._mode == LMPCRacingGame.Mode.FOLLOW and self.follow_vehicle is not None :
+                # x[4] is the s, x[5] is the ey
+                follow_vehicle_s = self.follow_vehicle.xcurv[4]
+                while follow_vehicle_s <= xcurv[4]: 
+                    follow_vehicle_s += self.lap_length
+                opti.subject_to(x[4, i] <= follow_vehicle_s)
             # quadratic cost
             cost_mpc += ca.mtimes(
                 (x[:, i] - x_track).T,
@@ -823,7 +840,7 @@ class LMPCRacingGame(PlannerBase):
         else:
             u_old = copy.deepcopy(self.u_pred[0, :])
         overtake_flag, vehicles_interest = self.overtake_planner.get_overtake_flag(x)
-        if overtake_flag == False:
+        if overtake_flag == False or self._mode != LMPCRacingGame.Mode.OVERTAKE:
             (
                 self.u_pred,
                 self.x_pred,
