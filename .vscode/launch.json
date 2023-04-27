@@ -1,0 +1,25 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Overtake",
+            "type": "python",
+            "request": "launch",
+            "program": "car_racing/tests/overtake_planner_test.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--track-layout",        "l_shape",
+                "--lap-number",          "7",
+                "--number-other-agents", "1",
+                "--simulation",
+                "--direct-lmpc",
+                "--animation",
+                "--random-other-agents"
+            ]
+        }
+    ]
+}
