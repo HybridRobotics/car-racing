@@ -8,6 +8,7 @@ from cvxopt.solvers import qp
 from cvxopt import matrix
 import numpy as np
 from numpy import linalg as la
+from scipy.interpolate import interp1d
 
 from planner.base import PlannerBase, get_agent_range, ego_agent_overlap_checker, RacingGameParam
 from planner.overtake import OvertakePathPlanner, OvertakeTrajPlanner
@@ -605,7 +606,7 @@ class LMPCRacingGame(PlannerBase):
         cost = 0
         opti.subject_to(xvar[:, 0] == xcurv)
         vx = xcurv[0]
-        f_traj = ca.interp1d(target_traj_xcurv[:, 4], target_traj_xcurv[:, 5])
+        f_traj = interp1d(target_traj_xcurv[:, 4], target_traj_xcurv[:, 5])
         veh_len = self.overtake_planner.vehicles["ego"].param.length
         veh_width = self.overtake_planner.vehicles["ego"].param.width
         # CBF parameter
@@ -903,7 +904,6 @@ class LMPCRacingGame(PlannerBase):
                 x,
                 target_traj_xcurv=overtake_traj_xcurv,
                 direction_flag=direction_flag,
-                target_traj_xglob=overtake_traj_xglob,
                 sorted_vehicles=sorted_vehicles,
             )
             x_pred_xglob = np.zeros((10 + 1, X_DIM))

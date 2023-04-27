@@ -239,7 +239,7 @@ def racing_overtake(args, file_number):
                 file_name = "racing_game_random"
             else:
                 file_name = "racing_game_" + track_layout
-            simulator.animate(filename=file_name, ani_time=250, racing_game=True)
+            simulator.animate(filename=file_name, ani_time=1000, racing_game=True)
 
 
 def set_up_ego(timestep, track):

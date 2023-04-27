@@ -237,7 +237,7 @@ class RacingSim(RacingEnv):
                 round(
                     (
                         self.vehicles["ego"].times[lap_number - 1][-1]
-                        - self.vehicles["ego"].times[lap_number - 1][0]
+                        - self.vehicles["ego"].times[lap_number - 3][0]
                     )
                     / self.vehicles["ego"].timestep
                 )

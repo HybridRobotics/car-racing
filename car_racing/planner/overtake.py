@@ -4,6 +4,7 @@ from multiprocess import Process, Manager
 
 import casadi as ca
 import numpy as np
+import scipy.interpolate
 
 from planner.base import AgentInfo, check_ego_agent_distance, get_traj_xglob, RacingGameParam
 from racing_env.params import X_DIM, U_DIM
@@ -28,7 +29,7 @@ def _get_bezier_control_points(
     bezier_control_point = np.zeros(
         (num_veh + 1, racing_game_param.bezier_order + 1, 2)
     )  # for each point, coordinate in (s, ey)
-    func_optimal_ey = ca.interp1d(optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 5])
+    func_optimal_ey = scipy.interpolate.interp1d(optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 5])
     for index in range(num_veh + 1):
         # s0
         bezier_control_point[index, 0, 0] = xcurv_ego[4]
@@ -201,8 +202,8 @@ class OvertakePathPlanner:
                 max(obs_traj.T[:, 5]),
                 min(obs_traj.T[:, 5]),
             )
-        func_optimal_ey = ca.interp1d(optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 5])
-        func_optimal_vx = ca.interp1d(optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 0])
+        func_optimal_ey = scipy.interpolate.interp1d(optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 5])
+        func_optimal_vx = scipy.interpolate.interp1d(optimal_traj_xcurv[:, 4], optimal_traj_xcurv[:, 0])
         bezier_control_points = _get_bezier_control_points(
             vehicles_interest,
             obs_traj_infos,
@@ -221,7 +222,7 @@ class OvertakePathPlanner:
                 # s and ey for each point
                 bezier_xcurvs[index, j, :] = _get_bezier_curve(bezier_control_points[index, :, :], t)
             bezier_funcs.append(
-                ca.interp1d(
+                scipy.interpolate.interp1d(
                     bezier_xcurvs[index, :, 0],
                     bezier_xcurvs[index, :, 1],
                 )
@@ -548,7 +549,7 @@ class OvertakeTrajPlanner:
                 # s and ey for each point
                 bezier_xcurvs[index, j, :] = _get_bezier_curve(bezier_control_point[index, :, :], t)
             bezier_funcs.append(
-                ca.interp1d(
+                scipy.interpolate.interp1d(
                     bezier_xcurvs[index, :, 0],
                     bezier_xcurvs[index, :, 1],
                 )
