@@ -1,5 +1,6 @@
 import pickle
 import random
+from typing import List
 
 import sympy as sp
 import numpy as np
@@ -59,7 +60,7 @@ def racing_overtake(args, file_number):
             t_symbol = sp.symbols("t")
             if args["sim_replay"]:
                 with open("data/simulator/racing_game.obj", "rb") as handle:
-                    simulator = pickle.load(handle)
+                    simulator: RacingSim = pickle.load(handle)
                     num = len(simulator.vehicles) - 1
                     vehicles = set_up_other_vehicles(track, num)
                     for index in range(0, num):
@@ -91,6 +92,7 @@ def racing_overtake(args, file_number):
                 mpc_lti_controller.set_racing_env(simulator)
             lmpc_controller.set_racing_env(simulator)
             lmpc_controller.set_vehicles_track()
+            lmpc_controller.follow_vehicle = random.choice(vehicles)
             # start simulation
             for iter in range(lap_number):
                 # for the first lap, run the pid controller to collect data
@@ -149,8 +151,8 @@ def racing_overtake(args, file_number):
                                 veh_name = "car" + str(index + 1)
                                 vehicles[index].set_state_curvilinear_func(
                                     t_symbol,
-                                    (1.2 + index * 0.02) * t_symbol + 10.5 + index * 1.5,
-                                    -0.5 + index * 0.3 + 0.0 * t_symbol,
+                                    0.1 * random.randint(0, 10) * t_symbol + 3 + random.randint(0, 14),
+                                    0.7 - 0.1 * random.randint(0, 14) + 0.0 * t_symbol,
                                 )
                                 vehicles[index].start_logging()
                                 simulator.add_vehicle(vehicles[index])
@@ -275,7 +277,7 @@ def set_up_lmpc(timestep, track, lap_number, alpha, opti_traj_xcurv, opti_traj_x
 
 
 def set_up_other_vehicles(track, num_veh):
-    vehicles = []
+    vehicles: List[NoDynamicsModel] = []
     for index in range(0, num_veh):
         veh_name = "car" + str(index + 1)
         vehicles.append(
