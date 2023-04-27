@@ -133,24 +133,24 @@ def check_ego_agent_distance(ego: ModelBase, agent: ModelBase, racing_game_param
         s_agent = s_agent - lap_length
     while s_ego > lap_length:
         s_ego = s_ego - lap_length
-    # return (
-    #         # agent and ego in sam lap, agent is in front of the ego
-    #         s_agent - s_ego <= racing_game_param.safety_factor * ego.param.length
-    #             + racing_game_param.planning_prediction_factor * delta_v
-    #         and (s_agent >= s_ego)
-    #     ) or (
-    #         # agent is in next lap, agent is in front of the ego
-    #         s_agent + lap_length - s_ego <= racing_game_param.safety_factor * ego.param.length
-    #             + racing_game_param.planning_prediction_factor * delta_v
-    #         and s_agent + lap_length >= s_ego
-    #     ) or (
-    #         # agent and ego in same lap, ego is in front of the agent
-    #         -s_agent + s_ego <= 1.0 * ego.param.length and s_agent <= s_ego
-    #     ) or (
-    #         # ego is in next lap, ego is in front of the agent
-    #         -s_agent + s_ego + lap_length <= 1.0 * ego.param.length and s_agent <= s_ego + lap_length
-    #     )
-    return False
+    return (
+            # agent and ego in sam lap, agent is in front of the ego
+            s_agent - s_ego <= racing_game_param.safety_factor * ego.param.length
+                + racing_game_param.planning_prediction_factor * delta_v
+            and (s_agent >= s_ego)
+        ) or (
+            # agent is in next lap, agent is in front of the ego
+            s_agent + lap_length - s_ego <= racing_game_param.safety_factor * ego.param.length
+                + racing_game_param.planning_prediction_factor * delta_v
+            and s_agent + lap_length >= s_ego
+        ) or (
+            # agent and ego in same lap, ego is in front of the agent
+            -s_agent + s_ego <= 1.0 * ego.param.length and s_agent <= s_ego
+        ) or (
+            # ego is in next lap, ego is in front of the agent
+            -s_agent + s_ego + lap_length <= 1.0 * ego.param.length and s_agent <= s_ego + lap_length
+        )
+    # return False
 
 
 def get_traj_xglob(traj_xcurv: np.ndarray, track: ClosedTrack):
