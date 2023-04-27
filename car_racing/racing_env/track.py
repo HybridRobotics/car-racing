@@ -1,9 +1,11 @@
+from typing import Tuple
+
 import numpy as np
 import numpy.linalg as la
 import pdb
 
 
-def get_global_position(lap_length, width, point_and_tangent, s, ey):
+def get_global_position(lap_length: float, width: float, point_and_tangent: np.ndarray, s: float, ey: float) -> np.ndarray:
     """coordinate transformation from curvilinear reference frame (e, ey) to inertial reference frame (X, Y)
     (s, ey): position in the curvilinear reference frame
     """
@@ -70,7 +72,7 @@ def get_global_position(lap_length, width, point_and_tangent, s, ey):
     return x, y
 
 
-def get_orientation(lap_length, width, point_and_tangent, s, ey):
+def get_orientation(lap_length: float, width: float, point_and_tangent: np.ndarray, s: float, ey: float) -> float:
     # wrap s along the track
     s_tolerance = 0.001
     while s > lap_length:
@@ -129,7 +131,7 @@ def get_orientation(lap_length, width, point_and_tangent, s, ey):
     return psi
 
 
-def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
+def get_local_position(lap_length: float, width: float, point_and_tangent: np.ndarray, x: float, y: float, psi: float) -> np.ndarray:
     """coordinate transformation from inertial reference frame (X, Y) to curvilinear reference frame (s, ey)
     (X, Y): position in the inertial reference frame
     """
@@ -158,11 +160,11 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
                 CompletedFlag = 1
             else:
                 if (
-                    np.abs(computeAngle([x, y], [xs, ys], [xf, yf])) <= np.pi / 2
-                    and np.abs(computeAngle([x, y], [xf, yf], [xs, ys])) <= np.pi / 2
+                    np.abs(compute_angle([x, y], [xs, ys], [xf, yf])) <= np.pi / 2
+                    and np.abs(compute_angle([x, y], [xf, yf], [xs, ys])) <= np.pi / 2
                 ):
                     v1 = np.array([x, y]) - np.array([xs, ys])
-                    angle = computeAngle([xf, yf], [xs, ys], [x, y])
+                    angle = compute_angle([xf, yf], [xs, ys], [x, y])
                     s_local = la.norm(v1) * np.cos(angle)
                     s = s_local + point_and_tangent[i, 3]
                     ey = la.norm(v1) * np.sin(angle)
@@ -201,7 +203,7 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
                 CompletedFlag = 1
             else:
                 arc1 = point_and_tangent[i, 4] * point_and_tangent[i, 5]
-                arc2 = computeAngle([xs, ys], [CenterX, CenterY], [x, y])
+                arc2 = compute_angle([xs, ys], [CenterX, CenterY], [x, y])
                 if np.sign(arc1) == np.sign(arc2) and np.abs(arc1) >= np.abs(arc2):
                     v = np.array([x, y]) - np.array([CenterX, CenterY])
                     s_local = np.abs(arc2) * np.abs(r)
@@ -224,7 +226,7 @@ def get_local_position(lap_length, width, point_and_tangent, x, y, psi):
     return s, ey, epsi, CompletedFlag
 
 
-def get_curvature(lap_length, point_and_tangent, s):
+def get_curvature(lap_length: float, point_and_tangent: np.ndarray, s: float) -> float:
     """curvature computation
     s: curvilinear abscissa at which the curvature has to be evaluated
     point_and_tangent: points and tangent vectors defining the map (these quantities are initialized in the map object)
@@ -249,7 +251,9 @@ def get_curvature(lap_length, point_and_tangent, s):
 
 
 # Internal Utilities Functions
-def computeAngle(point1, origin, point2):
+def compute_angle(point1: np.ndarray, origin: np.ndarray, point2: np.ndarray):
+    """ The angle in-between two given points. 
+    """
     # The orientation of this angle matches that of the coordinate system. Tha is why a minus sign is needed
     v1 = np.array(point1) - np.array(origin)
     v2 = np.array(point2) - np.array(origin)
@@ -268,6 +272,7 @@ def computeAngle(point1, origin, point2):
 
 
 def wrap(angle):
+    """Normalize an angle to [-pi, pi]"""
     if angle < -np.pi:
         w_angle = 2 * np.pi + angle
     elif angle > np.pi:
@@ -277,7 +282,8 @@ def wrap(angle):
     return w_angle
 
 
-def sign(a):
+def sign(a) -> int:
+    """Sign of a value"""
     if a >= 0:
         res = 1
     else:
@@ -328,7 +334,7 @@ class ClosedTrack:
         get_local_position: get (s, ey, epsi, CompletedFlag) from (X, Y, psi)
     """
 
-    def __init__(self, spec, track_width=0.8):
+    def __init__(self, spec: np.ndarray, track_width=0.8):
         """Initialization
         spec: geometry of the track
         track_width: track width
@@ -458,7 +464,7 @@ class ClosedTrack:
         self.point_and_tangent = point_and_tangent
         self.lap_length = point_and_tangent[-1, 3] + point_and_tangent[-1, 4]
 
-    def get_global_position(self, s, ey):
+    def get_global_position(self, s: float, ey: float) -> Tuple[float, float]:
         x, y = get_global_position(self.lap_length, self.width, self.point_and_tangent, s, ey)
         return x, y
 
@@ -472,7 +478,7 @@ class ClosedTrack:
         )
         return s, ey, epsi, CompletedFlag
 
-    def get_curvature(self, s):
+    def get_curvature(self, s) -> float:
         curv = get_curvature(self.lap_length, self.point_and_tangent, s)
         return curv
 

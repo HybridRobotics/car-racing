@@ -1,122 +1,47 @@
+from typing import Dict
+
 import numpy as np
-import sympy as sp
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.animation as anim
-from utils import base, racing_env
-from system import vehicle_dynamics
-from matplotlib import animation
-from utils.constants import *
-import pickle
 
-# off-board controller
-class PIDTracking(base.PIDTracking):
-    def __init__(self, vt=0.6, eyt=0.0):
-        base.PIDTracking.__init__(self, vt, eyt)
+from racing_env.params import X_DIM
+from racing_env.vehicle import ModelBase
+from racing_env.track import ClosedTrack
 
 
-class MPCTracking(base.MPCTracking):
-    def __init__(self, mpc_lti_param, system_param):
-        base.MPCTracking.__init__(self, mpc_lti_param, system_param)
-
-
-class LQRTracking(base.LQRTracking):
-    def __init__(self, lqr_param, system_param):
-        base.LQRTracking.__init__(self, lqr_param, system_param)
-
-
-class iLQRRacing(base.iLQRRacing):
-    def __init__(self, ilqr_param, system_param):
-        base.iLQRRacing.__init__(self, ilqr_param, system_param)
-
-
-class MPCCBFRacing(base.MPCCBFRacing):
-    def __init__(self, mpc_cbf_param, system_param):
-        base.MPCCBFRacing.__init__(self, mpc_cbf_param, system_param)
-        self.realtime_flag = False
-
-
-class LMPCRacingGame(base.LMPCRacingGame):
-    def __init__(self, lmpc_param, racing_game_param=None, system_param=None):
-        base.LMPCRacingGame.__init__(self, lmpc_param, racing_game_param=racing_game_param, system_param=system_param)
-        self.realtime_flag = False
-
-
-# off-board dynamic model
-class DynamicBicycleModel(base.DynamicBicycleModel):
-    def __init__(self, name=None, param=None, xcurv=None, xglob=None, system_param=None):
-        base.DynamicBicycleModel.__init__(self, name=name, param=param, system_param=system_param)
-
-    # in this estimation, the vehicles is assumed to move with input is equal to zero
-    def get_estimation(self, xglob, xcurv):
-        curv = racing_env.get_curvature(self.lap_length, self.point_and_tangent, xcurv[4])
-        xcurv_est = np.zeros((X_DIM,))
-        xglob_est = np.zeros((X_DIM,))
-        xcurv_est[0:3] = xcurv[0:3]
-        xcurv_est[3] = xcurv[3] + self.timestep * (
-            xcurv[2]
-            - (xcurv[0] * np.cos(xcurv[3]) - xcurv[1] * np.sin(xcurv[3]))
-            / (1 - curv * xcurv[5])
-            * curv
-        )
-        xcurv_est[4] = xcurv[4] + self.timestep * (
-            (xcurv[0] * np.cos(xcurv[3]) - xcurv[1] * np.sin(xcurv[3])) / (1 - curv * xcurv[5])
-        )
-        xcurv_est[5] = xcurv[5] + self.timestep * (
-            xcurv[0] * np.sin(xcurv[3]) + xcurv[1] * np.cos(xcurv[3])
-        )
-        xglob_est[0:3] = xglob[0:3]
-        xglob_est[3] = xglob[3] + self.timestep * (xglob[2])
-        xglob_est[4] = xglob[4] + self.timestep * (
-            xglob[0] * np.cos(xglob[3]) - xglob[1] * np.sin(xglob[3])
-        )
-        xglob_est[4] = xglob[4] + self.timestep * (
-            xglob[0] * np.sin(xglob[3]) + xglob[1] * np.cos(xglob[3])
-        )
-
-        return xcurv_est, xglob_est
-
-    # get prediction for mpc-cbf controller
-    def get_trajectory_nsteps(self, n):
-        xcurv_nsteps = np.zeros((X_DIM, n))
-        xglob_nsteps = np.zeros((X_DIM, n))
-        for index in range(n):
-            if index == 0:
-                xcurv_est, xglob_est = self.get_estimation(self.xglob, self.xcurv)
-            else:
-                xcurv_est, xglob_est = self.get_estimation(
-                    xglob_nsteps[:, index - 1], xcurv_nsteps[:, index - 1]
-                )
-            while xcurv_est[4] > self.lap_length:
-                xcurv_est[4] = xcurv_est[4] - self.lap_length
-            xcurv_nsteps[:, index] = xcurv_est
-            xglob_nsteps[:, index] = xglob_est
-        return xcurv_nsteps, xglob_nsteps
-
-
-class NoDynamicsModel(base.NoDynamicsModel):
-    def __init__(self, name=None, param=None, xcurv=None, xglob=None):
-        base.NoDynamicsModel.__init__(self, name=name, param=param)
-
-
-# off-board simulator
-class CarRacingSim(base.CarRacingSim):
+class RacingEnv:
     def __init__(self):
-        base.CarRacingSim.__init__(self)
+        self.track: ClosedTrack = None
+        self.vehicles: Dict[str, ModelBase] = {}
+        self.opti_traj_xglob: np.ndarray = None
+
+    def set_timestep(self, dt: float):
+        self.timestep = dt
+
+    def set_track(self, track: ClosedTrack):
+        self.track = track
+
+    def set_opti_traj(self, opti_traj_xglob: np.ndarray):
+        self.opti_traj_xglob = opti_traj_xglob
+
+class RacingSim(RacingEnv):
+    def __init__(self):
+        RacingEnv.__init__(self)
         self.ax = None
         self.fig = None
 
-    def add_vehicle(self, vehicle):
+    def add_vehicle(self, vehicle: ModelBase):
         self.vehicles[vehicle.name] = vehicle
         self.vehicles[vehicle.name].set_track(self.track)
         self.vehicles[vehicle.name].set_timestep(self.timestep)
 
     def sim(
         self,
-        sim_time=50.0,
-        one_lap=False,
-        one_lap_name=None,
-        animating_flag=False,
+        sim_time: float = 50.0,
+        one_lap: bool = False,
+        one_lap_name: str = None,
+        animating_flag: bool =False,
     ):
         if one_lap == True:
             current_lap = self.vehicles[one_lap_name].laps
@@ -312,7 +237,7 @@ class CarRacingSim(base.CarRacingSim):
                 round(
                     (
                         self.vehicles["ego"].times[lap_number - 1][-1]
-                        - self.vehicles["ego"].times[lap_number - 1][0]
+                        - self.vehicles["ego"].times[lap_number - 3][0]
                     )
                     / self.vehicles["ego"].timestep
                 )
@@ -619,5 +544,5 @@ class CarRacingSim(base.CarRacingSim):
             media.save(
                 "media/animation/" + filename + ".gif",
                 dpi=80,
-                writer=animation.writers["ffmpeg"](fps=10),
+                writer=anim.writers["pillow"](fps=10),
             )

@@ -1,34 +1,35 @@
 import pickle
+
 import numpy as np
-from racing import offboard
-from utils import base, racing_env
-from utils.constants import *
+
+from planner import *
+from racing_env import *
 
 def tracking(args):
     track_layout = args["track_layout"]
     track_spec = np.genfromtxt("data/track_layout/" + track_layout + ".csv", delimiter=",")
     if args["simulation"]:
-        track = racing_env.ClosedTrack(track_spec, track_width=0.8)
+        track = ClosedTrack(track_spec, track_width=0.8)
         # setup ego car
-        ego = offboard.DynamicBicycleModel(name="ego", param=base.CarParam(edgecolor="black"), system_param = base.SystemParam())
+        ego = OffboardDynamicBicycleModel(name="ego", param=CarParam(edgecolor="black"), system_param = SystemParam())
         ego.set_state_curvilinear(np.zeros((X_DIM,)))
         ego.set_state_global(np.zeros((X_DIM,)))
         ego.start_logging()
         if args["ctrl_policy"] == "pid":
-            ego.set_ctrl_policy(offboard.PIDTracking(vt=0.8))
+            ego.set_ctrl_policy(PIDTracking(vt=0.8))
         elif args["ctrl_policy"] == "mpc-lti":
-            mpc_lti_param = base.MPCTrackingParam(vt=0.8)
-            ego.set_ctrl_policy(offboard.MPCTracking(mpc_lti_param, ego.system_param))
+            mpc_lti_param = MPCTrackingParam(vt=0.8)
+            ego.set_ctrl_policy(MPCTracking(mpc_lti_param, ego.system_param))
         elif args["ctrl_policy"] == "lqr":
-            lqr_param = base.LQRTrackingParam(vt=0.8)
-            ego.set_ctrl_policy(offboard.LQRTracking(lqr_param, ego.system_param))
+            lqr_param = LQRTrackingParam(vt=0.8)
+            ego.set_ctrl_policy(LQRTracking(lqr_param, ego.system_param))
         else:
             raise NotImplementedError
         ego.ctrl_policy.set_timestep(0.1)
         ego.ctrl_policy.set_track(track)
         ego.set_track(track)
         # setup simulation
-        simulator = offboard.CarRacingSim()
+        simulator = RacingSim()
         simulator.set_timestep(0.1)
         simulator.set_track(track)
         simulator.add_vehicle(ego)
