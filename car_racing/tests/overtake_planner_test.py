@@ -10,6 +10,10 @@ from racing_env import *
 
 OTHER_CAR_SPEED = 1.0
 EGO_CAR_ACC_MAX = 0.7
+START_EY = -0.5
+START_S = 10.5
+START_S_INTERVAL = 1.5
+START_EY_INTERVAL = 0.3
 
 def racing_overtake(args, file_number):
     if args["save_trajectory"]:
@@ -163,8 +167,8 @@ def racing_overtake(args, file_number):
                                     else:
                                         vehicles[index].set_state_curvilinear_func(
                                             t_symbol,
-                                            (OTHER_CAR_SPEED + index * 0.02) * t_symbol + 10.5 + index * 1.5,
-                                            0.5 - index * 0.3 + 0.0 * t_symbol, # - 0.5
+                                            (OTHER_CAR_SPEED + index * 0.02) * t_symbol + START_S + index * START_S_INTERVAL,
+                                            START_EY - index * START_EY_INTERVAL + 0.0 * t_symbol, # - 0.5
                                         )
                                     vehicles[index].start_logging()
                                     simulator.add_vehicle(vehicles[index])
@@ -268,8 +272,19 @@ def set_up_ego(timestep, track):
     pid_controller.set_timestep(timestep)
     ego.set_ctrl_policy(pid_controller)
     pid_controller.set_track(track)
-    ego.set_state_curvilinear(np.zeros((X_DIM,)))
-    ego.set_state_global(np.zeros((X_DIM,)))
+
+    start_state = np.zeros((X_DIM, ))
+    start_goal_state = np.zeros((X_DIM, ))
+    start_state[5] = START_EY
+    X, Y = track.get_global_position(start_state[4], start_state[5])
+    psi = track.get_orientation(start_state[4], start_state[5])
+    start_goal_state[0:3] = start_state[0:3]
+    start_goal_state[3] = psi
+    start_goal_state[4] = X
+    start_goal_state[5] = Y
+
+    ego.set_state_curvilinear(start_state)
+    ego.set_state_global(start_goal_state)
     ego.start_logging()
     ego.set_track(track)
     # run mpc-lti controller for the second lap to collect data
