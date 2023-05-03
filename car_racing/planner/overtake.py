@@ -251,8 +251,7 @@ class OvertakePathPlanner:
                     + self.racing_game_param.planning_prediction_factor * agent_infos.max_delta_v
                     - ego.xcurv[4]
                 )
-                * index
-                / num_horizon
+                * index / num_horizon
             )
             target_traj_xcurv[index, 5] = best_ey[index]
         if target_traj_xcurv[-1, 4] >= track.lap_length:
@@ -267,7 +266,7 @@ class OvertakePathPlanner:
         delta_t = 2 * (target_traj_xcurv[-1, 4] - xcurv_ego[4]) / (vx_target + xcurv_ego[0])
         a_target = (vx_target - xcurv_ego[0]) / delta_t
         # the desired acc should under constraints
-        a_target = np.clip(a_target, -1.5, 1.5)
+        a_target = np.clip(a_target, -2.5, 2.5)
         # refine the path, add vx information
         target_traj_xcurv = self.get_speed_info(target_traj_xcurv, xcurv_ego, a_target)
         end_timer = datetime.datetime.now()
