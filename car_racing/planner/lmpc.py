@@ -419,6 +419,7 @@ class LMPCRacingGame(PlannerBase):
 
         self._mode = LMPCRacingGame.Mode.FOLLOW
         self.follow_vehicle: NoDynamicsModel = None
+        self._matrix_Atv, self._matrix_Btv, self._matrix_Ctv = None, None, None
 
     def trigger_overtaking(self):
         self._mode = LMPCRacingGame.Mode.OVERTAKE
@@ -831,7 +832,10 @@ class LMPCRacingGame(PlannerBase):
     def calc_input(self):
         self.overtake_planner.agent_name = self.agent_name
         self.overtake_planner.opti_traj_xcurv = self.opti_traj_xcurv
-        matrix_Atv, matrix_Btv, matrix_Ctv, _ = self._estimate_ABC()
+        try:
+            self._matrix_Atv, self._matrix_Btv, self._matrix_Ctv, _ = self._estimate_ABC()
+        except:
+            pass
         x = copy.deepcopy(self.x)
         while x[4] > self.lap_length:
             x[4] = x[4] - self.lap_length
@@ -848,7 +852,7 @@ class LMPCRacingGame(PlannerBase):
                 self.Qfun_selected_tot,
                 self.lin_points,
                 self.lin_input,
-            ) = self._lmpc(x, matrix_Atv, matrix_Btv, matrix_Ctv, u_old)
+            ) = self._lmpc(x, self._matrix_Atv, self._matrix_Btv, self._matrix_Ctv, u_old)
             self.u = self.u_pred[0, :]
             self.old_ey = None
             self.old_direction_flag = None
@@ -862,7 +866,7 @@ class LMPCRacingGame(PlannerBase):
             self._add_point(self.x, self.u, self.time_in_iter)
             self.time_in_iter = self.time_in_iter + 1
             x_pred_xglob = np.zeros((12 + 1, X_DIM))
-            for jjj in range(0, 12 + 1):
+            for jjj in range(0, self.lmpc_param.num_horizon + 1):
                 xxx, yyy = self.track.get_global_position(self.x_pred[jjj, 4], self.x_pred[jjj, 5])
                 psipsi = self.track.get_orientation(self.x_pred[jjj, 4], self.x_pred[jjj, 5])
                 x_pred_xglob[jjj, 0:3] = self.x_pred[jjj, 0:3]
@@ -903,9 +907,9 @@ class LMPCRacingGame(PlannerBase):
                     x,
                     self.time,
                     vehicles_interest,
-                    matrix_Atv,
-                    matrix_Btv,
-                    matrix_Ctv,
+                    self._matrix_Atv,
+                    self._matrix_Btv,
+                    self._matrix_Ctv,
                     self.old_ey,
                     self.old_direction_flag,
                 )
