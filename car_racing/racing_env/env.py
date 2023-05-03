@@ -246,6 +246,13 @@ class RacingSim(RacingEnv):
         )
         if ani_time > sim_time:
             ani_time = sim_time
+        ani_time = min(
+            ani_time, 
+            sim_time, 
+            len(self.vehicles['ego'].lmpc_prediction) - 1
+        )
+        if ani_time <= 0:
+            return
         for name in self.vehicles:
             if name == "ego":
                 face_color = "red"
@@ -405,7 +412,7 @@ class RacingSim(RacingEnv):
                                     patches_vehicles_mpc_cbf_prediction[iii].set_facecolor("None")
                                 else:
                                     patches_vehicles_mpc_cbf_prediction[iii].set_facecolor("red")
-                                psi = mpc_cbf_prediction[i - 1, iii, 3]
+                                psi = mpc_cbf_prediction[i - 1, iii * 2, 3]
                                 vertex_x = [
                                     x + l * np.cos(psi) - w * np.sin(psi),
                                     x + l * np.cos(psi) + w * np.sin(psi),
@@ -434,7 +441,7 @@ class RacingSim(RacingEnv):
                                     patches_vehicles_lmpc_prediction[jjj].set_facecolor("None")
                                 else:
                                     patches_vehicles_lmpc_prediction[jjj].set_facecolor("red")
-                                psi = lmpc_prediction[i - 1, jjj, 3]
+                                psi = lmpc_prediction[i - 1, jjj * 2, 3]
                                 vertex_x = [
                                     x + l * np.cos(psi) - w * np.sin(psi),
                                     x + l * np.cos(psi) + w * np.sin(psi),
