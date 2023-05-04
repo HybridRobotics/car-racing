@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2023-04-26T00:39:16.015Z" agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0" etag="zy6QaQoKCkMVcSJZjdbH" version="21.2.2" type="github" pages="3">
+<mxfile host="app.diagrams.net" modified="2023-05-04T03:11:53.045Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36" etag="NzUWvTECBYeLLhcZBcA3" version="21.2.7" type="github" pages="4">
   <diagram name="Packages" id="8OmCAme0Esdqmg-NAgWp">
-    <mxGraphModel dx="1434" dy="695" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2049" dy="1056" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -164,8 +164,55 @@
       </root>
     </mxGraphModel>
   </diagram>
+  <diagram id="LnOv1qgDvRcU7FdyapZx" name="Package after Refactor">
+    <mxGraphModel dx="819" dy="422" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="i9VJu-Bw3DWZ8kaUujzu-1" value="tests&lt;br&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;containing main scripts&lt;/span&gt;&lt;/div&gt;" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=40;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="110" y="410" width="150" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="xv-90X-K4VX7IMXAfhcm-1" value="planning&lt;br&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Definitions for planners, to be used in controllers&lt;/span&gt;&lt;/div&gt;" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=40;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="360" y="340" width="150" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="xv-90X-K4VX7IMXAfhcm-3" value="racing_env&lt;br&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Interfaces with racing env, including vehicles, ROS2, and simulator&lt;/span&gt;&lt;/div&gt;" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=40;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="360" y="530" width="158" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="xv-90X-K4VX7IMXAfhcm-5" value="Use" style="endArrow=open;endSize=12;dashed=1;html=1;rounded=0;exitX=0;exitY=0;exitDx=150;exitDy=52;exitPerimeter=0;entryX=0;entryY=0;entryDx=0;entryDy=52;entryPerimeter=0;" edge="1" parent="1" source="i9VJu-Bw3DWZ8kaUujzu-1" target="xv-90X-K4VX7IMXAfhcm-1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="120" y="260" as="sourcePoint" />
+            <mxPoint x="280" y="260" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="290" y="462" />
+              <mxPoint x="290" y="392" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xv-90X-K4VX7IMXAfhcm-6" value="Use" style="endArrow=open;endSize=12;dashed=1;html=1;rounded=0;exitX=0;exitY=0;exitDx=150;exitDy=52;exitPerimeter=0;entryX=0;entryY=0;entryDx=0;entryDy=52;entryPerimeter=0;" edge="1" parent="1" source="i9VJu-Bw3DWZ8kaUujzu-1" target="xv-90X-K4VX7IMXAfhcm-3">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="290" y="460" as="sourcePoint" />
+            <mxPoint x="450" y="460" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="290" y="462" />
+              <mxPoint x="290" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xv-90X-K4VX7IMXAfhcm-8" value="Use" style="endArrow=open;endSize=12;dashed=1;html=1;rounded=0;exitX=0;exitY=0;exitDx=150;exitDy=52;exitPerimeter=0;entryX=0;entryY=0;entryDx=158;entryDy=52;entryPerimeter=0;" edge="1" parent="1" source="xv-90X-K4VX7IMXAfhcm-1" target="xv-90X-K4VX7IMXAfhcm-3">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="490" y="430" as="sourcePoint" />
+            <mxPoint x="650" y="430" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="540" y="392" />
+              <mxPoint x="540" y="582" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
   <diagram id="UbhwdgVO11Jb5h0_f-8E" name="classes 4 sim">
-    <mxGraphModel dx="667" dy="1423" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="3585" dy="2948" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -594,7 +641,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="3wH-I_wDpez2wSaPXK57" name="function stack">
-    <mxGraphModel dx="2049" dy="993" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1434" dy="739" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
