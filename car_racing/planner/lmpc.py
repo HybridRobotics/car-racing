@@ -424,6 +424,9 @@ class LMPCRacingGame(PlannerBase):
     def trigger_overtaking(self):
         self._mode = LMPCRacingGame.Mode.OVERTAKE
 
+    def is_following(self):
+        return self._mode == LMPCRacingGame.Mode.FOLLOW
+
     def set_vehicles_track(self):
         """Set the self's track to the overtake planner"""
         if self.realtime_flag == False:
@@ -520,6 +523,11 @@ class LMPCRacingGame(PlannerBase):
         x_track = np.array([5.0, 0, 0, 0, 0, 0]).reshape(X_DIM, 1)
         opti.subject_to(x[:, 0] == xcurv)
         # state/input constraints
+        if self.follow_vehicle is not None :
+            # x[4] is the s, x[5] is the ey
+            follow_vehicle_s = self.follow_vehicle.xcurv[4]
+            while follow_vehicle_s <= xcurv[4]: 
+                follow_vehicle_s += self.lap_length
         for i in range(self.lmpc_param.num_horizon):
             opti.subject_to(
                 x[:, i + 1]
@@ -535,12 +543,6 @@ class LMPCRacingGame(PlannerBase):
             # min and max of a
             opti.subject_to(-self.system_param.a_max <= u[1, i])
             opti.subject_to(u[1, i] <= self.system_param.a_max)
-            if self._mode == LMPCRacingGame.Mode.FOLLOW and self.follow_vehicle is not None :
-                # x[4] is the s, x[5] is the ey
-                follow_vehicle_s = self.follow_vehicle.xcurv[4]
-                while follow_vehicle_s <= xcurv[4]: 
-                    follow_vehicle_s += self.lap_length
-                opti.subject_to(x[4, i] <= follow_vehicle_s)
             # quadratic cost
             cost_mpc += ca.mtimes(
                 (x[:, i] - x_track).T,
@@ -558,6 +560,9 @@ class LMPCRacingGame(PlannerBase):
                     ca.mtimes(self.lmpc_param.matrix_dR, u[:, i] - u[:, i - 1]),
                 )
         # convex hull for LMPC
+        if self._mode == LMPCRacingGame.Mode.FOLLOW and self.follow_vehicle is not None :
+            # x[4] is the s, x[5] is the ey
+            opti.subject_to(x[4, self.lmpc_param.num_horizon] <= follow_vehicle_s)
         cost_mpc += ca.mtimes(
             (x[:, self.lmpc_param.num_horizon] - x_track).T,
             ca.mtimes(self.lmpc_param.matrix_Q, x[:, self.lmpc_param.num_horizon] - x_track),

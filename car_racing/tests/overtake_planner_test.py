@@ -10,8 +10,8 @@ from racing_env import *
 
 OTHER_CAR_SPEED = 1.0
 EGO_CAR_ACC_MAX = 0.7
-START_EY = -0.5
-START_S = 10.5
+START_EY = 0.0
+START_S = 4.5
 START_S_INTERVAL = 1.5
 START_EY_INTERVAL = 0.3
 
@@ -188,19 +188,22 @@ def racing_overtake(args, file_number):
                                 ego.lmpc_prediction = []
                                 ego.mpc_cbf_prediction = []
                                 simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
-                                ego.ctrl_policy.add_trajectory(
-                                    ego,
-                                    iter,
-                                )
+                                # NOTE: at this lap, the ego is in following mode
+                                # NOTE: hence, DO NOT learn this lap
+                                # ego.ctrl_policy.add_trajectory(
+                                #     ego,
+                                #     iter,
+                                # )
                             else:
                                 if iter == 8: 
-                                    if isinstance(ego.ctrl_policy, LMPCRacingGame): 
-                                        ego.ctrl_policy.trigger_overtaking()
+                                    lmpc_controller.trigger_overtaking()
                                 simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
-                                ego.ctrl_policy.add_trajectory(
-                                    ego,
-                                    iter,
-                                )
+                                if not lmpc_controller.is_following(): 
+                                    # NOTE: only start learning DURING 
+                                    ego.ctrl_policy.add_trajectory(
+                                        ego,
+                                        iter,
+                                    )
                         else:
                             simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                             ego.ctrl_policy.add_trajectory(
@@ -264,7 +267,7 @@ def racing_overtake(args, file_number):
                 simulator.animate(filename=file_name, ani_time=2000, racing_game=True)
 
 
-def set_up_ego(timestep, track):
+def set_up_ego(timestep: float, track: ClosedTrack):
     ego = OffboardDynamicBicycleModel(name="ego", param=CarParam(edgecolor="black"), system_param = SystemParam(a_max=EGO_CAR_ACC_MAX))
     ego.set_timestep(timestep)
     # run the pid controller for the first lap to collect data

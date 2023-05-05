@@ -12,13 +12,13 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--track-layout",        "l_shape",
-                "--lap-number",          "7",
+                "--track-layout",        "ellipse",
+                "--lap-number",          "10",
                 "--number-other-agents", "1",
                 "--simulation",
                 "--direct-lmpc",
                 "--animation",
-                "--random-other-agents"
+                // "--random-other-agents"
             ]
         }
     ]
