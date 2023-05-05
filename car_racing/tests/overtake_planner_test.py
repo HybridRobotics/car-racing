@@ -188,19 +188,22 @@ def racing_overtake(args, file_number):
                                 ego.lmpc_prediction = []
                                 ego.mpc_cbf_prediction = []
                                 simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
+                                # NOTE: at this lap, the ego is in following mode
+                                # NOTE: hence, DO NOT learn this lap
                                 # ego.ctrl_policy.add_trajectory(
                                 #     ego,
                                 #     iter,
                                 # )
                             else:
                                 if iter == 8: 
-                                    if isinstance(ego.ctrl_policy, LMPCRacingGame): 
-                                        ego.ctrl_policy.trigger_overtaking()
+                                    lmpc_controller.trigger_overtaking()
                                 simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
-                                # ego.ctrl_policy.add_trajectory(
-                                #     ego,
-                                #     iter,
-                                # )
+                                if not lmpc_controller.is_following(): 
+                                    # NOTE: only start learning DURING 
+                                    ego.ctrl_policy.add_trajectory(
+                                        ego,
+                                        iter,
+                                    )
                         else:
                             simulator.sim(sim_time=time_lmpc, one_lap=True, one_lap_name="ego")
                             ego.ctrl_policy.add_trajectory(

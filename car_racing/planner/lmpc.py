@@ -424,6 +424,9 @@ class LMPCRacingGame(PlannerBase):
     def trigger_overtaking(self):
         self._mode = LMPCRacingGame.Mode.OVERTAKE
 
+    def is_following(self):
+        return self._mode == LMPCRacingGame.Mode.FOLLOW
+
     def set_vehicles_track(self):
         """Set the self's track to the overtake planner"""
         if self.realtime_flag == False:
