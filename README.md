@@ -12,18 +12,17 @@ This repository provides a toolkit to test control and planning problems for car
 - [References](#references)
 - [Features](#features)
 - [Installation](#installation)
-- [Contributing](#contributing)
 - [Quick-Demos](#quick-demos)
 - [Docs](#docs)
     - [Offboard](#offboard)
-    - [Realtime](#realtime)
+- [Appendix](#appendix)
 </details>
 
 ## Preview
 <img src="/media/release/icra2022.gif?raw=true" width="800"/>
 
 ## References
-If you find this project useful in your work, please consider citing following papers:
+This project was developed by the help from the following papers:
 
 Parallelized optimization for overtake racing behavior with multiple autonomous vehicles [[IEEE]](https://ieeexplore.ieee.org/document/9811969) [[arXiv]](https://arxiv.org/abs/2112.06435) [[Video]](https://youtu.be/1zTXfzdQ8w4)
 ```
@@ -66,10 +65,7 @@ pip install -e .
 
 In this project, `pytest` is used to test the code autonomously after pushing new code to the repository. Currently, three files in the `tests` folder are used for testing pid or mpc tracking controller, mpc-cbf controller and racing game planner, respectively. To test other features, add files to the `tests` folder and update the `tests.yml` file under the `.github/workflows` folder.
 
-## Contributing
-Execute `pre-commit install` to install git hooks in your `.git/` directory, which allows auto-formatting if you are willing to contribute to this repository.
 
-Please contact major contributors of this repository for additional information.
 
 ## Quick-Demos
 
@@ -78,55 +74,6 @@ The following documentation contains documentation and common terminal commands 
 
 ### Offboard
 
-#### System Identification
-Run
-```
-python car_racing/tests/system_identification_test.py
-```
-This allows to identify the linearized dynamics of the racing car by regression.
-
-#### Tracking performance with controllers
-Run
-```
-python car_racing/tests/control_test.py --ctrl-policy mpc-lti --track-layout l_shape --simulation --plotting --animation 
-```
-This allows to test algorithm for tracking. The argparse arguments are listed as follow,
-| name | type | choices | description |
-| :---: | :---: | :---: | :---: |
-| `ctrl_policy` | string | `pid`, `mpc-lti`, `lqr` | control policy |
-| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
-| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
-| `plotting` | action | `store_true` | save plotting if true |
-| `animation` | action | `store_true` | save animation if true |
-
-#### Racing competition with ego controller (MPC-CBF)
-Run
-```
-python car_racing/tests/mpccbf_test.py --track-layout l_shape --simulation --plotting --animation
-```
-This allows to test algorithm for MPC-CBF controller. The argparse arguments are listed as follow,
-| name | type | choices | description |
-| :---: | :---: | :---: | :---: |
-| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
-| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
-| `plotting` | action | `store_true` | save plotting if true |
-| `animation` | action | `store_true` | save animation if true |
-
-#### Racing competition with ego controller (iLQR)
-Run
-
-```
-python car_racing/tests/ilqr_test.py --track-layout l_shape --simulation --plotting --animation
-```
-
-This allows to test algorithm for iLQR controller. The argparse arguments are listed as follow,
-
-|      name      |  type  |                  choices                  |                         description                          |
-| :------------: | :----: | :---------------------------------------: | :----------------------------------------------------------: |
-| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` |                        track layouts                         |
-|  `simulation`  | action |               `store_true`                | generate simulation data if true, otherwise read simulation data from existing files |
-|   `plotting`   | action |               `store_true`                |                    save plotting if true                     |
-|  `animation`   | action |               `store_true`                |                    save animation if true                    |
 
 #### Racing competition with ego controller (LMPC)
 To save the historic states and inputs used for learning-based MPC, run the following command for each track layout firstly:
@@ -182,22 +129,64 @@ This allows to test algorithm for racing competition. The argparse arguments are
 
 Currently, path planner and trajecotry planner are available for the overtaking maneuver. Changing the varibale `self.path_planner` in `base.py` to `True` allows the controller to simulate with path planner.
 
-### Realtime (under development)
-To start the simulator, run the following command in terminal:
-```
-roslaunch car_racing car_racing_sim.launch track_layout:=goggle
-```
-This allows you to run the simulator and visualization node. Change the `track_layout`, you can get differnt tracks. The center line of the race track is plotted in red dash line; the optimal trajectory of the race track is plotted in green line.
-To add new vehicle with controller in the simulator, run the following commands in new terminals:
-```
-rosrun car_racing vehicle.py --veh-name vehicle1 --color blue --vx 0 --vy 0 --wz 0 --epsi 0 --s 0 --ey 0
+### Other testing mode (under development)
+The test modes below are from the old project of the paper we referenced. Since it is not nessesary for our project, we haven't refactor the code for it to run on the new version of this codebase. Needs some refactoring job before using the test below.
 
-rosrun car_racing controller.py --ctrl-policy mpc-lti --veh-name vehicle1
+#### System Identification
+Run
 ```
-These allow to start nodes for the vehicle and corresponding controller. The argparse arguments are listed as follow,
+python car_racing/tests/system_identification_test.py
+```
+This allows to identify the linearized dynamics of the racing car by regression.
+
+#### Tracking performance with controllers
+Run
+```
+python car_racing/tests/control_test.py --ctrl-policy mpc-lti --track-layout l_shape --simulation --plotting --animation 
+```
+This allows to test algorithm for tracking. The argparse arguments are listed as follow,
 | name | type | choices | description |
 | :---: | :---: | :---: | :---: |
-| `veh_name` | string | a self-defined name | vehicle's name |
-| `color` | string | color's name | vehicle's color in animation |
-| `vs`, `vy`, `wz`, `epsi`, `s`, `ey` | float | initial states |vehicle's initial states in Frenet coordinates |
-| `ctrl_policy` | string | `pid`, `mpc-lti`, `mpc-cbf` , `lmpc`| vehicle's controller type|
+| `ctrl_policy` | string | `pid`, `mpc-lti`, `lqr` | control policy |
+| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
+| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
+| `plotting` | action | `store_true` | save plotting if true |
+| `animation` | action | `store_true` | save animation if true |
+
+#### Racing competition with ego controller (MPC-CBF)
+Run
+```
+python car_racing/tests/mpccbf_test.py --track-layout l_shape --simulation --plotting --animation
+```
+This allows to test algorithm for MPC-CBF controller. The argparse arguments are listed as follow,
+| name | type | choices | description |
+| :---: | :---: | :---: | :---: |
+| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` | track layouts |
+| `simulation` | action | `store_true` | generate simulation data if true, otherwise read simulation data from existing files |
+| `plotting` | action | `store_true` | save plotting if true |
+| `animation` | action | `store_true` | save animation if true |
+
+#### Racing competition with ego controller (iLQR)
+Run
+
+```
+python car_racing/tests/ilqr_test.py --track-layout l_shape --simulation --plotting --animation
+```
+
+This allows to test algorithm for iLQR controller. The argparse arguments are listed as follow,
+
+|      name      |  type  |                  choices                  |                         description                          |
+| :------------: | :----: | :---------------------------------------: | :----------------------------------------------------------: |
+| `track_layout` | string | `l_shape`, `m_shape`, `goggle`, `ellipse` |                        track layouts                         |
+|  `simulation`  | action |               `store_true`                | generate simulation data if true, otherwise read simulation data from existing files |
+|   `plotting`   | action |               `store_true`                |                    save plotting if true                     |
+|  `animation`   | action |               `store_true`                |                    save animation if true                    |
+
+## Appendix
+from detail explaination of our project please refer to our documentations below:
+
+ Project report: https://drive.google.com/file/d/1qqdYlhszkwPwZETbUJ6PtY3SAp_if8y6/view?usp=sharing
+ 
+ project presentation: https://docs.google.com/presentation/d/1UmvFBaMAFYTbx05MaQgZgqfkojcb9ZeR/edit?usp=sharing&ouid=106817078880653835914&rtpof=true&sd=true
+ 
+ Proejct website: https://eecs106b-banana-radiation.github.io/
