@@ -16,6 +16,8 @@ def racing(args):
         mpc_cbf_param = base.MPCCBFRacingParam(vt=0.8)
         ego.set_state_curvilinear(np.zeros((X_DIM,)))
         ego.set_state_global(np.zeros((X_DIM,)))
+        if args["zero_noise"]:
+            ego.set_zero_noise()
         ego.start_logging()
         ego.set_ctrl_policy(offboard.MPCCBFRacing(mpc_cbf_param, ego.system_param))
         ego.ctrl_policy.set_timestep(0.1)
@@ -59,5 +61,6 @@ if __name__ == "__main__":
     parser.add_argument("--plotting", action="store_true")
     parser.add_argument("--animation", action="store_true")
     parser.add_argument("--track-layout", type=str)
+    parser.add_argument("--zero-noise", action="store_true")
     args = vars(parser.parse_args())
     racing(args)

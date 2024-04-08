@@ -524,7 +524,7 @@ def mpccbf(
     # slack variables for control barrier functions
     cbf_slack = opti.variable(len(obs_infos), mpc_cbf_param.num_horizon + 1)
     # obstacle avoidance
-    safety_margin = 0.15
+    safety_margin = 0.2
     degree = 6  # 2, 4, 6, 8
     for count, obs_name in enumerate(obs_infos):
         obs_traj = obs_infos[obs_name]
@@ -593,12 +593,17 @@ def mpccbf(
     option = {"verbose": False, "ipopt.print_level": 0, "print_time": 0}
     opti.minimize(cost)
     opti.solver("ipopt", option)
-    sol = opti.solve()
+    try:
+        sol = opti.solve()
+        x_pred = sol.value(xvar).T
+        u_pred = sol.value(uvar).T
+    except RuntimeError:
+        print("solver failed.")
+        x_pred = opti.debug.value(xvar).T
+        u_pred = opti.debug.value(uvar).T
     end_timer = datetime.datetime.now()
     solver_time = (end_timer - start_timer).total_seconds()
     print("solver time: {}".format(solver_time))
-    x_pred = sol.value(xvar).T
-    u_pred = sol.value(uvar).T
     return u_pred[0, :]
 
 
