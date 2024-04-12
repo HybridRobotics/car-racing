@@ -279,7 +279,7 @@ class MPCCBFRacingParam:
         vt=0.6,
         eyt=0.0,
         num_horizon=10,
-        alpha=0.6,
+        alpha=0.8,
     ):
         self.matrix_A = matrix_A
         self.matrix_B = matrix_B
